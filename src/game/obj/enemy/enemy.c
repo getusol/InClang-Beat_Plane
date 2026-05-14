@@ -13,6 +13,8 @@
 #include "game.h"
 #include "tools.h"
 #include "fsm.h"
+#include "event.h"
+#include "bullet.h"
 
 /**********************
  *      MACROS
@@ -20,10 +22,10 @@
 
 #define ENEMY_IMG_NAME "enemy.bin"
 
-#define ENEMY_MAX_X 1024                 // 子弹最大X坐标
+#define ENEMY_MAX_X 980                 // 子弹最大X坐标
 #define ENEMY_MIN_X 0                    // 子弹最小X坐标
 #define ENEMY_MAX_Y 600                  // 子弹最大Y坐标
-#define ENEMY_MIN_Y 0                    // 子弹最小Y坐标
+#define ENEMY_MIN_Y -64                    // 子弹最小Y坐标
 
 /**********************
  *      TYPEDEFS
@@ -35,6 +37,7 @@ typedef struct
     int16_t hp; // 生命值
     int16_t hp_max;
     uint16_t pool_index; // 对象池索引
+    lv_obj_t * health_bar;
 } enemy_t;
 
  /**********************
@@ -46,6 +49,9 @@ static void enemy_hide(game_obj_t * g);
 static void enemy_show(game_obj_t * g);
 static lv_point_t enemy_move(game_obj_t * g,lv_coord_t dx,lv_coord_t dy);
 static int16_t enemy_modify_hp(game_obj_t * g,int16_t delta);
+
+static void enemy_event_hit_by_bullet_cb(game_obj_t * scr,game_obj_t * trg);
+static void enemy_event_hit_player_cb(game_obj_t * src,game_obj_t * trg);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -87,7 +93,7 @@ void enemy_init(lv_obj_t * parent)
     enemies[i].base.type = GAME_OBJ_TYPE_ENEMY;
     enemies[i].base.x = 0;
     enemies[i].base.y = 0;
-    enemies[i].base.speed = 10.0f;
+    enemies[i].base.speed = 7.0f;
     enemies[i].base.hitbox_x = 0;
     enemies[i].base.hitbox_y = 0;
     enemies[i].base.hitbox_w = 19;
@@ -106,27 +112,65 @@ void enemy_init(lv_obj_t * parent)
     
     // lvgl
     lv_obj_set_align(enemies[i].base.obj,LV_ALIGN_TOP_LEFT);
-    enemies[i].base.hide(&enemies[i].base);
+
+    // health bar
+    enemies[i].health_bar = lv_bar_create(parent);
+    lv_obj_set_pos(enemies[i].health_bar,0,0);
+    lv_obj_set_size(enemies[i].health_bar,enemies[i].base.w + 20,5);
+    lv_bar_set_range(enemies[i].health_bar,0,enemies[i].hp_max);
+    lv_bar_set_value(enemies[i].health_bar,enemies[i].hp,LV_ANIM_OFF);
+    // 在创建 health_bar 之后
+    lv_obj_set_style_bg_color(enemies[i].health_bar, lv_palette_main(LV_PALETTE_RED), LV_PART_INDICATOR);
     
     // hitbox
     #if SHOW_HITBOX
     enemies[i].base.hitbox_obj = NULL;
     enemies[i].base.hitbox_obj = game_obj_hitbox_init(&enemies[i].base);
     #endif
-    
-    // event_cb
+
+    enemies[i].base.hide(&enemies[i].base);
 
     // register obj
     game_register_obj(&enemies[i].base);
     CONSOLE("[INFO] Enemy object %d initialized with img: %s.",i,enemy_img_path);
   }
+
+  // event_cb
+  event_register(EVENT_BULLET_HIT_ENEMY,enemy_event_hit_by_bullet_cb);
+  event_register(EVENT_PLAYER_HIT_ENEMY,enemy_event_hit_player_cb);
+
   CONSOLE("[INFO] Enemy system initalized with max enemy count: %d.",MAX_ENEMY_COUNT);
   return ;
 }
 
+/**
+ * @brief 敌人生成
+ * @param x 生成的x坐标
+ * @param y 生成的y坐标
+ * @return game_obj_t* 生成的敌人
+ */
 game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y)
 {
-  
+  if (fsm_get_state() != GS_PLAY) return NULL;
+  uint16_t id = pool_alloc(&enemy_pool);
+  if (id == POOL_INVALID_ID)
+  {
+    CONSOLE("[WARNING] No available enemy slots! Max enemy count: %d", MAX_ENEMY_COUNT);
+    LOG("[WARNING] No available enemy slots! Max enemy count: %d", MAX_ENEMY_COUNT);
+    return NULL;
+  }
+  enemy_t * e = &enemies[id];
+  e->pool_index = id;
+  e->base.active = true;
+  e->base.x = x;
+  e->base.y = y;
+  e->hp = e->hp_max;
+  lv_obj_set_pos(e->base.obj,x,y);
+  lv_obj_set_pos(e->health_bar,x - 10,y - 10);
+  lv_bar_set_value(e->health_bar,e->hp,LV_ANIM_OFF);
+  e->base.show(&e->base);
+  CONSOLE("[INFO] Enemy %d spawned at x: %d, y: %d.",e->pool_index,x,y);
+  return &e->base;
 }
 
  /**********************
@@ -160,6 +204,7 @@ static void enemy_hide(game_obj_t * g)
 {
   g->active = false;
   lv_obj_add_flag(g->obj,LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(((enemy_t *)g)->health_bar,LV_OBJ_FLAG_HIDDEN);
 
   enemy_t * e = (enemy_t *)g;
   if (e->pool_index != POOL_INVALID_ID)
@@ -185,6 +230,7 @@ static void enemy_show(game_obj_t * g)
   }
   g->active = true;
   lv_obj_clear_flag(g->obj,LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(((enemy_t *)g)->health_bar,LV_OBJ_FLAG_HIDDEN);
 }
 
 /**
@@ -201,6 +247,8 @@ static lv_point_t enemy_move(game_obj_t * g,lv_coord_t dx,lv_coord_t dy)
   g->y += dy;
 
   lv_obj_set_pos(g->obj,g->x,g->y);
+  enemy_t * e = (enemy_t *)g;
+  lv_obj_set_pos(e->health_bar,g->x - 10,g->y - 10);
   
   // 出界检查
   if (g->x < ENEMY_MIN_X || g->x > ENEMY_MAX_X || g->y < ENEMY_MIN_Y || g->y > ENEMY_MAX_Y)
@@ -235,5 +283,29 @@ static int16_t enemy_modify_hp(game_obj_t * g,int16_t delta)
     CONSOLE("[INFO] Enemy %d has been killed.",e->pool_index);
     return 0;
   }
+
+  lv_bar_set_value(e->health_bar, e->hp, LV_ANIM_OFF);
+
   return e->hp;
+}
+
+/**
+ * @brief 子弹击中敌人事件回调 敌人扣血
+ * @param scr 子弹对象指针
+ * @param trg 敌人对象指针
+ */
+static void enemy_event_hit_by_bullet_cb(game_obj_t * scr,game_obj_t * trg)
+{
+  uint8_t damage = bullet_get_damage(scr);
+  enemy_modify_hp(trg,-damage);
+}
+
+/**
+ * @brief 玩家撞击敌人 事件回调 敌人消失
+ * @param src 玩家对象指针
+ * @param trg 敌人对象指针
+ */
+static void enemy_event_hit_player_cb(game_obj_t * src,game_obj_t * trg)
+{
+  trg->hide(trg);
 }

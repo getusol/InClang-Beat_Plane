@@ -58,7 +58,7 @@
  * KEYBOARD
  *-----------*/
 
-#define LONG_PRESS_MS 500
+#define LONG_PRESS_MS 150
 #define PRESSED_TICKS_THRESHOLD 50
 #define RELEASED_TICKS_THRESHOLD 50
 

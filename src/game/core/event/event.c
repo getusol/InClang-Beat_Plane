@@ -87,6 +87,13 @@ void event_register(event_code_t code,event_callback_t callback)
     return ;
   }
 
+  // 重复则跳过 视为成功
+  for (int i = 0;i < MAX_CALLBACKS_PRE_EVENT;i++) {
+    if (callbacks[code][i] == callback) {
+      return ;
+    }
+  }
+
   for (int i = 0; i < MAX_CALLBACKS_PRE_EVENT; i++) {
     if (callbacks[code][i] == NULL) {
       callbacks[code][i] = callback;

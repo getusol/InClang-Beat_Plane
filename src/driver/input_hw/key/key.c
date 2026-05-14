@@ -23,7 +23,7 @@
 #ifdef SIMULATOR
 #else
 #define HW_KEYS_COUNT (sizeof(HW_KEYS)/sizeof(HW_KEYS[0]))
-#define DEBOUNCE_MS 20
+#define DEBOUNCE_MS 5
 #endif
 
 /**********************

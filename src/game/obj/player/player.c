@@ -69,6 +69,7 @@ static void player_fire();
 
 static void player_event_game_start_cb(game_obj_t * src,game_obj_t * trg);
 static void player_event_player_die_cb(game_obj_t * src,game_obj_t * trg);
+static void player_event_hit_by_enemy_cb(game_obj_t * src,game_obj_t * trg);
 
 
 /***********************
@@ -148,6 +149,7 @@ void player_init(lv_obj_t * parent)
   // 事件注册
   event_register(EVENT_GAME_START,player_event_game_start_cb);
   event_register(EVENT_PLAYER_DIE,player_event_player_die_cb);
+  event_register(EVENT_PLAYER_HIT_ENEMY,player_event_hit_by_enemy_cb);
   
   
   CONSOLE("[INFO] Player initialization complete.\n");
@@ -337,7 +339,7 @@ static void player_fire()
   if (fsm_get_state() != GS_PLAY || !game_obj_is_active(g)) {
       return ;
   }
-  bullet_create(g,20.0f, g->x + g->w / 2 - 8, g->y - 16, 10); // 从玩家中心上方发射一个子弹，伤害为10
+  bullet_create(g,20.0f, g->x + g->w / 2 - 8, g->y - 16, 34); // 从玩家中心上方发射一个子弹，伤害为34
 }
 
 /**
@@ -362,3 +364,13 @@ static void player_event_player_die_cb(game_obj_t * src,game_obj_t * trg)
   player_p->base.hide(&player_p->base);     // 玩家HP为0时隐藏玩家对象
   fsm_switch_state(GS_OVER);                // 切换到游戏结束状态 bug:这个时候强制切回GS_PLAY 玩家会0血存活，等到下次受伤又会死亡
 }
+
+/**
+ * @brief 玩家被敌人击中事件回调 玩家扣血
+ * @param src 玩家对象指针
+ * @param trg 敌人对象指针
+ */
+static void player_event_hit_by_enemy_cb(game_obj_t * src,game_obj_t * trg)
+{
+  player_hp_modify(-20);  //目前固定扣20血
+} 

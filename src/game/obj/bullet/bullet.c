@@ -14,6 +14,7 @@
 #include "lvgl_utils.h"
 #include "fsm.h"
 #include "game.h"
+#include "event.h"
 
 /**********************
  *      MACROS
@@ -50,6 +51,8 @@ static void bullet_update(game_obj_t * g);
 static void bullet_hide(game_obj_t * g);
 static void bullet_show(game_obj_t * g);
 static void bullet_move(bullet_t * b,lv_coord_t dx,lv_coord_t dy);
+
+static void bullet_event_hit_enemy_cb(game_obj_t * scr,game_obj_t * trg);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -109,9 +112,17 @@ void bullet_init(lv_obj_t * parent)
         #endif
 
         console_out("[bullet_init] Bullet %d initialized with image: %s\n", i, bullet_img_path);
+        
         bullets[i].base.hide((game_obj_t *)&bullets[i]);
+
+        // obj register
+        
         game_register_obj((game_obj_t *)&bullets[i]);
     }
+
+    // event register
+    event_register(EVENT_BULLET_HIT_ENEMY,bullet_event_hit_enemy_cb);
+
     console_out("[bullet_init] Bullet system initialized with max bullet count: %d\n", MAX_BULLET_COUNT);
     return ;
 }
@@ -144,6 +155,14 @@ uint16_t bullet_create(game_obj_t *source, float speed,lv_coord_t x, lv_coord_t 
     bullets[index].base.show((game_obj_t *)&bullets[index]);
     console_out("[bullet_create] Bullet created at index: %d, position: (%d, %d), speed: %.2f, damage: %d\n", index, x, y, speed, damage);
     return index;
+}
+
+/**
+ * @brief 获取子弹伤害
+ */
+uint8_t bullet_get_damage(game_obj_t * bullet)
+{
+    return ((bullet_t *)bullet)->damage;
 }
 
  /**********************
@@ -218,4 +237,14 @@ static void bullet_move(bullet_t * b, lv_coord_t dx, lv_coord_t dy)
     {
         b->base.hide((game_obj_t *)b);
     }
+}
+
+/**
+ * @brief 子弹击中敌人 子弹回调 子弹销毁
+ * @param scr 子弹对象指针
+ * @param trg 敌人对象指针
+ */
+static void bullet_event_hit_enemy_cb(game_obj_t * scr,game_obj_t * trg)
+{
+    scr->hide(scr);
 }
