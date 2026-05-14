@@ -130,8 +130,8 @@ uint16_t bullet_create(game_obj_t *source, float speed,lv_coord_t x, lv_coord_t 
     uint16_t index = pool_alloc(&bullet_pool);
     if (index == POOL_INVALID_ID)
     {
-        console_out("[Warning][bullet_create] No available bullet slots! Max bullet count: %d\n", MAX_BULLET_COUNT);
-        log_out("[Warning][bullet_create] No available bullet slots! Max bullet count: %d", MAX_BULLET_COUNT);
+        CONSOLE("[WARNING] No available bullet slots! Max bullet count: %d", MAX_BULLET_COUNT);
+        LOG("[WARNING] No available bullet slots! Max bullet count: %d", MAX_BULLET_COUNT);
         return POOL_INVALID_ID;
     }
     bullets[index].pool_index = index;

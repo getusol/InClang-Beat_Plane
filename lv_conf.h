@@ -578,7 +578,7 @@
 /*File system interfaces for common APIs */
 
 /*API for fopen, fread, etc*/
-#define LV_USE_FS_STDIO 0
+#define LV_USE_FS_STDIO 1
 #if LV_USE_FS_STDIO
     #define LV_FS_STDIO_LETTER '\0'     /*Set an upper cased letter on which the drive will accessible (e.g. 'A')*/
     #define LV_FS_STDIO_PATH ""         /*Set the working directory. File/directory paths will be appended to it.*/
@@ -594,7 +594,7 @@
 #endif
 
 /*API for CreateFile, ReadFile, etc*/
-#define LV_USE_FS_WIN32 1
+#define LV_USE_FS_WIN32 0
 #if LV_USE_FS_WIN32
     #define LV_FS_WIN32_LETTER  'E'    /*Set an upper cased letter on which the drive will accessible (e.g. 'A')*/
     #define LV_FS_WIN32_PATH "/InCLang/Stimulator/"         /*Set the working directory. File/directory paths will be appended to it.*/

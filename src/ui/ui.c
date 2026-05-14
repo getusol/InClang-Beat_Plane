@@ -70,9 +70,6 @@ void ui_run()
         case GS_MENU  : 
           ui_menu_run(); 
           break;
-        case GS_EXIT  : 
-          ui_menu_run(); 
-          break;
         case GS_PLAY  : 
           ui_play_run(); 
           break;
@@ -104,14 +101,6 @@ static void ui_esc_pressed_handler()
 {
     game_state_t game_state = fsm_get_state();
     switch (game_state) {
-    case GS_MENU:
-        fsm_switch_state(GS_EXIT);
-        console_out("[ui] State has been changed by ESC to %d\n",GS_EXIT);
-        break;
-    case GS_EXIT:
-        fsm_switch_state(GS_MENU);
-        console_out("[ui] State has been changed by ESC to %d\n",GS_MENU);
-        break;
     case GS_PLAY:
         fsm_switch_state(GS_PAUSE);
         console_out("[ui] State has been changed by ESC to %d\n",GS_PAUSE);
