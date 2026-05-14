@@ -1,0 +1,5 @@
+.vscode/
+build/
+js/
+logs/
+_template.c
