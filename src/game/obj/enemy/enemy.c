@@ -120,8 +120,9 @@ void enemy_init(lv_obj_t * parent)
     lv_bar_set_range(enemies[i].health_bar,0,enemies[i].hp_max);
     lv_bar_set_value(enemies[i].health_bar,enemies[i].hp,LV_ANIM_OFF);
     // 在创建 health_bar 之后
-    lv_obj_set_style_bg_color(enemies[i].health_bar, lv_palette_main(LV_PALETTE_RED), LV_PART_INDICATOR);
-    
+    lv_obj_set_style_bg_color(enemies[i].health_bar, lv_palette_main(LV_PALETTE_GREEN), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(enemies[i].health_bar, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
+
     // hitbox
     #if SHOW_HITBOX
     enemies[i].base.hitbox_obj = NULL;

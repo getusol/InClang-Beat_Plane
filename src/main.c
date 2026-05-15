@@ -10,6 +10,7 @@
 #include "bullet.h"
 #include "config.h"
 #include "game.h"
+#include "event.h"
 #include <stdio.h>
 
 int main(int argc, char **argv)
@@ -20,6 +21,7 @@ int main(int argc, char **argv)
     uart_debug_init(115200);
     input_init();
     fsm_init();
+    event_init();
     ui_init();
     game_init();
 

@@ -293,11 +293,12 @@ static void player_hide(game_obj_t * g)
 static lv_obj_t * player_hp_bar_create(game_obj_t * g,lv_obj_t * parent)
 {
   lv_obj_t * hp_bar = lv_bar_create(parent);
-  lv_obj_set_size(hp_bar, g->w, 10);
+  lv_obj_set_size(hp_bar, 155, 21);
   lv_obj_set_align(hp_bar, LV_ALIGN_TOP_LEFT);
-  lv_obj_set_pos(hp_bar, 10, 20);
+  lv_obj_set_pos(hp_bar, 45, 13);
   lv_bar_set_range(hp_bar, 0, ((player_t *)g)->hp_max);
   lv_bar_set_value(hp_bar, ((player_t *)g)->hp, LV_ANIM_OFF);
+  lv_obj_set_style_bg_color(hp_bar,lv_palette_main(LV_PALETTE_RED),LV_PART_INDICATOR);
 
   console_out("[player_hp_bar_create] Player HP bar created, max HP: %d\n", ((player_t *)g)->hp_max);
 

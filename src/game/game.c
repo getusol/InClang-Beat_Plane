@@ -67,8 +67,6 @@ static non_blocking_timer_t enemy_spawn_timer = {
 void game_init()
 {
     lv_obj_t * play_display = ui_play_get_display();
-    //事件初始化
-    event_init();
     // 程序启动时 初始化游戏对象
     player_init(play_display);
     bullet_init(play_display);
