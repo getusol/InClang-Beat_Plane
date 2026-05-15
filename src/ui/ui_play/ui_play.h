@@ -39,6 +39,7 @@
 void ui_play_init();
 void ui_play_run();
 lv_obj_t * ui_play_get_display(void);
+void ui_play_level_enter_anim(const char * level_name);
 
  /**********************
  *   STATIC FUNCTIONS

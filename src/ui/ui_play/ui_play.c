@@ -38,7 +38,6 @@ static void pause_continue_btn_event_cb(lv_event_t * e);
 static void pause_btn_event_cb(lv_event_t * e);
 static void over_exit_btn_event_cb(lv_event_t * e);
 
-static void ui_play_level_enter_anim(const char * level_name);
 static void opa_anim_cb(void * obj, int32_t opa);
 static void y_anim_cb(void * obj, int32_t y);
 static void level_anim_finish(lv_anim_t * anim);
@@ -190,6 +189,39 @@ lv_obj_t * ui_play_get_display(void)
     return dp_play;
 }   
 
+/**
+ * @brief Level 进场动画
+ * @param level_name 自定义名称
+ */
+void ui_play_level_enter_anim(const char * level_name)
+{
+    lv_obj_t * label_level = lv_label_create(dp_play);
+    lv_label_set_text(label_level, level_name);
+    lv_obj_align(label_level, LV_ALIGN_TOP_MID, 0, 100);
+    lv_obj_set_style_text_color(label_level, lv_color_white(), 0);
+    lv_obj_set_style_text_font(label_level, &lv_font_montserrat_44, 0);
+    
+    lv_obj_move_foreground(label_level);
+    lv_obj_set_y(label_level, -90);
+    lv_obj_set_style_opa(label_level, LV_OPA_TRANSP, 0);
+
+    static lv_anim_t anim_move, anim_fade;
+    lv_anim_init(&anim_move);
+    lv_anim_set_var(&anim_move, label_level);
+    lv_anim_set_exec_cb(&anim_move, y_anim_cb);
+    lv_anim_set_values(&anim_move, -90, 30);
+    lv_anim_set_time(&anim_move, 600);
+    lv_anim_set_ready_cb(&anim_move, level_anim_finish);
+    lv_anim_start(&anim_move);
+
+    lv_anim_init(&anim_fade);
+    lv_anim_set_var(&anim_fade, label_level);
+    lv_anim_set_exec_cb(&anim_fade, opa_anim_cb);
+    lv_anim_set_values(&anim_fade, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_time(&anim_fade, 600);
+    lv_anim_start(&anim_fade);
+}
+
  /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -233,39 +265,6 @@ static void over_exit_btn_event_cb(lv_event_t * e)
     LV_UNUSED(e);
     fsm_switch_state(GS_MENU);
     console_out("[play][over_exit_btn] State has been switched to %d\n", fsm_get_state());
-}
-
-/**
- * @brief Level 进场动画
- * @param level_name 自定义名称
- */
-static void ui_play_level_enter_anim(const char * level_name)
-{
-    lv_obj_t * label_level = lv_label_create(dp_play);
-    lv_label_set_text(label_level, level_name);
-    lv_obj_align(label_level, LV_ALIGN_TOP_MID, 0, 100);
-    lv_obj_set_style_text_color(label_level, lv_color_white(), 0);
-    lv_obj_set_style_text_font(label_level, &lv_font_montserrat_44, 0);
-    
-    lv_obj_move_foreground(label_level);
-    lv_obj_set_y(label_level, -90);
-    lv_obj_set_style_opa(label_level, LV_OPA_TRANSP, 0);
-
-    static lv_anim_t anim_move, anim_fade;
-    lv_anim_init(&anim_move);
-    lv_anim_set_var(&anim_move, label_level);
-    lv_anim_set_exec_cb(&anim_move, y_anim_cb);
-    lv_anim_set_values(&anim_move, -90, 30);
-    lv_anim_set_time(&anim_move, 600);
-    lv_anim_set_ready_cb(&anim_move, level_anim_finish);
-    lv_anim_start(&anim_move);
-
-    lv_anim_init(&anim_fade);
-    lv_anim_set_var(&anim_fade, label_level);
-    lv_anim_set_exec_cb(&anim_fade, opa_anim_cb);
-    lv_anim_set_values(&anim_fade, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_time(&anim_fade, 600);
-    lv_anim_start(&anim_fade);
 }
 
 /**

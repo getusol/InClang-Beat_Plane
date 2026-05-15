@@ -19,6 +19,7 @@
 #include "bullet.h"
 #include "enemy.h"
 #include "fsm.h"
+#include "level.h"
 
 /**********************
  *      MACROS
@@ -35,7 +36,6 @@
 *  STATIC PROTOTYPES
 **********************/
 
-static void enemy_spawn_timer_func();
 static bool rec_overlap(game_obj_t * obj1, game_obj_t * obj2);
 static void check_collisions(void);
 
@@ -50,13 +50,6 @@ static void check_collisions(void);
 static game_obj_t * game_objs[MAX_GAME_OBJ_COUNT];
 static uint8_t free_idx = 0;
 
-static non_blocking_timer_t enemy_spawn_timer = {
-  .func = enemy_spawn_timer_func,
-  .tick_get = lv_tick_get,
-  .delay_ms = 500, //间隔2ms
-  .last_tick = 0
-};
-
  /**********************
  *   GLOBAL FUNCTIONS
  **********************/
@@ -67,10 +60,14 @@ static non_blocking_timer_t enemy_spawn_timer = {
 void game_init()
 {
     lv_obj_t * play_display = ui_play_get_display();
+
+    level_init();
+
     // 程序启动时 初始化游戏对象
     player_init(play_display);
     bullet_init(play_display);
     enemy_init(play_display);
+
 
     CONSOLE("[INFO] Game objects initialization complete.");
     return ;
@@ -109,23 +106,12 @@ void game_update(void)
 
   check_collisions();
 
-  non_blocking_delay(&enemy_spawn_timer);
+  level_update();
 }
 
  /**********************
  *   STATIC FUNCTIONS
  **********************/
-
-/**
- * @brief 敌人随机生成的定时器回调函数
- */
-static void enemy_spawn_timer_func()
-{
-  if (fsm_get_state() != GS_PLAY) return ;
-  lv_coord_t x = lv_rand(0,980);
-  lv_coord_t y = -64;
-  enemy_spawn(x,y);
-}
 
 /**
  * @brief 检测两个游戏对象是否重叠
@@ -152,6 +138,7 @@ static bool rec_overlap(game_obj_t * obj1, game_obj_t * obj2)
  */
 static void check_collisions(void)
 {
+  if (fsm_get_state() != GS_PLAY) return ;
   for (int i = 0; i < free_idx; i++) {
     game_obj_t *a = game_objs[i];
     if (!a->active) continue;
