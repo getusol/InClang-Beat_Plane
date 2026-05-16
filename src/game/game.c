@@ -20,6 +20,7 @@
 #include "enemy.h"
 #include "fsm.h"
 #include "level.h"
+#include "perf_monitor.h"
 
 /**********************
  *      MACROS
@@ -96,6 +97,8 @@ int game_register_obj(game_obj_t * obj)
  */
 void game_update(void)
 {
+  uint32_t t_start = lv_tick_get();
+
   for (int i = 0;i < free_idx;i++) {
     game_objs[i]->update(game_objs[i]);
 
@@ -107,6 +110,10 @@ void game_update(void)
   check_collisions();
 
   level_update();
+
+  uint32_t t_end = lv_tick_get();
+
+  perf_monitor_set_mspt(t_end - t_start);
 }
 
  /**********************

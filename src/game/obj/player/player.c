@@ -218,6 +218,11 @@ lv_point_t player_move(lv_coord_t dx, lv_coord_t dy)
     log_out("[Warning][player_move] Player object is not initialized. Cannot move player.");
     return (lv_point_t){0, 0};
   }
+
+  if (dx == 0 && dy == 0) {
+    return (lv_point_t){player_p->base.x, player_p->base.y};
+  }
+  
   player_p->base.x += dx;
   player_p->base.y += dy;
 

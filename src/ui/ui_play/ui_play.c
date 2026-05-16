@@ -17,12 +17,12 @@
 #include "player.h"
 #include "bullet.h"
 #include "event.h"
+#include "perf_monitor.h"
 
 /**********************
  *      MACROS
  **********************/
 
-#define BG_IMG_NAME "play_bg.bin"
 #define HUD_IMG_NAME "play_hud.bin"
 
 /**********************
@@ -61,7 +61,6 @@ static lv_obj_t * pause_popup;
 static lv_obj_t * over_popup;
 
 #ifdef SIMULATOR
-static lv_img_dsc_t bg_img_dsc;
 static lv_img_dsc_t hud_img_dsc;
 #endif
 
@@ -79,15 +78,16 @@ void ui_play_init()
     //Parent object initialize
     dp_play = lv_obj_create(NULL);
     lv_obj_clear_flag(dp_play,LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_set_style_bg_color(dp_play, lv_color_hex(0x252532), LV_PART_MAIN); // 深灰色，色值可自定义
+    lv_obj_set_style_bg_opa(dp_play, LV_OPA_COVER, LV_PART_MAIN);
+
     //imgs initialize
     char img_path_buf[64];
     #ifdef SIMULATOR
-    lv_obj_t * bg_img = img_create_from_array(dp_play,img_path(BG_IMG_NAME,img_path_buf,64),1024,600,NULL,&bg_img_dsc,false);
     lv_obj_t * hud_img = img_create_from_array(dp_play,img_path(HUD_IMG_NAME,img_path_buf,64),210,105,NULL,&hud_img_dsc,false);
     lv_obj_set_align(hud_img,LV_ALIGN_TOP_LEFT);
     #else
-    lv_obj_t * bg_img = lv_img_create(dp_play);
-    lv_img_set_src(bg_img,img_path(BG_IMG_NAME,img_path_buf,64));
     lv_obj_t * hud_img = lv_img_create(dp_play);
     lv_img_set_src(hud_img,img_path(HUD_IMG_NAME,img_path_buf,64));
     lv_obj_set_align(hud_img,LV_ALIGN_TOP_LEFT);
@@ -135,11 +135,13 @@ void ui_play_init()
     lv_obj_set_pos(pause_label,10,50);
     lv_label_set_text(pause_label,"GAME PAUSED");
     lv_obj_set_style_text_font(pause_label,&lv_font_montserrat_44,LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(pause_label,lv_color_hex(0x13AEFB),LV_STATE_DEFAULT);
     //label for over popup
     lv_obj_t * over_label = lv_label_create(over_popup);
-    lv_obj_set_pos(over_label,10,50);
+    lv_obj_set_pos(over_label,40,50);
     lv_label_set_text(over_label,"GAME OVER");
     lv_obj_set_style_text_font(over_label,&lv_font_montserrat_44,LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(over_label,lv_palette_main(LV_PALETTE_RED),LV_STATE_DEFAULT);
     //back to menu btn for over popup
     lv_obj_t * over_exit_btn = lv_btn_create(over_popup);
     lv_obj_set_size(over_exit_btn,300,60);
@@ -151,6 +153,10 @@ void ui_play_init()
     lv_label_set_text(over_exit_btn_label,"Back to menu");
     lv_obj_set_style_text_font(over_exit_btn_label,&lv_font_montserrat_22,LV_STATE_DEFAULT);
 
+    // 性能检测UI初始化
+    perf_monitor_init(dp_play);
+
+    // 事件注册
     event_register(EVENT_GAME_START,ui_play_event_game_start_cb);
 
 }

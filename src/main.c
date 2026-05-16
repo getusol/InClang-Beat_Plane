@@ -11,6 +11,7 @@
 #include "config.h"
 #include "game.h"
 #include "event.h"
+#include "perf_monitor.h"
 #include <stdio.h>
 
 int main(int argc, char **argv)
@@ -51,8 +52,14 @@ int main(int argc, char **argv)
         non_blocking_delay(&input_timer);
         non_blocking_delay(&logic_timer);
         non_blocking_delay(&ui_timer);
-        //last tick 末尾更新 写在函数中，而不是while循环;
-        delay_ms(max(1, lv_timer_handler())); // 避免过度占用CPU，至少延时1ms
+        
+        uint32_t t_start = lv_tick_get();
+        lv_timer_handler();
+        uint32_t t_end = lv_tick_get();
+        perf_monitor_set_mspf(t_end - t_start);
+
+        perf_monitor_update();  //更新信息显示
+        delay_ms(1);
     }
     return 0;
 }

@@ -14,7 +14,8 @@
  * GAME INFO
  *-----------*/
 
-#define SHOW_HITBOX 1                   // 是否显示碰撞框
+#define SHOW_HITBOX 1  // 是否显示碰撞框
+#define PERF_MONITOR 1 // 1 开启性能检测 0 关闭
 
 /*=======================
  * HARDWARE PARAMS
@@ -24,8 +25,8 @@
  * SCREEN
  *-----------*/
 
-#define SCREEN_WIDTH   1024             // 屏幕宽度
-#define SCREEN_HEIGHT  600              // 屏幕高度
+#define SCREEN_WIDTH 1024 // 屏幕宽度
+#define SCREEN_HEIGHT 600 // 屏幕高度
 
 /*-------------
  * JOYSTICK
@@ -38,21 +39,21 @@
  */
 #define JOY_MAX_VALUE 256
 
-#ifdef SIMULATOR                        // ON PC
+#ifdef SIMULATOR // ON PC
 
-#define JS_DIR_KEY_COUNT 2              //摇杆一个方向的按键数量，默认2 即 WASD 与 上下左右
-#define ACCEL            0.3f           //决定摇杆的响应速度 越接近0越慢
-#define DECAY            0.8f           //决定摇杆的回落速度 越接近1越慢
+#define JS_DIR_KEY_COUNT 2 // 摇杆一个方向的按键数量，默认2 即 WASD 与 上下左右
+#define ACCEL 0.3f         // 决定摇杆的响应速度 越接近0越慢
+#define DECAY 0.8f         // 决定摇杆的回落速度 越接近1越慢
 
-#else                                   // ON MCU
+#else // ON MCU
 
-#define JOY_DEADZONE        30          // 死区范围（消除微小跳动）
-#define FILTER_FACTOR       2           // 滤波系数（2的幂次，便于移位运算）
-                                        // 越大越平滑，但响应越慢（推荐 4-16）
+#define JOY_DEADZONE 30 // 死区范围（消除微小跳动）
+#define FILTER_FACTOR 2 // 滤波系数（2的幂次，便于移位运算）
+                        // 越大越平滑，但响应越慢（推荐 4-16）
 
-#endif //#ifdef SIMULATOR
+#endif // #ifdef SIMULATOR
 
-#define JS_THRESHOLD 20                 //控制手柄输入上推阈值(UI交互)
+#define JS_THRESHOLD 20 // 控制手柄输入上推阈值(UI交互)
 
 /*-------------
  * KEYBOARD
@@ -62,13 +63,13 @@
 #define PRESSED_TICKS_THRESHOLD 50
 #define RELEASED_TICKS_THRESHOLD 50
 
-#ifdef SIMULATOR                         // ON PC
+#ifdef SIMULATOR // ON PC
 
 #define MAX_BINDING_KEYS_COUNT 2
 
-#else                                    // ON MCU
+#else // ON MCU
 
-#endif //#ifdef SIMULATOR
+#endif // #ifdef SIMULATOR
 
 /*=======================
  * GAME PARAMS
@@ -78,20 +79,20 @@
  * CLOCKS
  *-----------*/
 
-#define SCAN_RATE_MS  5                  // 输入扫描频率，单位毫秒
-#define GAME_TICK     30                 // 游戏逻辑更新频率，单位Hz
-#define MAX_FPS       30                 // 最大帧率，单位Hz
+#define SCAN_RATE_MS 5 // 输入扫描频率，单位毫秒
+#define GAME_TICK 30   // 游戏逻辑更新频率，单位Hz
+#define MAX_FPS 30     // 最大帧率，单位Hz
 
 /*-------------
  * BULLET
  *-----------*/
 
-#define MAX_BULLET_COUNT 30               // 最大子弹数量
+#define MAX_BULLET_COUNT 15 // 最大子弹数量
 
 /*-------------
  * ENEMY
  *-----------*/
 
-#define MAX_ENEMY_COUNT  20                // 最大敌人数量 
+#define MAX_ENEMY_COUNT 12 // 最大敌人数量
 
 #endif // #ifndef __CONFIG_H__

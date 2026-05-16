@@ -170,7 +170,7 @@ game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y)
   lv_obj_set_pos(e->health_bar,x - 10,y - 10);
   lv_bar_set_value(e->health_bar,e->hp,LV_ANIM_OFF);
   e->base.show(&e->base);
-  CONSOLE("[INFO] Enemy %d spawned at x: %d, y: %d.",e->pool_index,x,y);
+  // CONSOLE("[INFO] Enemy %d spawned at x: %d, y: %d.",e->pool_index,x,y);
   return &e->base;
 }
 
@@ -244,6 +244,10 @@ static void enemy_show(game_obj_t * g)
 static lv_point_t enemy_move(game_obj_t * g,lv_coord_t dx,lv_coord_t dy)
 {
   if (g == NULL) return (lv_point_t){0,0};
+
+  if (g->active == false) return (lv_point_t){0,0};
+  if (dx == 0 && dy == 0) return (lv_point_t){g->x,g->y};
+
   g->x += dx;
   g->y += dy;
 

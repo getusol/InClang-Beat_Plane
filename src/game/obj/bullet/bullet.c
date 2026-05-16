@@ -153,7 +153,7 @@ uint16_t bullet_create(game_obj_t *source, float speed,lv_coord_t x, lv_coord_t 
     bullets[index].base.y = y;
     lv_obj_set_pos(bullets[index].base.obj,x,y);
     bullets[index].base.show((game_obj_t *)&bullets[index]);
-    console_out("[bullet_create] Bullet created at index: %d, position: (%d, %d), speed: %.2f, damage: %d\n", index, x, y, speed, damage);
+    // console_out("[bullet_create] Bullet created at index: %d, position: (%d, %d), speed: %.2f, damage: %d\n", index, x, y, speed, damage);
     return index;
 }
 
@@ -227,6 +227,10 @@ static void bullet_show(game_obj_t * g)
  */
 static void bullet_move(bullet_t * b, lv_coord_t dx, lv_coord_t dy)
 {
+    if (b == NULL) return ;
+    if (b->base.active == false) return ;
+    if (dx == 0 && dy == 0) return ;
+    
     b->base.x += dx;
     b->base.y += dy;
 
