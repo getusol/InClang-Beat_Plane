@@ -29,6 +29,9 @@
 #define PLAYER_MAX_Y 540                  // 玩家最大Y坐标
 #define PLAYER_MIN_Y 0                    // 玩家最小Y坐标
 
+#define PLAYER_WIDTH 64
+#define PLAYER_HIGHT 64
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -96,6 +99,7 @@ static lv_img_dsc_t player_img_struct;
 void player_init(lv_obj_t * parent)
 {
   player_p = ram_malloc(sizeof(player_t));
+  memset(player_p,0,sizeof(player_t));
   if (player_p == NULL)
   {
     CONSOLE("[Error] Failed to allocate memory for player object.");
@@ -107,8 +111,8 @@ void player_init(lv_obj_t * parent)
   // 初始化玩家属性
   player_p->base.x = 512;
   player_p->base.y = 500;
-  player_p->base.w = 64;
-  player_p->base.h = 64;
+  player_p->base.w = PLAYER_WIDTH;
+  player_p->base.h = PLAYER_HIGHT;
   player_p->base.speed = 6.0f;
   player_p->base.active = true;
   player_p->base.type = GAME_OBJ_TYPE_PLAYER;
@@ -123,16 +127,11 @@ void player_init(lv_obj_t * parent)
 
   player_p->hp_max = 100;
   player_p->hp = player_p->hp_max;
-  player_p->shoot_cd = 100; // 100ms射击冷却
+  player_p->shoot_cd = 200; // 100ms射击冷却
   player_p->last_shoot_tick = 0;
 
   player_p->hp_bar = player_hp_bar_create((game_obj_t *)player_p,parent);
   player_p->base.obj = player_obj_create((game_obj_t *)player_p,parent);
-
-  #if SHOW_HITBOX
-  player_p->base.hitbox_obj = NULL;
-  player_p->base.hitbox_obj = game_obj_hitbox_init((game_obj_t *)player_p);
-  #endif
 
   lv_obj_set_pos(player_p->base.obj,player_p->base.x,player_p->base.y);
 
@@ -316,7 +315,7 @@ static lv_obj_t * player_hp_bar_create(game_obj_t * g,lv_obj_t * parent)
 static lv_obj_t * player_obj_create(game_obj_t * g,lv_obj_t * parent)
 {
   char img_path_buf[64];
-  lv_obj_t * img  = img_create_from_array(parent,img_path(PLAYER_IMG_NAME,img_path_buf,64),g->w,g->h,NULL,&player_img_struct,true);
+  lv_obj_t * img  = img_create_from_dsc(parent,img_path(PLAYER_IMG_NAME,img_path_buf,64),g->w,g->h,NULL,&player_img_struct,true);
   lv_obj_set_align(img,LV_ALIGN_TOP_LEFT);
 
   console_out("[player_obj_create] Player object created with image: %s\n", img_path_buf);

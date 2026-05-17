@@ -21,6 +21,7 @@
 #include "fsm.h"
 #include "level.h"
 #include "perf_monitor.h"
+#include "game_object.h"
 
 /**********************
  *      MACROS
@@ -39,6 +40,7 @@
 
 static bool rec_overlap(game_obj_t * obj1, game_obj_t * obj2);
 static void check_collisions(void);
+static void init_hitbox(game_obj_t * obj,void * usr_data);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -68,6 +70,10 @@ void game_init()
     player_init(play_display);
     bullet_init(play_display);
     enemy_init(play_display);
+
+    #if SHOW_HITBOX
+    game_for_each_obj(init_hitbox,NULL);
+    #endif
 
 
     CONSOLE("[INFO] Game objects initialization complete.");
@@ -114,6 +120,19 @@ void game_update(void)
   uint32_t t_end = lv_tick_get();
 
   perf_monitor_set_mspt(t_end - t_start);
+}
+
+/**
+ * @brief 游戏对象遍历函数，负责遍历游戏对象管理器中的所有游戏对象 并执行相应操作
+ * @param fuc 操作函数 接受 game_obj_t * 和 void *
+ * @param usr_data 用户数据
+ * @note 关于对象是否有效，是否活跃，需要操作函数负责
+ */
+void game_for_each_obj(void (*fuc)(game_obj_t * ,void *),void * usr_data)
+{
+  for (int i = 0;i < free_idx;i++) {
+    fuc(game_objs[i],usr_data);
+  }
 }
 
  /**********************
@@ -180,4 +199,15 @@ static void check_collisions(void)
         }
     }
   }
+}
+
+/**
+ * @brief 操作函数 初始化每个对象的碰撞箱
+ */
+static void init_hitbox(game_obj_t * obj,void * usr_data)
+{
+  LV_UNUSED(usr_data);
+  #if SHOW_HITBOX
+  game_obj_hitbox_init(obj);
+  #endif
 }

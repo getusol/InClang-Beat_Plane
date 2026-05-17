@@ -22,10 +22,13 @@
 
 #define ENEMY_IMG_NAME "enemy.bin"
 
-#define ENEMY_MAX_X 980                 // 子弹最大X坐标
-#define ENEMY_MIN_X 0                    // 子弹最小X坐标
-#define ENEMY_MAX_Y 600                  // 子弹最大Y坐标
-#define ENEMY_MIN_Y -64                    // 子弹最小Y坐标
+#define ENEMY_MAX_X 980                 // 敌人最大X坐标
+#define ENEMY_MIN_X 0                    // 敌人最小X坐标
+#define ENEMY_MAX_Y 600                  // 敌人最大Y坐标
+#define ENEMY_MIN_Y -64                    // 敌人最小Y坐标
+
+#define ENEMY_WIDTH 19
+#define ENEMY_HIGHT 64
 
 /**********************
  *      TYPEDEFS
@@ -81,6 +84,7 @@ static lv_img_dsc_t enemy_img_struct;
  */
 void enemy_init(lv_obj_t * parent)
 {
+  memset(enemies,0,sizeof(enemies)); // 初始化置零 重要！
   pool_init(&enemy_pool, enemy_free_indices, MAX_ENEMY_COUNT);
 
   char enemy_img_path[64];
@@ -88,8 +92,8 @@ void enemy_init(lv_obj_t * parent)
 
     // base init
     enemies[i].base.active = false;
-    enemies[i].base.w = 19;
-    enemies[i].base.h = 64;
+    enemies[i].base.w = ENEMY_WIDTH;
+    enemies[i].base.h = ENEMY_HIGHT;
     enemies[i].base.type = GAME_OBJ_TYPE_ENEMY;
     enemies[i].base.x = 0;
     enemies[i].base.y = 0;
@@ -108,10 +112,8 @@ void enemy_init(lv_obj_t * parent)
     enemies[i].base.update = enemy_update;
     enemies[i].base.show = enemy_show;
     enemies[i].base.hide = enemy_hide;
-    enemies[i].base.obj = img_create_from_array(parent,img_path(ENEMY_IMG_NAME,enemy_img_path,64),enemies[i].base.w,enemies[i].base.h,enemy_img_buf,&enemy_img_struct,true);
+    enemies[i].base.obj = img_create_from_dsc(parent,img_path(ENEMY_IMG_NAME,enemy_img_path,64),enemies[i].base.w,enemies[i].base.h,enemy_img_buf,&enemy_img_struct,false);
     
-    // lvgl
-    lv_obj_set_align(enemies[i].base.obj,LV_ALIGN_TOP_LEFT);
 
     // health bar
     enemies[i].health_bar = lv_bar_create(parent);
@@ -122,12 +124,6 @@ void enemy_init(lv_obj_t * parent)
     // 在创建 health_bar 之后
     lv_obj_set_style_bg_color(enemies[i].health_bar, lv_palette_main(LV_PALETTE_GREEN), LV_PART_INDICATOR);
     lv_obj_set_style_bg_color(enemies[i].health_bar, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
-
-    // hitbox
-    #if SHOW_HITBOX
-    enemies[i].base.hitbox_obj = NULL;
-    enemies[i].base.hitbox_obj = game_obj_hitbox_init(&enemies[i].base);
-    #endif
 
     enemies[i].base.hide(&enemies[i].base);
 

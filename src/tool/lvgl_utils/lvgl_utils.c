@@ -172,7 +172,7 @@ int read_file_to_array(const char *filepath, uint8_t *buffer, uint32_t max_size)
 }
 
 /**
- * @brief 从数组创建图像对象
+ * @brief 从描述符创建图像对象
  * @param parent 父对象
  * @param path 图像文件路径
  * @param w 图像宽度
@@ -182,58 +182,150 @@ int read_file_to_array(const char *filepath, uint8_t *buffer, uint32_t max_size)
  * @param is_alpha 图像是否包含alpha通道
  * @return 创建的图像对象指针，失败返回无图片源的图像对象指针
  */
-lv_obj_t *img_create_from_array(lv_obj_t *parent, const char *path,
+lv_obj_t *img_create_from_dsc(lv_obj_t *parent, const char *path,
                                 lv_coord_t w, lv_coord_t h,
                                 uint8_t *img_buf, lv_img_dsc_t *img_struct,
                                 bool is_alpha)
 {
-    console_out("[img_create_from_array] Creating img from path:%s\n", path);
-    lv_obj_t *img = lv_img_create(parent);
-    lv_obj_set_align(img, LV_ALIGN_CENTER);
+    lv_obj_t * img = lv_img_create(parent);
+    if (!img_struct) {
+        CONSOLE("[WARNING] img_struct for %s is NULL.",path);
+        LOG("[WARNING] img_struct for %s is NULL.",path);
+        return img;
+    }
+
+    CONSOLE("[INFO] Start creating img from dsc.Path: %s, size: %d * %d, alpha: %d.",path,w,h,is_alpha);
+
+    if (img_buf != NULL) {
+        if (is_alpha) {
+            if (read_file_to_array(path, img_buf, w * h * 3 + 4) < 0) {
+                CONSOLE("[WARNING] Failed to read image file: %s", path);
+                LOG("[WARNING] Failed to read image file: %s", path);
+                return img;
+            }
+
+            img_struct->data = img_buf + 4;
+            img_struct->header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
+        } else {
+            if (read_file_to_array(path, img_buf, w * h * 3) < 0) {
+                CONSOLE("[WARNING] Failed to read image file: %s", path);
+                LOG("[WARNING] Failed to read image file: %s", path);
+                return img;
+            }
+
+            img_struct->data = img_buf;
+            img_struct->header.cf = LV_IMG_CF_TRUE_COLOR;
+        }
+
+        img_struct->header.always_zero = 0;
+        img_struct->header.w = w;
+        img_struct->header.h = h;
+        img_struct->header.reserved = 0;
+        img_struct->data_size = w * h * 3;
+    } else {
+        if (load_img_dsc(path,img_struct,w,h,is_alpha) == NULL) {
+            CONSOLE("[WARNING] Failed to load img %s to dsc.",path);
+            LOG("[WARNING] Failed to load img %s to dsc.",path);
+            return img;
+        }
+    }
+
+    lv_img_set_src(img,img_struct);
+    CONSOLE("[INFO] Img obj created: %s (%d * %d ,alpha = %d).",path,w,h,is_alpha);
+    return img;
+}
+
+/**
+ * @brief 从文件加载图像描述结构体
+ * @param path 图像文件路径
+ * @param dsc 图像描述结构体指针 由外部提供内存
+ * @param w 图像宽度
+ * @param h 图像高度
+ * @param is_alpha 图像是否包含alpha通道
+ * @return 图像描述结构体指针 失败返回 NULL
+ */
+lv_img_dsc_t * load_img_dsc(const char * path,lv_img_dsc_t * dsc,
+                            lv_coord_t w,lv_coord_t h,
+                            bool is_alpha)
+{
+    if (!dsc || !path) {
+        CONSOLE("[WARNING] load_img_dsc failed,img_dsc is NULL, or path is NULL,path : %s",path ? path : "(null)");
+        LOG("[WARNING] load_img_dsc failed,img_dsc is NULL or path is NULL,path : %s",path ? path : "(null)");
+        return NULL;
+    }
+
+    uint8_t * img_buf = NULL;
+    size_t data_bytes = 0;
+
+    CONSOLE("[INFO] Start loading img: %s into dsc with w:%d,h:%d is_alpha:%d",path,w,h,is_alpha);
 
     if (is_alpha) {
-        console_out("[img_create_from_array] Image has alpha channel, using LV_IMG_CF_TRUE_COLOR_ALPHA\n");
-        if (img_buf == NULL)
-            img_buf = ram_malloc(w * h * 3 + 4);
-        if (read_file_to_array(path, img_buf, w * h * 3 + 4) < 0) {
-            console_out("[Warning][img_create_from_array] Failed to read image file: %s\n", path);
-            log_out("[Warning][img_create_from_array] Failed to read image file: %s", path);
+
+        data_bytes = w * h * 3 + 4;
+        img_buf = ram_malloc(data_bytes);
+        
+        if (!img_buf) {
+            CONSOLE("[WARNING] load_img_dsc failed,ram_malloc failed,path : %s",path);
+            LOG("[WARNING] load_img_dsc failed,ram_malloc failed,path : %s",path);
+            return NULL;
         }
-        if (img_struct == NULL) {
-            console_out("[Warning][img_create_from_array] img_struct is NULL, cannot set image source for path:%s\n", path);
-            log_out("[Warning][img_create_from_array] img_struct is NULL, cannot set image source for path:%s", path);
-            return img;
+
+        if (read_file_to_array(path,img_buf,data_bytes) < 0) {
+            CONSOLE("[WARNING] load_img_dsc failed,read_file_to_array failed,path : %s",path);
+            LOG("[WARNING] load_img_dsc failed,read_file_to_array failed,path : %s",path);
+            ram_free(img_buf);
+            return NULL;
         }
-        img_struct->header.always_zero = 0;
-        img_struct->header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
-        img_struct->header.w = w;
-        img_struct->header.h = h;
-        img_struct->header.reserved = 0;
-        img_struct->data_size = w * h * 3;
-        img_struct->data = img_buf + 4;
-        lv_img_set_src(img, img_struct);
+        dsc->header.always_zero = 0;
+        dsc->header.reserved    = 0;
+        dsc->header.cf          = LV_IMG_CF_TRUE_COLOR_ALPHA;
+        dsc->header.w           = w;
+        dsc->header.h           = h;
+        dsc->data_size          = w * h * 3;           /* 像素部分 */
+        dsc->data               = img_buf + 4;
     } else {
-        console_out("[img_create_from_array] Image has no alpha channel, using LV_IMG_CF_TRUE_COLOR\n");
-        if (img_buf == NULL)
-            img_buf = ram_malloc(w * h * 3);
-        if (read_file_to_array(path, img_buf, w * h * 3) < 0) {
-            console_out("[Warning][img_create_from_array] Failed to read image file: %s\n", path);
-            log_out("[Warning][img_create_from_array] Failed to read image file: %s", path);
+        data_bytes = w * h * 3;
+        img_buf = ram_malloc(data_bytes);
+        if (!img_buf) {
+            CONSOLE("[WARNING] load_img_dsc failed,ram_malloc failed,path : %s",path);
+            LOG("[WARNING] load_img_dsc failed,ram_malloc failed,path : %s",path);
+            return NULL;
         }
-        if (img_struct == NULL) {
-            console_out("[Warning][img_create_from_array] img_struct is NULL, cannot set image source for path:%s\n", path);
-            log_out("[Warning][img_create_from_array] img_struct is NULL, cannot set image source for path:%s", path);
-            return img;
+        if (read_file_to_array(path,img_buf,data_bytes) < 0) {
+            CONSOLE("[WARNING] load_img_dsc failed,read_file_to_array failed,path : %s",path);
+            LOG("[WARNING] load_img_dsc failed,read_file_to_array failed,path : %s",path);
+            ram_free(img_buf);
+            return NULL;
         }
-        img_struct->header.always_zero = 0;
-        img_struct->header.cf = LV_IMG_CF_TRUE_COLOR;
-        img_struct->header.w = w;
-        img_struct->header.h = h;
-        img_struct->header.reserved = 0;
-        img_struct->data_size = w * h * 3;
-        img_struct->data = img_buf;
-        lv_img_set_src(img, img_struct);
+        dsc->header.always_zero = 0;
+        dsc->header.reserved    = 0;
+        dsc->header.cf          = LV_IMG_CF_TRUE_COLOR;
+        dsc->header.w           = w;
+        dsc->header.h           = h;
+        dsc->data_size          = data_bytes;
+        dsc->data               = img_buf;                 /* 直接指向像素 */
     }
-    console_out("[img_create_from_array] Image created, path: %s ,size: %dx%d\n", path, w, h);
-    return img;
+
+    CONSOLE("[INFO] Img descriptor loaded: %s (%d * %d ,alpha = %d).",path,w,h,is_alpha);
+
+    return dsc;
+}
+
+/**
+ * @brief 释放图像描述符
+ * @param dsc 图像描述符
+ */
+void free_img_dsc(lv_img_dsc_t * dsc)
+{
+    if (!dsc || !dsc->data) return ;
+    if (dsc->header.cf == LV_IMG_CF_TRUE_COLOR_ALPHA) {
+        uint8_t * data = (uint8_t *)dsc->data - 4;
+        ram_free(data);
+        CONSOLE("[INFO] Free img dsc with alpha channel.");
+    } else {
+        ram_free((void *)dsc->data);
+        CONSOLE("[INFO] Free img dsc without alpha channel.");
+    }
+    dsc->data = NULL;
+    dsc->data_size = 0;
 }

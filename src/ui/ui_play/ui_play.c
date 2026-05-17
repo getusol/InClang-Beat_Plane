@@ -79,13 +79,13 @@ void ui_play_init()
     dp_play = lv_obj_create(NULL);
     lv_obj_clear_flag(dp_play,LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_set_style_bg_color(dp_play, lv_color_hex(0x252532), LV_PART_MAIN); // 深灰色，色值可自定义
+    lv_obj_set_style_bg_color(dp_play, lv_color_hex(DP_PLAY_FILL_COLOR), LV_PART_MAIN); // 深灰色，色值可自定义
     lv_obj_set_style_bg_opa(dp_play, LV_OPA_COVER, LV_PART_MAIN);
 
     //imgs initialize
     char img_path_buf[64];
     #ifdef SIMULATOR
-    lv_obj_t * hud_img = img_create_from_array(dp_play,img_path(HUD_IMG_NAME,img_path_buf,64),210,105,NULL,&hud_img_dsc,false);
+    lv_obj_t * hud_img = img_create_from_dsc(dp_play,img_path(HUD_IMG_NAME,img_path_buf,64),210,105,NULL,&hud_img_dsc,false);
     lv_obj_set_align(hud_img,LV_ALIGN_TOP_LEFT);
     #else
     lv_obj_t * hud_img = lv_img_create(dp_play);
@@ -152,6 +152,7 @@ void ui_play_init()
     lv_obj_set_align(over_exit_btn_label,LV_ALIGN_CENTER);
     lv_label_set_text(over_exit_btn_label,"Back to menu");
     lv_obj_set_style_text_font(over_exit_btn_label,&lv_font_montserrat_22,LV_STATE_DEFAULT);
+
 
     // 性能检测UI初始化
     perf_monitor_init(dp_play);

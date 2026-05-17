@@ -95,10 +95,10 @@ void ui_menu_init(void)
     lv_obj_add_event_cb(btn_base, btn_base_event_cb, LV_EVENT_CLICKED, NULL);
     lv_group_add_obj(menu_group, btn_base);
 
-    // 4. 创建背景图 PC 用 img_create_from_array MCU 节省空间 用直接读取
+    // 4. 创建背景图 PC 用 img_create_from_dsc MCU 节省空间 用直接读取
     #ifdef SIMULATOR
     char bg_img_path[64];
-    lv_obj_t * bg_img = img_create_from_array(dp_menu, img_path(BG_IMG_NAME,bg_img_path,64), 1024, 600, bg_img_buf, &bg_img_struct, false);
+    lv_obj_t * bg_img = img_create_from_dsc(dp_menu, img_path(BG_IMG_NAME,bg_img_path,64), 1024, 600, bg_img_buf, &bg_img_struct, false);
     #else
     lv_obj_t * bg_img = lv_img_create(dp_menu);
     char bg_img_path[64];

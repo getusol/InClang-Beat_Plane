@@ -87,12 +87,22 @@
  * BULLET
  *-----------*/
 
-#define MAX_BULLET_COUNT 15 // 最大子弹数量
+#define MAX_BULLET_COUNT 12 // 最大子弹数量
 
 /*-------------
  * ENEMY
  *-----------*/
 
-#define MAX_ENEMY_COUNT 12 // 最大敌人数量
+#define MAX_ENEMY_COUNT 10 // 最大敌人数量
+
+/*=======================
+ * UI PARAMS
+ *=======================*/
+
+/*-------------
+ * UI_PLAY
+ *-----------*/
+
+#define DP_PLAY_FILL_COLOR 0x252532
 
 #endif // #ifndef __CONFIG_H__

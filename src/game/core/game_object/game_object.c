@@ -68,7 +68,7 @@ bool game_obj_is_active(const game_obj_t * obj)
  * @brief 初始化游戏对象的碰撞框
  * @param obj 游戏对象指针
  * @return lv_obj_t* 碰撞框对象
- * @note 此函数不会自动填充 obj->hitbox_obj
+ * @note 此函数会自动填充 obj->hitbox_obj
  */
 lv_obj_t * game_obj_hitbox_init(game_obj_t * obj)
 {
@@ -76,6 +76,7 @@ lv_obj_t * game_obj_hitbox_init(game_obj_t * obj)
         return NULL;
     }
     if (obj->hitbox_obj) {
+        CONSOLE("[INFO] Hitbox object already exists. It will be deleted.");
         lv_obj_del(obj->hitbox_obj);
         obj->hitbox_obj = NULL;
         CONSOLE("[INFO] Hitbox object already exists. It has been deleted.");
@@ -100,6 +101,8 @@ lv_obj_t * game_obj_hitbox_init(game_obj_t * obj)
     // 设置相对位置和大小（相对于图片）
     lv_obj_set_pos(hitbox, obj->hitbox_x, obj->hitbox_y);
     lv_obj_set_size(hitbox, obj->hitbox_w, obj->hitbox_h);
+
+    obj->hitbox_obj = hitbox;
 
     CONSOLE("[INFO] Hitbox object created.");
 
