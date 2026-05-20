@@ -102,7 +102,7 @@ void input_sw_register_long_press_callback(key_event_t event, key_event_callback
         if (long_press_callbacks[event][i] == NULL) {
             long_press_callbacks[event][i] = callback;
             long_press_timers[event][i].func = callback;
-            long_press_timers[event][i].tick_get = lv_tick_get;
+            long_press_timers[event][i].tick_get = play_tick_get;
             long_press_timers[event][i].delay_ms = cycle_delay_ms;
             long_press_timers[event][i].last_tick = 0;
             console_out("[input_sw_register_long_press_callback] Long press callback registered for event %d at index %d with cycle delay %d ms\n", event, i, cycle_delay_ms);
@@ -149,7 +149,7 @@ static void input_sw_dispatch() {
     // 处理长按事件
 
     for (int i = 0; i < KEY_EVENT_COUNT; i++) {
-        if (!key_long_press(i + 1)) continue; // 如果当前按键没有被按下，跳过处理
+        if (!key_down(i + 1)) continue; // 如果当前按键没有被按下，跳过处理
         for (int j = 0; j < KEY_EVENT_MAX; j++) {
             if (long_press_callbacks[i][j] != NULL) {
                 non_blocking_delay(&long_press_timers[i][j]);

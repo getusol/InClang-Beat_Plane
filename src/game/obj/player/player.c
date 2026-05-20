@@ -17,6 +17,7 @@
 #include "event.h"
 
 #include "bullet.h"
+#include "bullet_behaviors.h"
 
 /**********************
  *      MACROS
@@ -48,7 +49,6 @@ typedef struct {
     int16_t hp_max;
 
     uint16_t shoot_cd;
-        uint16_t last_shoot_tick;
 
     lv_obj_t * hp_bar; // 生命值显示的lvgl对象指针
 } player_t;
@@ -60,6 +60,7 @@ typedef struct {
 static void player_update(game_obj_t * g);
 static void player_show(game_obj_t * g);
 static void player_hide(game_obj_t * g);
+static void player_move(game_obj_t * g);
 static lv_obj_t * player_hp_bar_create(game_obj_t * g,lv_obj_t * parent);
 static lv_obj_t * player_obj_create(game_obj_t * g,lv_obj_t * parent);
 
@@ -74,6 +75,7 @@ static void player_event_game_start_cb(game_obj_t * src,game_obj_t * trg);
 static void player_event_player_die_cb(game_obj_t * src,game_obj_t * trg);
 static void player_event_hit_by_enemy_cb(game_obj_t * src,game_obj_t * trg);
 
+// 发射子弹，子弹行为函数
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -113,13 +115,15 @@ void player_init(lv_obj_t * parent)
   player_p->base.y = 500;
   player_p->base.w = PLAYER_WIDTH;
   player_p->base.h = PLAYER_HIGHT;
-  player_p->base.speed = 6.0f;
+  player_p->base.vx = 0;
+  player_p->base.vy = 0;
   player_p->base.active = true;
   player_p->base.type = GAME_OBJ_TYPE_PLAYER;
   player_p->base.hitbox_x = 2;
   player_p->base.hitbox_y = 22;
   player_p->base.hitbox_w = 60;
   player_p->base.hitbox_h = 20;
+  player_p->base.behave = NULL_BEHAVE;
 
   player_p->base.update = player_update;
   player_p->base.show = player_show;
@@ -127,8 +131,7 @@ void player_init(lv_obj_t * parent)
 
   player_p->hp_max = 100;
   player_p->hp = player_p->hp_max;
-  player_p->shoot_cd = 200; // 100ms射击冷却
-  player_p->last_shoot_tick = 0;
+  player_p->shoot_cd = 200; // 200ms射击冷却
 
   player_p->hp_bar = player_hp_bar_create((game_obj_t *)player_p,parent);
   player_p->base.obj = player_obj_create((game_obj_t *)player_p,parent);
@@ -138,11 +141,11 @@ void player_init(lv_obj_t * parent)
   game_register_obj((game_obj_t *)player_p);
 
   // 按键行为
-  //X 测试功能:扣血
-  input_sw_register_press_callback(KEY_EVENT_X, player_x_pressed_handler);
-  input_sw_register_long_press_callback(KEY_EVENT_X,player_x_pressed_handler,200);
+  //X 超级子弹
+  // input_sw_register_press_callback(KEY_EVENT_X, player_x_pressed_handler);
+  input_sw_register_long_press_callback(KEY_EVENT_X,player_x_pressed_handler,5000);
   //A 射击
-  input_sw_register_press_callback(KEY_EVENT_A, player_fire);
+  // input_sw_register_press_callback(KEY_EVENT_A, player_fire);
   input_sw_register_long_press_callback(KEY_EVENT_A, player_fire, player_p->shoot_cd);
 
   // 事件注册
@@ -204,48 +207,6 @@ int16_t player_hp_modify(int16_t delta)
   return player_p->hp;
 }
 
-/**
- * @brief 玩家移动函数，根据输入的dx和dy计算玩家的新位置，并更新玩家对象的位置属性
- * @param dx 水平移动距离，正数表示向右移动，负数表示向左移动
- * @param dy 垂直移动距离，正数表示向下移动，负数表示向上移动
- * @return lv_point_t 玩家移动后的新位置坐标
- */
-lv_point_t player_move(lv_coord_t dx, lv_coord_t dy)
-{
-  if (player_p == NULL) {
-    console_out("[Warning][player_move] Player object is not initialized. Cannot move player.\n");
-    log_out("[Warning][player_move] Player object is not initialized. Cannot move player.");
-    return (lv_point_t){0, 0};
-  }
-
-  if (dx == 0 && dy == 0) {
-    return (lv_point_t){player_p->base.x, player_p->base.y};
-  }
-  
-  player_p->base.x += dx;
-  player_p->base.y += dy;
-
-  // 边界检查，确保玩家不会移动出游戏区域
-  if (player_p->base.x < PLAYER_MIN_X) {
-    player_p->base.x = PLAYER_MIN_X;
-  }
-  if (player_p->base.x > PLAYER_MAX_X) {
-    player_p->base.x = PLAYER_MAX_X;
-  }
-  if (player_p->base.y < PLAYER_MIN_Y) {
-    player_p->base.y = PLAYER_MIN_Y;
-  }
-  if (player_p->base.y > PLAYER_MAX_Y) {
-    player_p->base.y = PLAYER_MAX_Y;
-  }
-
-  lv_obj_set_pos(player_p->base.obj,player_p->base.x,player_p->base.y);
-
-  // console_out("[player_move] Player moved by dx: %d, dy: %d. New position - x: %d, y: %d\n", dx, dy, player_p->base.x, player_p->base.y);
-
-  return (lv_point_t){player_p->base.x, player_p->base.y};
-}
-
  /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -264,11 +225,9 @@ static void player_update(game_obj_t * g)
     return ;
   }
   // 玩家移动逻辑
-  if (joystick_get_x() == 0 && joystick_get_y() == 0) return ;
-  // 速度公式
-  lv_coord_t dx = player_p->base.speed * ((float) (joystick_get_x()) / JOY_MAX_VALUE ) * 2;
-  lv_coord_t dy = player_p->base.speed * ((float) (joystick_get_y()) / JOY_MAX_VALUE ) * 2;
-  player_move(dx,dy);
+  g->vx = joystick_get_x() / 127.0f * 7;
+  g->vy = joystick_get_y() / 127.0f * 7;
+  player_move(g);
 }
 
 /**
@@ -289,6 +248,52 @@ static void player_hide(game_obj_t * g)
   lv_obj_add_flag(g->obj,LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(((player_t *)g)->hp_bar,LV_OBJ_FLAG_HIDDEN);
   g->active = false;
+}
+
+/**
+ * @brief 玩家移动函数，根据输入的dx和dy计算玩家的新位置，并更新玩家对象的位置属性
+ * @param dx 水平移动距离，正数表示向右移动，负数表示向左移动
+ * @param dy 垂直移动距离，正数表示向下移动，负数表示向上移动
+ * @return lv_point_t 玩家移动后的新位置坐标
+ */
+static void player_move(game_obj_t * g)
+{
+  if (g == NULL) {
+    console_out("[Warning][player_move] Player object is not initialized. Cannot move player.\n");
+    log_out("[Warning][player_move] Player object is not initialized. Cannot move player.");
+    return ;
+  }
+
+  if (g->active == false) {
+    return ;
+  }
+
+  if (g->vx == 0 && g->vy == 0) {
+    return ;
+  }
+  
+  player_p->base.x += g->vx;
+  player_p->base.y += g->vy;
+
+  // 边界检查，确保玩家不会移动出游戏区域
+  if (player_p->base.x < PLAYER_MIN_X) {
+    player_p->base.x = PLAYER_MIN_X;
+  }
+  if (player_p->base.x > PLAYER_MAX_X) {
+    player_p->base.x = PLAYER_MAX_X;
+  }
+  if (player_p->base.y < PLAYER_MIN_Y) {
+    player_p->base.y = PLAYER_MIN_Y;
+  }
+  if (player_p->base.y > PLAYER_MAX_Y) {
+    player_p->base.y = PLAYER_MAX_Y;
+  }
+
+  lv_obj_set_pos(player_p->base.obj,player_p->base.x,player_p->base.y);
+
+  // console_out("[player_move] Player moved by dx: %d, dy: %d. New position - x: %d, y: %d\n", dx, dy, player_p->base.x, player_p->base.y);
+
+  return ;
 }
 
 /**
@@ -331,7 +336,11 @@ static void player_x_pressed_handler()
     if (!player_p->base.active || fsm_get_state() != GS_PLAY) {
         return ;
     }
-    console_out("[player] Player HP has been modified by X key, current HP: %d\n", player_hp_modify(-10));
+    behave_t behave = {
+      .f = bullet_behave_sine,
+      .usr_data = NULL,
+    };
+    bullet_create((game_obj_t *)player_p,player_p->base.x + player_p->base.w / 2 - 6, player_p->base.y - 16, 0,-6,66,behave);
     return ;
 }
 
@@ -344,7 +353,7 @@ static void player_fire()
   if (fsm_get_state() != GS_PLAY || !game_obj_is_active(g)) {
       return ;
   }
-  bullet_create(g,20.0f, g->x + g->w / 2 - 8, g->y - 16, 34); // 从玩家中心上方发射一个子弹，伤害为34
+  bullet_create(g,g->x + g->w / 2 - 6, g->y - 16, 0,-20,34,NULL_BEHAVE); // 伤害34 向上速度20
 }
 
 /**
@@ -378,4 +387,4 @@ static void player_event_player_die_cb(game_obj_t * src,game_obj_t * trg)
 static void player_event_hit_by_enemy_cb(game_obj_t * src,game_obj_t * trg)
 {
   player_hp_modify(-20);  //目前固定扣20血
-} 
+}

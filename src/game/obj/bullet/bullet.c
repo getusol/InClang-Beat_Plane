@@ -45,6 +45,12 @@ typedef struct bullet_t
     game_obj_t base;    // 基对象
     uint8_t damage;     // 子弹伤害
     game_obj_t *source; // 子弹发射源
+
+    // 子弹定时器 间隔一段时间触发一次即停止
+    non_blocking_timer_t timer;
+    bool timer_activate;
+    void (*on_timer)(game_obj_t * bullet);
+
     uint16_t pool_index; // 对象池索引
 } bullet_t;
 
@@ -55,7 +61,7 @@ typedef struct bullet_t
 static void bullet_update(game_obj_t * g);
 static void bullet_hide(game_obj_t * g);
 static void bullet_show(game_obj_t * g);
-static void bullet_move(bullet_t * b,lv_coord_t dx,lv_coord_t dy);
+static void bullet_move(game_obj_t * g);
 
 static void bullet_event_hit_enemy_cb(game_obj_t * scr,game_obj_t * trg);
 
@@ -101,6 +107,8 @@ void bullet_init(lv_obj_t * parent)
         bullets[i].base.speed = 0.0f;
         bullets[i].base.x = 0;
         bullets[i].base.y = 0;
+        bullets[i].base.vx = 0;
+        bullets[i].base.vy = 0;
         bullets[i].base.type = GAME_OBJ_TYPE_BULLET;
         bullets[i].damage = 0;
         bullets[i].pool_index = POOL_INVALID_ID; //注意这里没有给他们分配内存 只是初始化了索引值，真正分配内存是在create函数中
@@ -108,6 +116,13 @@ void bullet_init(lv_obj_t * parent)
         bullets[i].base.show = bullet_show;
         bullets[i].base.hide = bullet_hide;
         bullets[i].source = NULL;
+        bullets[i].timer_activate = false;
+        bullets[i].on_timer = NULL;
+        bullets[i].timer.delay_ms = 0;
+        bullets[i].timer.func = NULL; //使用on_timer
+        bullets[i].timer.tick_get = play_tick_get;
+        bullets[i].timer.last_tick = 0;
+        bullets[i].base.behave = NULL_BEHAVE;
 
         bullets[i].base.obj = img_create_from_dsc(parent,img_path(BULLET_IMG_NAME,bullet_img_path,64),bullets[i].base.w,bullets[i].base.h,bullet_img_buf,&bullet_img_struct,false);
         lv_obj_set_align(bullets[i].base.obj,LV_ALIGN_TOP_LEFT);
@@ -135,27 +150,34 @@ void bullet_init(lv_obj_t * parent)
  * @param speed 子弹速度
  * @param x 子弹初始x坐标
  * @param y 子弹初始y坐标
- * @return 分配内存索引
+ * @param behave 子弹行为结构体 决定了子弹如何移动
+ * @return 创建的子弹指针
  */
-uint16_t bullet_create(game_obj_t *source, float speed,lv_coord_t x, lv_coord_t y, uint8_t damage)
+game_obj_t * bullet_create(game_obj_t *source,
+                         lv_coord_t x, lv_coord_t y, 
+                         int16_t vx, int16_t vy,
+                         uint8_t damage,
+                         behave_t behave)
 {
     uint16_t index = pool_alloc(&bullet_pool);
     if (index == POOL_INVALID_ID)
     {
         CONSOLE("[WARNING] No available bullet slots! Max bullet count: %d", MAX_BULLET_COUNT);
         LOG("[WARNING] No available bullet slots! Max bullet count: %d", MAX_BULLET_COUNT);
-        return POOL_INVALID_ID;
+        return NULL;
     }
     bullets[index].pool_index = index;
     bullets[index].source = source;
     bullets[index].damage = damage;
-    bullets[index].base.speed = speed;
+    bullets[index].base.vx = vx;
+    bullets[index].base.vy = vy;
     bullets[index].base.x = x;
     bullets[index].base.y = y;
+    bullets[index].base.behave = behave;
     lv_obj_set_pos(bullets[index].base.obj,x,y);
     bullets[index].base.show((game_obj_t *)&bullets[index]);
     // console_out("[bullet_create] Bullet created at index: %d, position: (%d, %d), speed: %.2f, damage: %d\n", index, x, y, speed, damage);
-    return index;
+    return (game_obj_t *)&bullets[index];
 }
 
 /**
@@ -164,6 +186,23 @@ uint16_t bullet_create(game_obj_t *source, float speed,lv_coord_t x, lv_coord_t 
 uint8_t bullet_get_damage(game_obj_t * bullet)
 {
     return ((bullet_t *)bullet)->damage;
+}
+
+/**
+ * @brief 设置子弹计时器
+ * @param g 子弹对象指针
+ * @param delay_ms 计时器延时毫秒数
+ * @param on_timer 计时器回调
+ */
+void bullet_set_timer(game_obj_t * g,uint32_t delay_ms,void (*on_timer)(game_obj_t * obj))
+{
+    bullet_t * b = (bullet_t *)g;
+    b->on_timer = on_timer;
+    b->timer_activate = true;
+    b->timer.delay_ms = delay_ms;
+    b->timer.last_tick = play_tick_get();
+    b->timer.func = NULL;
+    CONSOLE("[INFO] Bullet %d 's timer set to %d ms",b->pool_index,delay_ms);
 }
 
  /**********************
@@ -175,20 +214,26 @@ uint8_t bullet_get_damage(game_obj_t * bullet)
   */
 static void bullet_update(game_obj_t * g)
 {
-    if (fsm_get_state() != GS_PLAY && fsm_get_state() != GS_PAUSE)
-    {
+    if (fsm_get_state() != GS_PLAY && fsm_get_state() != GS_PAUSE) {
         g->hide(g);
         return ;
     }
-    if (fsm_get_state() == GS_PAUSE)
-    {
+    if (fsm_get_state() == GS_PAUSE) {
         return ;
     }
-    if (!g->active)
-    {
+    if (!g->active) {
         return ;
     }
-    bullet_move((bullet_t *)g, 0, -g->speed);  // 固定向上移动
+    bullet_t * b = (bullet_t *)g;
+    uint32_t now = play_tick_get();
+    if (b->timer_activate) {
+        if (now - b->timer.last_tick > b->timer.delay_ms) {
+            b->timer.last_tick = now;
+            b->on_timer(g);
+            b->timer_activate = false;
+        }
+    }
+    bullet_move(g);
 }
 
 /**
@@ -226,21 +271,21 @@ static void bullet_show(game_obj_t * g)
 /**
  * @brief 子弹移动函数 包括超出边界的处理
  */
-static void bullet_move(bullet_t * b, lv_coord_t dx, lv_coord_t dy)
+void bullet_move(game_obj_t * g)
 {
-    if (b == NULL) return ;
-    if (b->base.active == false) return ;
-    if (dx == 0 && dy == 0) return ;
+    if (g == NULL) return ;
+    if (g -> active == false) return ;
+    if (g->vx == 0 && g->vy == 0) return ;
     
-    b->base.x += dx;
-    b->base.y += dy;
+    g -> x += g->vx;
+    g -> y += g->vy;
 
-    lv_obj_set_pos(b->base.obj, b->base.x, b->base.y);
+    lv_obj_set_pos(g->obj, g->x, g->y);
 
     // 检查是否超出边界
-    if (b->base.x < BULLET_MIN_X || b->base.x > BULLET_MAX_X || b->base.y < BULLET_MIN_Y || b->base.y > BULLET_MAX_Y)
+    if (g->x < BULLET_MIN_X || g->x > BULLET_MAX_X || g->y < BULLET_MIN_Y || g->y > BULLET_MAX_Y)
     {
-        b->base.hide((game_obj_t *)b);
+        g->hide(g);
     }
 }
 

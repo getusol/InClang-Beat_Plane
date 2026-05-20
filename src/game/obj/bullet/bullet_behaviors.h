@@ -1,13 +1,15 @@
 /**
- * @file player.h
+ * @file bullet_behaviors.h
+ * @brief A file containing all bullet behaviors
  */
 
-#ifndef __PLAYER_H__
-#define __PLAYER_H__
+#ifndef __BULLET_BEHAVIORS_H__
+#define __BULLET_BEHAVIORS_H__
 
 /*********************
  *      INCLUDES
  *********************/
+
 #include "game_object.h"
 
 /**********************
@@ -18,16 +20,11 @@
  *      TYPEDEFS
  **********************/
 
-/**********************
- *  STATIC PROTOTYPES
- **********************/
-
 /***********************
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void player_init(lv_obj_t * parent);
-game_obj_t * player_get_base();
-int16_t player_hp_modify(int16_t delta);
+void bullet_behave_circle(game_obj_t *g, void *v);
+void bullet_behave_sine(game_obj_t *g, void *v);
 
-#endif // #ifndef __PLAYER_H__
+#endif // #ifndef __BULLET_BEHAVIORS_H__

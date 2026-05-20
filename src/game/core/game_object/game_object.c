@@ -126,3 +126,21 @@ void game_obj_hitbox_update(game_obj_t * obj)
 }
 
 #endif
+
+/**
+ * @brief 设置对象行为
+ * @param obj 游戏对象指针
+ * @param func 行为函数指针
+ * @param usr_data 用户数据指针
+ * @return bool 设置成功返回true，失败返回false
+ */
+bool game_obj_set_behave(game_obj_t * obj, behave_func_t func, void * usr_data)
+{
+    if (obj == NULL) {
+        CONSOLE("[WARNING] Game object is NULL. Cannot set behavior.");
+        return false;
+    }
+    obj->behave.f = func;
+    obj->behave.usr_data = usr_data;
+    return true;
+}

@@ -103,11 +103,12 @@ int game_register_obj(game_obj_t * obj)
  */
 void game_update(void)
 {
+  if (fsm_get_state() != GS_PLAY) return ;
   uint32_t t_start = lv_tick_get();
 
   for (int i = 0;i < free_idx;i++) {
-    game_objs[i]->update(game_objs[i]);
-
+    if (game_objs[i]->behave.f) game_objs[i]->behave.f(game_objs[i],game_objs[i]->behave.usr_data);
+    if (game_objs[i]->update)game_objs[i]->update(game_objs[i]);
     #if SHOW_HITBOX
     game_obj_hitbox_update(game_objs[i]);
     #endif

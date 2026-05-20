@@ -36,6 +36,9 @@ void delay_ms(uint32_t ms);
 void non_blocking_delay(non_blocking_timer_t *timer);
 int32_t max(int32_t a, int32_t b); 
 void tools_init();
+void direction_to_velocity(int16_t dx, int16_t dy,int8_t speed,int16_t *vx, int16_t *vy);
+uint16_t vec_length(int16_t x, int16_t y);
+uint32_t play_tick_get();
 
 #endif // #ifndef __TOOLS_H__
 

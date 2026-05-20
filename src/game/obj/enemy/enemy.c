@@ -280,8 +280,8 @@ static int16_t enemy_modify_hp(game_obj_t * g,int16_t delta)
   }
   if (e->hp <= 0) {
     e->hp = 0;
-    e->base.hide(g);
     CONSOLE("[INFO] Enemy %d has been killed.",e->pool_index);
+    e->base.hide(g);
     return 0;
   }
 
