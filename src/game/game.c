@@ -101,14 +101,14 @@ int game_register_obj(game_obj_t * obj)
 /**
  * @brief 游戏更新函数，负责更新游戏状态
  */
-void game_update(void)
+void game_update(void * v)
 {
-  if (fsm_get_state() != GS_PLAY) return ;
+  (void) v;
   uint32_t t_start = lv_tick_get();
 
   for (int i = 0;i < free_idx;i++) {
-    if (game_objs[i]->behave.f) game_objs[i]->behave.f(game_objs[i],game_objs[i]->behave.usr_data);
-    if (game_objs[i]->update)game_objs[i]->update(game_objs[i]);
+    if (game_objs[i]->update && game_obj_is_active(game_objs[i])) game_objs[i]->update(game_objs[i]);
+    if (game_objs[i]->behave.f && game_obj_is_active(game_objs[i])) game_objs[i]->behave.f(game_objs[i],game_objs[i]->behave.usr_data);
     #if SHOW_HITBOX
     game_obj_hitbox_update(game_objs[i]);
     #endif
@@ -176,27 +176,45 @@ static void check_collisions(void)
 
         // 只检测以下类型组合：
         // 1. 玩家  vs 敌人
-        // 2. 子弹  vs 敌人
+        // 2. 子弹  vs 敌人 只有子弹为玩家发射，才会判断
+        // 3. 子弹  vs 玩家 只有子弹不为玩家发射 才会判定
         bool need_check = 
             (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY) ||
             (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) ||
             (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) ||
-            (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET);
+            (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) ||
+            (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET) ||
+            (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER);
 
         if (!need_check) continue;
 
         if (rec_overlap(a, b)) {
             // 根据组合派发事件
+            // 子弹 vs 敌人
             if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) {
-                event_dispatch(EVENT_BULLET_HIT_ENEMY, a, b);
+                if(bullet_get_source(a) == player_get_base()) {
+                  event_dispatch(EVENT_BULLET_HIT_ENEMY, a, b);
+                }
             } else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) {
-                event_dispatch(EVENT_BULLET_HIT_ENEMY, b, a);
+              if(bullet_get_source(b) == player_get_base()) {
+                  event_dispatch(EVENT_BULLET_HIT_ENEMY, b, a);
+                }
+            // 玩家 vs 敌人
             } else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY) {
                 event_dispatch(EVENT_PLAYER_HIT_ENEMY, a, b);
             } else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) {
                 event_dispatch(EVENT_PLAYER_HIT_ENEMY, b, a);
+            // 子弹 vs 玩家
+            } else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET) {
+              if (bullet_get_source(b) != a) {
+                event_dispatch(EVENT_BULLET_HIT_PLAYER, b, a);
+              }
+            } else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER) {
+              if (bullet_get_source(a) != b) {
+                event_dispatch(EVENT_BULLET_HIT_PLAYER, a, b);
+              }
             }
-            CONSOLE("[INFO] Collision detected between %d and %d", a->type, b->type);
+            //CONSOLE("[INFO] Collision detected between %d and %d", a->type, b->type);
         }
     }
   }

@@ -18,6 +18,7 @@
 
 #include "bullet.h"
 #include "bullet_behaviors.h"
+#include "enemy.h"
 
 /**********************
  *      MACROS
@@ -74,6 +75,7 @@ static void player_fire();
 static void player_event_game_start_cb(game_obj_t * src,game_obj_t * trg);
 static void player_event_player_die_cb(game_obj_t * src,game_obj_t * trg);
 static void player_event_hit_by_enemy_cb(game_obj_t * src,game_obj_t * trg);
+static void player_event_hit_by_bullet_cb(game_obj_t * src,game_obj_t * trg);
 
 // 发射子弹，子弹行为函数
 
@@ -143,15 +145,16 @@ void player_init(lv_obj_t * parent)
   // 按键行为
   //X 超级子弹
   // input_sw_register_press_callback(KEY_EVENT_X, player_x_pressed_handler);
-  input_sw_register_long_press_callback(KEY_EVENT_X,player_x_pressed_handler,5000);
+  input_sw_register_key_down_callback(KEY_EVENT_X,player_x_pressed_handler,5000,NULL);
   //A 射击
   // input_sw_register_press_callback(KEY_EVENT_A, player_fire);
-  input_sw_register_long_press_callback(KEY_EVENT_A, player_fire, player_p->shoot_cd);
+  input_sw_register_key_down_callback(KEY_EVENT_A, player_fire, player_p->shoot_cd,NULL);
 
   // 事件注册
   event_register(EVENT_GAME_START,player_event_game_start_cb);
   event_register(EVENT_PLAYER_DIE,player_event_player_die_cb);
   event_register(EVENT_PLAYER_HIT_ENEMY,player_event_hit_by_enemy_cb);
+  event_register(EVENT_BULLET_HIT_PLAYER,player_event_hit_by_bullet_cb);
   
   
   CONSOLE("[INFO] Player initialization complete.\n");
@@ -386,5 +389,17 @@ static void player_event_player_die_cb(game_obj_t * src,game_obj_t * trg)
  */
 static void player_event_hit_by_enemy_cb(game_obj_t * src,game_obj_t * trg)
 {
-  player_hp_modify(-20);  //目前固定扣20血
+  int16_t damage = enemy_get_damage(trg);
+  player_hp_modify(-damage);
+}
+
+/**
+ * @brief 玩家被子弹击中事件回调
+ * @param src 子弹对象指针
+ * @param trg 玩家对象指针
+ */
+static void player_event_hit_by_bullet_cb(game_obj_t * src,game_obj_t * trg)
+{
+  int16_t damage = bullet_get_damage(src);
+  player_hp_modify(-damage);
 }

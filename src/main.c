@@ -30,28 +30,31 @@ int main(int argc, char **argv)
         .func = game_update,
         .tick_get = lv_tick_get,
         .delay_ms = 1000 / GAME_TICK,
-        .last_tick = 0
+        .last_tick = 0,
+        .usr_data = NULL,
     };
     non_blocking_timer_t ui_timer = {
         .func = ui_run,
         .tick_get = lv_tick_get,
         .delay_ms = 30,
-        .last_tick = 0
+        .last_tick = 0,
+        .usr_data = NULL
     };
     non_blocking_timer_t input_timer = {
         .func = input_dispatch,
         .tick_get = lv_tick_get,
         .delay_ms = SCAN_RATE_MS,
-        .last_tick = 0
+        .last_tick = 0,
+        .usr_data = NULL
     };
 
     CONSOLE("[INFO] Initialization done!");
     LOG("[INFO] Initialization done!");
 
     while(1) {
-        non_blocking_delay(&input_timer);
-        non_blocking_delay(&logic_timer);
-        non_blocking_delay(&ui_timer);
+        non_blocking_delay(&input_timer,NULL,false);
+        non_blocking_delay(&logic_timer,NULL,false);
+        non_blocking_delay(&ui_timer,NULL,false);
         
         uint32_t t_start = lv_tick_get();
         lv_timer_handler();

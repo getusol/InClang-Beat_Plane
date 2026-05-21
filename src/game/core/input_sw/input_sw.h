@@ -33,7 +33,7 @@ typedef enum {
 /**
  * @brief 按键回调函数类型
  */
-typedef void (*key_event_callback_t)(void);
+typedef void (*key_event_callback_t)(void * v);
 
 /**********************
  *  STATIC PROTOTYPES
@@ -43,10 +43,11 @@ typedef void (*key_event_callback_t)(void);
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void input_dispatch();
+void input_dispatch(void * v);
 void input_init();
 
 void input_sw_register_press_callback(key_event_t event, key_event_callback_t callback);
-void input_sw_register_long_press_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms);
+void input_sw_register_long_press_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms,void * v);
+void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms,void * v);
 
 #endif // #ifndef __INPUT_SW_H__

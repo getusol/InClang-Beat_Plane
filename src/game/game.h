@@ -30,7 +30,7 @@
 
 void game_init();
 int game_register_obj(game_obj_t * obj);
-void game_update(void);
+void game_update(void * v);
 void game_for_each_obj(void (*fuc)(game_obj_t * ,void *),void * usr_data);
 
 

@@ -62,8 +62,9 @@ static game_state_t last_game_state = GS_MAX;
 /**
  * @brief 根据当前游戏状态决定UI渲染，不同渲染函数位于相应的文件中
  */
-void ui_run()
+void ui_run(void * v)
 {
+    (void) v;
     if (fsm_get_state() == last_game_state) return ;
     last_game_state = fsm_get_state();
     switch (fsm_get_state()) {

@@ -43,7 +43,7 @@
 typedef struct bullet_t
 {
     game_obj_t base;    // 基对象
-    uint8_t damage;     // 子弹伤害
+    int16_t damage;     // 子弹伤害
     game_obj_t *source; // 子弹发射源
 
     // 子弹定时器 间隔一段时间触发一次即停止
@@ -64,6 +64,7 @@ static void bullet_show(game_obj_t * g);
 static void bullet_move(game_obj_t * g);
 
 static void bullet_event_hit_enemy_cb(game_obj_t * scr,game_obj_t * trg);
+static void bullet_event_hit_player_cb(game_obj_t * scr,game_obj_t * trg);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -138,6 +139,7 @@ void bullet_init(lv_obj_t * parent)
 
     // event register
     event_register(EVENT_BULLET_HIT_ENEMY,bullet_event_hit_enemy_cb);
+    event_register(EVENT_BULLET_HIT_PLAYER,bullet_event_hit_player_cb); 
 
     console_out("[bullet_init] Bullet system initialized with max bullet count: %d\n", MAX_BULLET_COUNT);
     return ;
@@ -156,7 +158,7 @@ void bullet_init(lv_obj_t * parent)
 game_obj_t * bullet_create(game_obj_t *source,
                          lv_coord_t x, lv_coord_t y, 
                          int16_t vx, int16_t vy,
-                         uint8_t damage,
+                         int16_t damage,
                          behave_t behave)
 {
     uint16_t index = pool_alloc(&bullet_pool);
@@ -183,7 +185,7 @@ game_obj_t * bullet_create(game_obj_t *source,
 /**
  * @brief 获取子弹伤害
  */
-uint8_t bullet_get_damage(game_obj_t * bullet)
+int16_t bullet_get_damage(game_obj_t * bullet)
 {
     return ((bullet_t *)bullet)->damage;
 }
@@ -203,6 +205,16 @@ void bullet_set_timer(game_obj_t * g,uint32_t delay_ms,void (*on_timer)(game_obj
     b->timer.last_tick = play_tick_get();
     b->timer.func = NULL;
     CONSOLE("[INFO] Bullet %d 's timer set to %d ms",b->pool_index,delay_ms);
+}
+
+/**
+ * @brief
+ */
+game_obj_t * bullet_get_source(game_obj_t * g)
+{
+    if (g==NULL) return NULL;
+    bullet_t * b = (bullet_t*)g;
+    return (b->source);
 }
 
  /**********************
@@ -295,6 +307,16 @@ void bullet_move(game_obj_t * g)
  * @param trg 敌人对象指针
  */
 static void bullet_event_hit_enemy_cb(game_obj_t * scr,game_obj_t * trg)
+{
+    scr->hide(scr);
+}
+
+/**
+ * @brief 子弹击中玩家 子弹回调 子弹销毁
+ * @param scr 子弹对象指针
+ * @param trg 玩家对象指针
+ */
+static void bullet_event_hit_player_cb(game_obj_t * scr,game_obj_t * trg)
 {
     scr->hide(scr);
 }

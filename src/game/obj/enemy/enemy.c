@@ -39,6 +39,7 @@ typedef struct
     game_obj_t base;
     int16_t hp; // 生命值
     int16_t hp_max;
+    int16_t damage;
     uint16_t pool_index; // 对象池索引
     lv_obj_t * health_bar;
 } enemy_t;
@@ -50,8 +51,9 @@ typedef struct
 static void enemy_update(game_obj_t * g);
 static void enemy_hide(game_obj_t * g);
 static void enemy_show(game_obj_t * g);
-static lv_point_t enemy_move(game_obj_t * g,lv_coord_t dx,lv_coord_t dy);
+static void enemy_move(game_obj_t * g);
 static int16_t enemy_modify_hp(game_obj_t * g,int16_t delta);
+static uint16_t enemy_modify_hp_max(game_obj_t * g,uint16_t trg);
 
 static void enemy_event_hit_by_bullet_cb(game_obj_t * scr,game_obj_t * trg);
 static void enemy_event_hit_player_cb(game_obj_t * src,game_obj_t * trg);
@@ -102,11 +104,15 @@ void enemy_init(lv_obj_t * parent)
     enemies[i].base.hitbox_y = 0;
     enemies[i].base.hitbox_w = 19;
     enemies[i].base.hitbox_h = 64;
+    enemies[i].base.vx = 0;
+    enemies[i].base.vy = 0;
+    enemies[i].base.behave = NULL_BEHAVE;
 
     // special init
     enemies[i].hp = 100;
     enemies[i].hp_max = 100;
     enemies[i].pool_index = POOL_INVALID_ID;
+    enemies[i].damage = 0;
 
     // img & func ptr
     enemies[i].base.update = enemy_update;
@@ -144,9 +150,17 @@ void enemy_init(lv_obj_t * parent)
  * @brief 敌人生成
  * @param x 生成的x坐标
  * @param y 生成的y坐标
+ * @param vx 生成的x轴速度
+ * @param vy 生成的y轴速度
+ * @param health 生成的生命值(最大生命值)
+ * @param hit_damage 生成的碰撞伤害
+ * @param behave 生成的行为
  * @return game_obj_t* 生成的敌人
  */
-game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y)
+game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y,
+                         int16_t vx, int16_t vy,
+                         uint16_t health,int16_t hit_damage,
+                         behave_t behave)
 {
   if (fsm_get_state() != GS_PLAY) return NULL;
   uint16_t id = pool_alloc(&enemy_pool);
@@ -158,9 +172,14 @@ game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y)
   }
   enemy_t * e = &enemies[id];
   e->pool_index = id;
-  e->base.active = true;
   e->base.x = x;
   e->base.y = y;
+  e->base.vx = vx;
+  e->base.vy = vy;
+  e->base.behave = behave;
+  e->damage = hit_damage;
+
+  enemy_modify_hp_max(&e->base,health);
   e->hp = e->hp_max;
   lv_obj_set_pos(e->base.obj,x,y);
   lv_obj_set_pos(e->health_bar,x - 10,y - 10);
@@ -168,6 +187,13 @@ game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y)
   e->base.show(&e->base);
   // CONSOLE("[INFO] Enemy %d spawned at x: %d, y: %d.",e->pool_index,x,y);
   return &e->base;
+}
+
+int16_t enemy_get_damage(game_obj_t * g)
+{
+  if (g == NULL) return 0;
+  enemy_t * e = (enemy_t *)g;
+  return e->damage;
 }
 
  /**********************
@@ -190,7 +216,8 @@ static void enemy_update(game_obj_t * g)
   if (game_state == GS_PAUSE) return ;
   // 不活跃不更新
   if (g->active == false) return ;
-  enemy_move(g,0,g->speed);
+  enemy_move(g);
+  // behave 在game.c统一更新
 }
 
 /**
@@ -235,14 +262,18 @@ static void enemy_show(game_obj_t * g)
  * @param e 敌人对象指针
  * @param dx x轴移动距离
  * @param dy y轴移动距离
- * @return lv_point_t 移动后的坐标
+ * @return void
  */
-static lv_point_t enemy_move(game_obj_t * g,lv_coord_t dx,lv_coord_t dy)
+static void enemy_move(game_obj_t * g)
 {
-  if (g == NULL) return (lv_point_t){0,0};
+  if (g == NULL) return ;
 
-  if (g->active == false) return (lv_point_t){0,0};
-  if (dx == 0 && dy == 0) return (lv_point_t){g->x,g->y};
+  if (g->active == false) return ;
+
+  int16_t dx = g->vx;
+  int16_t dy = g->vy;
+
+  if (dx == 0 && dy == 0) return ;
 
   g->x += dx;
   g->y += dy;
@@ -257,7 +288,7 @@ static lv_point_t enemy_move(game_obj_t * g,lv_coord_t dx,lv_coord_t dy)
     g->hide(g);
   }
 
-  return (lv_point_t){g->x,g->y};
+  return ;
 }
 
 /**
@@ -288,6 +319,22 @@ static int16_t enemy_modify_hp(game_obj_t * g,int16_t delta)
   lv_bar_set_value(e->health_bar, e->hp, LV_ANIM_OFF);
 
   return e->hp;
+}
+
+/**
+ * @brief 敌人最大血量修改
+ * @param g 敌人对象指针
+ * @param trg 最大血量
+ * @return int16_t 修改后的最大血量
+ */
+static uint16_t enemy_modify_hp_max(game_obj_t * g,uint16_t trg)
+{
+  if (g == NULL) return 0;
+  enemy_t * e = (enemy_t *)g;
+  e->hp_max = trg;
+  lv_bar_set_range(e->health_bar, 0, e->hp_max);
+  lv_bar_set_value(e->health_bar, e->hp, LV_ANIM_OFF);
+  return e->hp_max;
 }
 
 /**
