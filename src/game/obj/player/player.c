@@ -145,10 +145,10 @@ void player_init(lv_obj_t * parent)
   // 按键行为
   //X 超级子弹
   // input_sw_register_press_callback(KEY_EVENT_X, player_x_pressed_handler);
-  input_sw_register_key_down_callback(KEY_EVENT_X,player_x_pressed_handler,5000,NULL);
+  input_sw_register_key_down_callback(KEY_EVENT_X,player_x_pressed_handler,5000);
   //A 射击
   // input_sw_register_press_callback(KEY_EVENT_A, player_fire);
-  input_sw_register_key_down_callback(KEY_EVENT_A, player_fire, player_p->shoot_cd,NULL);
+  input_sw_register_key_down_callback(KEY_EVENT_A, player_fire, player_p->shoot_cd);
 
   // 事件注册
   event_register(EVENT_GAME_START,player_event_game_start_cb);

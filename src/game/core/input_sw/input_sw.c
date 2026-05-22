@@ -54,8 +54,7 @@ static key_event_callback_t key_down_callbacks[KEY_EVENT_COUNT][KEY_EVENT_MAX] =
 /**
  * @brief 输入分发函数，包含按键扫描和按键分发
  */
-void input_dispatch(void * v) {
-    (void) v;
+void input_dispatch() {
     input_hw_scan();
     input_sw_dispatch();
 }
@@ -102,7 +101,7 @@ void input_sw_register_press_callback(key_event_t event, key_event_callback_t ca
  *       长按一段时间后 才会开始循环触发
  *       不会修改 v,v常驻 
  */
-void input_sw_register_long_press_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms,void * v)
+void input_sw_register_long_press_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms)
 {
     if (event >= KEY_EVENT_COUNT) {
         console_out("[Warning][input_sw_register_long_press_callback] Invalid event type: %d\n", event);
@@ -116,7 +115,6 @@ void input_sw_register_long_press_callback(key_event_t event, key_event_callback
             long_press_timers[event][i].tick_get = play_tick_get;
             long_press_timers[event][i].delay_ms = cycle_delay_ms;
             long_press_timers[event][i].last_tick = 0;
-            long_press_timers[event][i].usr_data = v;
             console_out("[input_sw_register_long_press_callback] Long press callback registered for event %d at index %d with cycle delay %d ms\n", event, i, cycle_delay_ms);
             return ;
         }
@@ -134,7 +132,7 @@ void input_sw_register_long_press_callback(key_event_t event, key_event_callback
  *       直接开始循环触发
  *       不会修改 v,v常驻
  */
-void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms,void * v)
+void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms)
 {
     if (event >= KEY_EVENT_COUNT) {
         CONSOLE("[Warning] Invalid event type: %d\n", event);
@@ -148,7 +146,6 @@ void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t
             key_down_timers[event][i].tick_get = play_tick_get;
             key_down_timers[event][i].delay_ms = cycle_delay_ms;
             key_down_timers[event][i].last_tick = 0;
-            key_down_timers[event][i].usr_data = v;
             CONSOLE("[INFO] key down callback registered for event %d at index %d with cycle delay %d ms\n", event, i, cycle_delay_ms);
             return ;
         }
@@ -185,7 +182,7 @@ static void input_sw_dispatch() {
         if (!key_pressed(i + 1)) continue; // 如果当前按键没有被按下，跳过处理
         for (int j = 0; j < KEY_EVENT_MAX; j++) {
             if (press_callbacks[i][j] != NULL) {
-                press_callbacks[i][j](NULL);
+                press_callbacks[i][j]();
             }
         }
     }
@@ -196,7 +193,7 @@ static void input_sw_dispatch() {
         if (!key_long_press(i + 1)) continue; // 如果当前按键没有被按下，跳过处理
         for (int j = 0; j < KEY_EVENT_MAX; j++) {
             if (long_press_callbacks[i][j] != NULL) {
-                non_blocking_delay(&long_press_timers[i][j],long_press_timers[i][j].usr_data,false);
+                non_blocking_delay(&long_press_timers[i][j]);
             }
         }
     }
@@ -207,9 +204,8 @@ static void input_sw_dispatch() {
     if (!key_down(i + 1)) continue; // 如果当前按键没有被按下，跳过处理
     for (int j = 0; j < KEY_EVENT_MAX; j++) {
         if (key_down_callbacks[i][j] != NULL) {
-                non_blocking_delay(&key_down_timers[i][j],key_down_timers[i][j].usr_data,false);
+                non_blocking_delay(&key_down_timers[i][j]);
             }
         }
     }
-
 }

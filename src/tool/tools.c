@@ -71,24 +71,14 @@ void delay_ms(uint32_t ms)
 /**
  * @brief 非阻塞式延时函数，定时调用某个函数
  * @param timer 非阻塞延时回调函数与对应计时器结构体
- * @param v 用户数据
- * @param force 是否让 v 覆盖 timer->usr_data
- * @note v 的优先级高于 timer->usr_data 不会修改 timer->usr_data
  */
-void non_blocking_delay(non_blocking_timer_t *timer,void * v,bool force)
+void non_blocking_delay(non_blocking_timer_t *timer)
 {
     uint32_t now_tick = timer->tick_get();
-    if (force) timer->usr_data = v;
-    void * usr_data = NULL;
-    if (v == NULL) {
-        usr_data = timer->usr_data; // 优先 v 如果 force 那么 没区别
-    } else {
-        usr_data = v;
-    }
     if (now_tick - timer->last_tick > timer->delay_ms)
     {
         timer->last_tick = now_tick;
-        timer->func(usr_data);
+        timer->func();
     }
     return ;
 }
