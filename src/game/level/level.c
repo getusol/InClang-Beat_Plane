@@ -12,6 +12,7 @@
 #include "ui_play.h"
 #include "fsm.h"
 #include "enemy.h"
+#include "enemy_behaviors.h"
 
 #include <stdint.h>
 
@@ -71,15 +72,15 @@ static void on_level_complete(void);
  **********************/
 
 static wave_t level1_waves[] = {
-    { .enemy_total = 5,  .spawn_interval = 2000 },
-    { .enemy_total = 8,  .spawn_interval = 1500 },
-    { .enemy_total = 10, .spawn_interval = 1200 }
+    { .enemy_total = 3,  .spawn_interval = 2000 },
+    { .enemy_total = 4,  .spawn_interval = 1500 },
+    { .enemy_total = 5, .spawn_interval = 1200 }
 };
 
 static wave_t level2_waves[] = {
-    { .enemy_total = 8,  .spawn_interval = 1200 },
-    { .enemy_total = 12, .spawn_interval = 800  },
-    { .enemy_total = 15, .spawn_interval = 600  }
+    { .enemy_total = 4,  .spawn_interval = 1200 },
+    { .enemy_total = 5, .spawn_interval = 800  },
+    { .enemy_total = 6, .spawn_interval = 600  }
 };
 
 
@@ -141,7 +142,11 @@ void level_update(void)
                 if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval) {
                     lv_coord_t x = lv_rand(250,774);
                     lv_coord_t y = -64;
-                    enemy_spawn(x, y);
+                    behave_t behave = {
+                        .f = enemy_behave_normal,
+                        .usr_data = NULL,
+                    };
+                    enemy_spawn(x, y,0,0,100,20,behave);
                     wave->enemy_spawned++;
                     wave->last_spawn = lv_tick_get();
                 }

@@ -70,6 +70,7 @@ void delay_ms(uint32_t ms)
 
 /**
  * @brief 非阻塞式延时函数，定时调用某个函数
+ * @param timer 非阻塞延时回调函数与对应计时器结构体
  */
 void non_blocking_delay(non_blocking_timer_t *timer)
 {
@@ -161,4 +162,5 @@ uint32_t play_tick_get()
         accumulated += now - last_sys_tick;
     }
     last_sys_tick = now;
+    return accumulated;
 }

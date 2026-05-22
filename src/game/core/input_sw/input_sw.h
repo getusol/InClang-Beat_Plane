@@ -48,5 +48,6 @@ void input_init();
 
 void input_sw_register_press_callback(key_event_t event, key_event_callback_t callback);
 void input_sw_register_long_press_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms);
+void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms);
 
 #endif // #ifndef __INPUT_SW_H__

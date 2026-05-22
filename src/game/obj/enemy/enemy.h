@@ -25,6 +25,10 @@
  ***********************/
 
 void enemy_init(lv_obj_t * parent);
-game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y);
+game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y,
+                         int16_t vx, int16_t vy,
+                         uint16_t health,int16_t hit_damage,
+                         behave_t behave);
+int16_t enemy_get_damage(game_obj_t * g);
 
 #endif // #ifndef __ENEMY_H__
