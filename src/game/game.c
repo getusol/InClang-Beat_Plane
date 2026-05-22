@@ -22,12 +22,12 @@
 #include "level.h"
 #include "perf_monitor.h"
 #include "game_object.h"
-
+#include "coin.h"
 /**********************
  *      MACROS
  **********************/
 
-#define MAX_GAME_OBJ_COUNT (MAX_BULLET_COUNT + 1 + MAX_ENEMY_COUNT)
+#define MAX_GAME_OBJ_COUNT (MAX_BULLET_COUNT + 1 + MAX_ENEMY_COUNT + MAX_COIN_COUNT)
 
 
 /**********************
@@ -70,6 +70,7 @@ void game_init()
     player_init(play_display);
     bullet_init(play_display);
     enemy_init(play_display);
+    coin_init(play_display);
 
     #if SHOW_HITBOX
     game_for_each_obj(init_hitbox,NULL);
@@ -103,12 +104,11 @@ int game_register_obj(game_obj_t * obj)
  */
 void game_update(void)
 {
-  if (fsm_get_state() != GS_PLAY) return ;
   uint32_t t_start = lv_tick_get();
 
   for (int i = 0;i < free_idx;i++) {
-    if (game_objs[i]->behave.f) game_objs[i]->behave.f(game_objs[i],game_objs[i]->behave.usr_data);
-    if (game_objs[i]->update)game_objs[i]->update(game_objs[i]);
+    if (game_objs[i]->update) game_objs[i]->update(game_objs[i]);
+    if (game_objs[i]->behave.f && game_obj_is_active(game_objs[i])) game_objs[i]->behave.f(game_objs[i],game_objs[i]->behave.usr_data);
     #if SHOW_HITBOX
     game_obj_hitbox_update(game_objs[i]);
     #endif
@@ -177,11 +177,14 @@ static void check_collisions(void)
         // 只检测以下类型组合：
         // 1. 玩家  vs 敌人
         // 2. 子弹  vs 敌人
+        // 3. 玩家  vs 金币
         bool need_check = 
             (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY) ||
             (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) ||
             (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) ||
-            (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET);
+            (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) ||
+            (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN)  ||
+            (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER);
 
         if (!need_check) continue;
 
@@ -195,8 +198,13 @@ static void check_collisions(void)
                 event_dispatch(EVENT_PLAYER_HIT_ENEMY, a, b);
             } else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) {
                 event_dispatch(EVENT_PLAYER_HIT_ENEMY, b, a);
+            } else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN) {
+                event_dispatch(EVENT_PLAYER_HIT_COIN, a, b);
+            } else if (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER) {
+                event_dispatch(EVENT_PLAYER_HIT_COIN, b, a);
             }
-            CONSOLE("[INFO] Collision detected between %d and %d", a->type, b->type);
+
+            CONSOLE("[INFO] Collision detected between %d and %d", a->type, b->type);("[INFO] Collision detected between %d and %d", a->type, b->type);
         }
     }
   }
