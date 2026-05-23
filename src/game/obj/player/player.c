@@ -250,6 +250,7 @@ static void player_hide(game_obj_t * g)
 {
   lv_obj_add_flag(g->obj,LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(((player_t *)g)->hp_bar,LV_OBJ_FLAG_HIDDEN);
+  g->timered = false;
   g->active = false;
 }
 
