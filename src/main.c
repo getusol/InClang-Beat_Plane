@@ -19,7 +19,7 @@ int main(int argc, char **argv)
     //Inits
     tools_init();
     lv_port_init();
-    uart_debug_init(115200);
+    uart_init("COM3",115200);
     input_init();
     fsm_init();
     event_init();

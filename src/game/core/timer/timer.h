@@ -38,7 +38,7 @@ typedef struct timer_t timer_t;
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void timer_init(void);
+void timer_pool_init(void);
 timer_t *timer_create(game_obj_t * owner,uint32_t interval_ms, timer_mode_t mode,
                       timer_callback_t callback, void *usr_data);
 void timer_update();
