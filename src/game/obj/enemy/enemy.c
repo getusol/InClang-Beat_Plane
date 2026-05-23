@@ -221,7 +221,7 @@ static void enemy_update(game_obj_t * g)
 }
 
 /**
- * @brief 敌人隐藏
+ * @brief 敌人隐藏+销毁
  * @param g 敌人对象
  */
 static void enemy_hide(game_obj_t * g)
@@ -229,6 +229,8 @@ static void enemy_hide(game_obj_t * g)
   g->active = false;
   lv_obj_add_flag(g->obj,LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(((enemy_t *)g)->health_bar,LV_OBJ_FLAG_HIDDEN);
+
+  g->timered = false;
 
   enemy_t * e = (enemy_t *)g;
   if (e->pool_index != POOL_INVALID_ID)

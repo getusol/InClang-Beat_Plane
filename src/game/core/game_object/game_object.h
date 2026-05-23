@@ -57,6 +57,7 @@ typedef struct game_obj {
     bool active;     //is the object active in the game
     game_obj_type_t type;
     behave_t behave; // AI
+    bool timered;   // 是否有定时器 用在behave中初始化一次
     // general methods for game objects, like update, can be added here
     void (*update)(struct game_obj *self);
     void (*show)(struct game_obj *self);
