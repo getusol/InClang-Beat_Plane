@@ -164,50 +164,67 @@ static bool rec_overlap(game_obj_t * obj1, game_obj_t * obj2)
 /**
  * @brief 全局碰撞检测 遍历已注册的对象 对活动对象进行碰撞检测 并派发相应的事件
  */
+/**
+ * @brief 全局碰撞检测 遍历已注册的对象 对活动对象进行碰撞检测 并派发相应的事件
+ */
 static void check_collisions(void)
 {
-  if (fsm_get_state() != GS_PLAY) return ;
-  for (int i = 0; i < free_idx; i++) {
-    game_obj_t *a = game_objs[i];
-    if (!a->active) continue;
+    if (fsm_get_state() != GS_PLAY) return;
+    
+    for (int i = 0; i < free_idx; i++) {
+        game_obj_t *a = game_objs[i];
+        if (!a->active) continue;
 
-    for (int j = i + 1; j < free_idx; j++) {
-        game_obj_t *b = game_objs[j];
-        if (!b->active) continue;
+        for (int j = i + 1; j < free_idx; j++) {
+            game_obj_t *b = game_objs[j];
+            if (!b->active) continue;
 
-        // 只检测以下类型组合：
-        // 1. 玩家  vs 敌人
-        // 2. 子弹  vs 敌人
-        bool need_check = 
-            (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY) ||
-            (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) ||
-            (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) ||
-            (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET);
+            // 只检测以下类型组合
+            bool need_check = 
+                (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY) ||
+                (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) ||
+                (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) ||
+                (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) ||
+                (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN)  ||
+                (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER);
 
-        if (!need_check) continue;
+            if (!need_check) continue;
 
-        if (rec_overlap(a, b)) {
-            // 根据组合派发事件
-            // 子弹 vs 敌人
-            if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) {
-                if(bullet_get_source(a) == player_get_base()) {
-                  event_dispatch(EVENT_BULLET_HIT_ENEMY, a, b);
+            // 💡 确保所有的事件派发都在 rec_overlap 成立的大括号内部！
+            if (rec_overlap(a, b)) {
+                
+                // 1. 子弹 vs 敌人
+                if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) {
+                    if (bullet_get_source(a) == player_get_base()) {
+                        event_dispatch(EVENT_BULLET_HIT_ENEMY, a, b);
+                    }
+                } 
+                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) {
+                    if (bullet_get_source(b) == player_get_base()) {
+                        event_dispatch(EVENT_BULLET_HIT_ENEMY, b, a);
+                    }
                 }
-            } else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) {
-              if(bullet_get_source(b) == player_get_base()) {
-                  event_dispatch(EVENT_BULLET_HIT_ENEMY, b, a);
+                // 2. 玩家 vs 敌人
+                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY) {
+                    event_dispatch(EVENT_PLAYER_HIT_ENEMY, a, b);
+                } 
+                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) {
+                    event_dispatch(EVENT_PLAYER_HIT_ENEMY, b, a);
                 }
-            // 玩家 vs 敌人
-            } else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY) {
-                event_dispatch(EVENT_PLAYER_HIT_ENEMY, a, b);
-            } else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) {
-                event_dispatch(EVENT_PLAYER_HIT_ENEMY, b, a);
-            }
-            CONSOLE("[INFO] Collision detected between %d and %d", a->type, b->type);
-        }
-    }
-  }
-}
+                // 3. 玩家 vs 金币（现在正确嵌套在 if (rec_overlap) 内部了）
+                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN) {
+                    event_dispatch(EVENT_PLAYER_HIT_COIN, a, b);
+                } 
+                else if (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER) {
+                    event_dispatch(EVENT_PLAYER_HIT_COIN, b, a);
+                }
+
+                CONSOLE("[INFO] Collision detected between %d and %d", a->type, b->type);
+            } // 用这个右括号正确闭合 if (rec_overlap(a, b))
+        } // 闭合 for j
+    } // 闭合 for i
+} // 闭合 check_collisions 函数
+
 
 /**
  * @brief 操作函数 初始化每个对象的碰撞箱
