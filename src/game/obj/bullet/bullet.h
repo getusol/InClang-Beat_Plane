@@ -42,6 +42,5 @@ game_obj_t * bullet_create(game_obj_t *source,
                          behave_t behave);
 int16_t bullet_get_damage(game_obj_t * bullet);
 game_obj_t * bullet_get_source(game_obj_t * g);
-void bullet_set_timer(game_obj_t * g,uint32_t delay_ms,void (*on_timer)(game_obj_t * obj));
 
 #endif // #ifndef __BULLET_H__

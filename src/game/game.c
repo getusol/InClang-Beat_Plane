@@ -22,7 +22,9 @@
 #include "level.h"
 #include "perf_monitor.h"
 #include "game_object.h"
+#include "timer.h"
 #include "coin.h"
+
 /**********************
  *      MACROS
  **********************/
@@ -64,6 +66,8 @@ void game_init()
 {
     lv_obj_t * play_display = ui_play_get_display();
 
+    timer_init();
+
     level_init();
 
     // 程序启动时 初始化游戏对象
@@ -102,14 +106,16 @@ int game_register_obj(game_obj_t * obj)
 /**
  * @brief 游戏更新函数，负责更新游戏状态
  */
-void game_update(void * v)
+void game_update()
 {
-  if (fsm_get_state() != GS_PLAY) return ;
   uint32_t t_start = lv_tick_get();
 
+  timer_update();
+
   for (int i = 0;i < free_idx;i++) {
+    if (!game_obj_is_active(game_objs[i])) continue;
+    if (game_objs[i]->update) game_objs[i]->update(game_objs[i]);
     if (game_objs[i]->behave.f) game_objs[i]->behave.f(game_objs[i],game_objs[i]->behave.usr_data);
-    if (game_objs[i]->update)game_objs[i]->update(game_objs[i]);
     #if SHOW_HITBOX
     game_obj_hitbox_update(game_objs[i]);
     #endif
@@ -190,7 +196,7 @@ static void check_collisions(void)
 
             if (!need_check) continue;
 
-            // 💡 确保所有的事件派发都在 rec_overlap 成立的大括号内部！
+            //  确保所有的事件派发都在 rec_overlap 成立的大括号内部！
             if (rec_overlap(a, b)) {
                 
                 // 1. 子弹 vs 敌人
@@ -236,3 +242,4 @@ static void init_hitbox(game_obj_t * obj,void * usr_data)
   game_obj_hitbox_init(obj);
   #endif
 }
+

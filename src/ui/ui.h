@@ -35,6 +35,6 @@
  **********************/
 
 void ui_init();
-void ui_run(void * v);
+void ui_run();
 
 #endif // #ifndef __UI_H__

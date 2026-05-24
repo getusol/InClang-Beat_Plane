@@ -45,12 +45,6 @@ typedef struct bullet_t
     game_obj_t base;    // 基对象
     int16_t damage;     // 子弹伤害
     game_obj_t *source; // 子弹发射源
-
-    // 子弹定时器 间隔一段时间触发一次即停止
-    non_blocking_timer_t timer;
-    bool timer_activate;
-    void (*on_timer)(game_obj_t * bullet);
-
     uint16_t pool_index; // 对象池索引
 } bullet_t;
 
@@ -117,12 +111,6 @@ void bullet_init(lv_obj_t * parent)
         bullets[i].base.show = bullet_show;
         bullets[i].base.hide = bullet_hide;
         bullets[i].source = NULL;
-        bullets[i].timer_activate = false;
-        bullets[i].on_timer = NULL;
-        bullets[i].timer.delay_ms = 0;
-        bullets[i].timer.func = NULL; //使用on_timer
-        bullets[i].timer.tick_get = play_tick_get;
-        bullets[i].timer.last_tick = 0;
         bullets[i].base.behave = NULL_BEHAVE;
 
         bullets[i].base.obj = img_create_from_dsc(parent,img_path(BULLET_IMG_NAME,bullet_img_path,64),bullets[i].base.w,bullets[i].base.h,bullet_img_buf,&bullet_img_struct,false);
@@ -191,23 +179,6 @@ int16_t bullet_get_damage(game_obj_t * bullet)
 }
 
 /**
- * @brief 设置子弹计时器
- * @param g 子弹对象指针
- * @param delay_ms 计时器延时毫秒数
- * @param on_timer 计时器回调
- */
-void bullet_set_timer(game_obj_t * g,uint32_t delay_ms,void (*on_timer)(game_obj_t * obj))
-{
-    bullet_t * b = (bullet_t *)g;
-    b->on_timer = on_timer;
-    b->timer_activate = true;
-    b->timer.delay_ms = delay_ms;
-    b->timer.last_tick = play_tick_get();
-    b->timer.func = NULL;
-    CONSOLE("[INFO] Bullet %d 's timer set to %d ms",b->pool_index,delay_ms);
-}
-
-/**
  * @brief
  */
 game_obj_t * bullet_get_source(game_obj_t * g)
@@ -237,14 +208,6 @@ static void bullet_update(game_obj_t * g)
         return ;
     }
     bullet_t * b = (bullet_t *)g;
-    uint32_t now = play_tick_get();
-    if (b->timer_activate) {
-        if (now - b->timer.last_tick > b->timer.delay_ms) {
-            b->timer.last_tick = now;
-            b->on_timer(g);
-            b->timer_activate = false;
-        }
-    }
     bullet_move(g);
 }
 
@@ -255,6 +218,7 @@ static void bullet_hide(game_obj_t * g)
 {
     g->active = false;
     lv_obj_add_flag(g->obj,LV_OBJ_FLAG_HIDDEN);
+    g->timered = false;
     //归还内存
     bullet_t * b = (bullet_t *)g;
     if (b->pool_index == POOL_INVALID_ID)
