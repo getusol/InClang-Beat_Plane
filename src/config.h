@@ -29,6 +29,23 @@
 #define SCREEN_HEIGHT 600 // 屏幕高度
 
 /*-------------
+ * UART COMM
+ *-----------*/
+
+#define DEFAULT_BAUD_RATE 115200
+#define DEFAULT_COM_PORT "COM3"
+
+#if 1                     // 是否开启高级通信功能
+    #define DO_MCU_SEND_CONSOLE 1  // 启用MCU控制台向电脑输出传输
+    #define DO_MCU_SEND_INPUT   1  // 启用MCU按键摇杆状态向电脑输出传输
+    #define DO_PC_PRINT_CONSOLE 1  // 启用PC控制台打印
+#else
+    #define DO_MCU_SEND_CONSOLE 0  // 关闭MCU控制台向电脑输出传输
+    #define DO_MCU_SEND_INPUT   0  // 关闭MCU按键摇杆状态向电脑输出传输
+    #define DO_PC_PRINT_CONSOLE 0  // 关闭PC控制台打印
+#endif
+
+/*-------------
  * JOYSTICK
  *-----------*/
 

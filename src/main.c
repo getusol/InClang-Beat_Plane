@@ -1,6 +1,5 @@
 #include "lvgl.h"
 #include "lv_port.h"
-#include "uart.h"
 #include "tools.h"
 #include "ui.h"
 #include "fsm.h"
@@ -12,6 +11,7 @@
 #include "game.h"
 #include "event.h"
 #include "perf_monitor.h"
+#include "comm.h"
 #include <stdio.h>
 
 int main(int argc, char **argv)
@@ -19,7 +19,7 @@ int main(int argc, char **argv)
     //Inits
     tools_init();
     lv_port_init();
-    uart_init("COM3",115200);
+    comm_init();
     input_init();
     fsm_init();
     event_init();
@@ -44,6 +44,12 @@ int main(int argc, char **argv)
         .delay_ms = SCAN_RATE_MS,
         .last_tick = 0,
     };
+    non_blocking_timer_t comm_timer = {
+        .func = comm_update,
+        .tick_get = lv_tick_get,
+        .delay_ms = 2,
+        .last_tick = 0,
+    };
 
     CONSOLE("[INFO] Initialization done!");
     LOG("[INFO] Initialization done!");
@@ -52,6 +58,7 @@ int main(int argc, char **argv)
         non_blocking_delay(&input_timer);
         non_blocking_delay(&logic_timer);
         non_blocking_delay(&ui_timer);
+        non_blocking_delay(&comm_timer);
         
         uint32_t t_start = lv_tick_get();
         lv_timer_handler();

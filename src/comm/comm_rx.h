@@ -1,0 +1,61 @@
+/**
+ * @file comm_rx.h
+ */
+
+#ifndef __COMM_RX_H__
+#define __COMM_RX_H__
+
+/*********************
+ *      INCLUDES
+ *********************/
+#include <stdint.h>
+#include <stdbool.h>
+
+/**********************
+ *      MACROS
+ **********************/
+
+/**********************
+ *      TYPEDEFS
+ **********************/
+
+/**********************
+ *  STATIC PROTOTYPES
+ **********************/
+
+/***********************
+ *   GLOBAL PROTOTYPES
+ ***********************/
+
+/**********************
+ *  STATIC VARIABLES
+ **********************/
+
+/**********************
+ *   GLOBAL FUNCTIONS
+ **********************/
+
+void comm_rx_init(void);
+void comm_rx_update(void);
+
+// getters get received and stored data
+
+#ifdef SIMULATOR // PC
+bool comm_has_new_key_data(void);
+uint8_t comm_get_key_mask(void);
+bool comm_has_new_joystick_data(void);
+int16_t comm_get_joystick_x(void);
+int16_t comm_get_joystick_y(void);
+bool comm_has_new_log(void);
+uint16_t comm_get_log(char *buffer, uint16_t buf_size);
+bool comm_has_new_heartbeat_ack_data(void);
+
+#else // MCU
+bool comm_has_new_heartbeat_data(void);
+#endif
+
+/**********************
+ *   STATIC FUNCTIONS
+ **********************/
+
+#endif // #ifndef __COMM_RX_H__

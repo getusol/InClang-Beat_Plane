@@ -147,6 +147,23 @@ bool uart_init(const char * port_name,uint32_t baud_rate)
 }
 
 /**
+ * @brief 断开串口通信 主要PC
+ */
+void uart_deinit(void)
+{
+#ifdef SIMULATOR
+    if (hSerial != INVALID_HANDLE_VALUE) {
+        CloseHandle(hSerial);
+        hSerial = INVALID_HANDLE_VALUE;
+        uart_initialized = false;
+    }
+#else
+    (void) 0;
+#endif
+    CONSOLE("[INFO] Serial port closed.");
+}
+
+/**
  * @brief 发送单个字节
  * @param byte 发送的数据
  * @note mainly for mcu, not for pc
@@ -157,13 +174,13 @@ void uart_send_byte(uint8_t byte)
     if (uart_initialized) {
         DWORD bytesWritten;
         WriteFile(hSerial, &byte, 1, &bytesWritten, NULL);
-        CONSOLE("[DEBUG] Data sended on pc!");
+        //CONSOLE("[DEBUG] Data sended on pc!");
     }
     #else
     if (uart_initialized) {
         while(usart_flag_get(USART0,USART_FLAG_TC) == RESET);
         usart_data_transmit(USART0,byte);
-        CONSOLE("[DEBUG] Data sended on mcu!");
+        //CONSOLE("[DEBUG] Data sended on mcu!");
     }
     #endif
 }
@@ -203,7 +220,7 @@ bool uart_receive_available(void)
 {
     #ifdef SIMULATOR
     if (!uart_initialized) {
-        CONSOLE("[DEBUG] Serial not initialized.");
+        //CONSOLE("[DEBUG] Serial not initialized.");
         return false;
     }
 
@@ -218,7 +235,7 @@ bool uart_receive_available(void)
     if (ClearCommError(hSerial,&dwErrors,&comstat)) {
         bool result = comstat.cbInQue > 0;
         if (result) {
-            CONSOLE("[DEBUG] %lu bytes in queue.", comstat.cbInQue);
+            //CONSOLE("[DEBUG] %lu bytes in queue.", comstat.cbInQue);
         }
         return result;
     }
