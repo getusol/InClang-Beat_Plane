@@ -13,6 +13,7 @@
 #include "ui_menu.h"
 #include "ui_play.h"
 #include "ui_sys_halt.h"
+#include "ui_comm.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +56,7 @@ static game_state_t last_game_state = GS_MAX;
     ui_menu_init();
     ui_play_init();
     ui_sys_halt_init();
+    ui_comm_init();
     //按键注册
     input_sw_register_press_callback(KEY_EVENT_B, ui_esc_pressed_handler);
     console_out("[ui] Ui initialization finished\n");

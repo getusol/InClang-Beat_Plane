@@ -14,6 +14,9 @@
 #include "comm.h"
 #include <stdio.h>
 
+#include "comm_rx.h"
+#include "comm_tx.h"
+
 int main(int argc, char **argv)
 {
     //Inits
@@ -67,6 +70,7 @@ int main(int argc, char **argv)
 
         perf_monitor_update();  //更新信息显示
         delay_ms(1);
+
     }
     return 0;
 }

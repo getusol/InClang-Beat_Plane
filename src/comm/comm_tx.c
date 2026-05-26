@@ -109,6 +109,7 @@ void comm_mcu_send_log(const char *log_txt)
     if (len > 255) len = 255; // 最大长度 255
 
     uart_send_byte(COMM_FLAG);
+    CONSOLE("[DEBUG] Send log to MCU: %s",log_txt);
     send_escaped_byte(COMM_FRAME_LOG);
     send_escaped_byte((len >> 8) & 0xFF); //长度高字节
     send_escaped_byte(len & 0xFF); //长度低字节
@@ -144,7 +145,7 @@ void comm_pc_send_heart_beat()
     // 发送帧尾
     uart_send_byte(COMM_FLAG);
 
-    CONSOLE("[DEBUG] HeartBeat sent to MCU");
+    //CONSOLE("[DEBUG] HeartBeat sent to MCU");
 #else
     return ;
 #endif
@@ -188,7 +189,7 @@ void comm_mcu_send_heart_beat_ack()
  * @param len 数据长度
  * @return 校验和
  * @note 校验和计算公式：
- *       校验和 = sum(0, len-1, data[i])
+ *       校验和 = XOR(0, len-1, data[i])
  */
 static uint8_t calculate_checksum(const uint8_t *data,uint16_t len)
 {

@@ -22,7 +22,7 @@
  **********************/
 
 #define CONNECTION_TIMEOUT_MS 3000
-#define HEART_BEAT_INTERVAL_MS 2000 // 不能大于 CONNECTION_TIMEOUT_MS
+#define HEART_BEAT_INTERVAL_MS 1000 // 不能大于 CONNECTION_TIMEOUT_MS
 
 /**********************
  *      TYPEDEFS
@@ -67,7 +67,7 @@ void comm_init()
     comm_status = COMM_STATUS_DISCONNECTED;
     last_receive_time = 0;
     strncpy(current_port,DEFAULT_COM_PORT,sizeof(current_port) - 1);
-
+    uart_mcu_init(DEFAULT_BAUD_RATE);
     comm_rx_init();
 }
 
@@ -83,14 +83,9 @@ void comm_update()
     update_connection_status();
 
     // 更新心跳定时器
-    non_blocking_delay(&heart_beat_timer);
-#ifdef SIMULATOR
-
-#else
-    if (comm_has_new_heartbeat_data()) {
-        comm_mcu_send_heart_beat_ack();
+    if (comm_status == COMM_STATUS_CONNECTED || comm_status == COMM_STATUS_CONNECTING) {
+        non_blocking_delay(&heart_beat_timer);
     }
-#endif
 
     // 处理数据 now mainly logs
 #ifdef SIMULATOR
@@ -102,6 +97,11 @@ void comm_update()
     }
 #endif
 #else
+
+    if (comm_has_new_heartbeat_data()) {
+        CONSOLE("[DEBUG] Received heartbeat data");
+        comm_mcu_send_heart_beat_ack();
+    }
 
 #endif
 
@@ -170,19 +170,16 @@ static void update_connection_status(void)
 {
     uint32_t current_time = lv_tick_get();
     
-    if (comm_status == COMM_STATUS_CONNECTING) {
-        // 检查是否收到数据
-        if (check_if_new_data()) {
-            comm_status = COMM_STATUS_CONNECTED;
-            last_receive_time = current_time;
-            //CONSOLE("[INFO] MCU connected!\n");
-        }
-        return;
+    if (check_if_new_data()) {
+        comm_status = COMM_STATUS_CONNECTED;
+        last_receive_time = current_time;
+        //CONSOLE("[INFO] MCU connected!\n");
     }
-    
-    if (comm_status == COMM_STATUS_CONNECTED) {
+
+    if (comm_status == COMM_STATUS_CONNECTED || comm_status == COMM_STATUS_CONNECTING) {
         if (current_time - last_receive_time > CONNECTION_TIMEOUT_MS) {
-            CONSOLE("[WARNING] Connection timeout!\n");
+            CONSOLE("[WARNING] Connection timeout!");
+            last_receive_time = current_time;
             comm_disconnect();
         }
     }

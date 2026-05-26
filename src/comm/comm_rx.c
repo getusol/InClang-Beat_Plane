@@ -109,18 +109,28 @@ void comm_rx_update(void)
 {
     // 持续读取串口数据并解析
     while (uart_receive_available()) {
+
         uint8_t byte = read_escaped_byte();
+        CONSOLE("[DEBUG] Read byte:0x%02X (%d), parser_state:%d.", byte, byte, parser_state);
+        
+        if (byte == 0xFF) {
+            CONSOLE("[WARNING] Escape sequence error,resetting parser.");
+            parser_state = PARSER_WAITING_FLAG;
+            continue;
+        }
         
         switch (parser_state) {
             case PARSER_WAITING_FLAG:
                 if (byte == COMM_FLAG) {
                     parser_state = PARSER_WAITING_TYPE;
+                    CONSOLE("[DEBUG] FLAG read.");
                 }
                 break;
                 
             case PARSER_WAITING_TYPE:
                 frame_type = byte;
                 parser_state = PARSER_WAITING_LEN_HI;
+                CONSOLE("[DEBUG] Type read:%d.",frame_type);
                 break;
                 
             case PARSER_WAITING_LEN_HI:
@@ -131,6 +141,7 @@ void comm_rx_update(void)
             case PARSER_WAITING_LEN_LO:
                 frame_length |= byte;
                 current_data_index = 0;
+                CONSOLE("[DEBUG] Length read:%d.",frame_length);
                 
                 if (frame_length == 0) {
                     // 无数据帧，直接跳到校验和
@@ -149,6 +160,7 @@ void comm_rx_update(void)
                     
                     if (current_data_index >= frame_length) {
                         parser_state = PARSER_WAITING_CHECKSUM;
+                        CONSOLE("[DEBUG] Data read: %s.",frame_data);
                     }
                 }
                 break;
@@ -295,7 +307,7 @@ bool comm_has_new_heartbeat_data(void)
  * @param len 数据长度
  * @return 校验和
  * @note 校验和计算公式：
- *       校验和 = sum(0, len-1, data[i])
+ *       校验和 = XOR(0, len-1, data[i])
  */
 static uint8_t calculate_checksum(const uint8_t *data,uint16_t len)
 {
