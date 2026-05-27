@@ -52,6 +52,7 @@ static void init_hitbox(game_obj_t * obj,void * usr_data);
  *  STATIC VARIABLES
  **********************/
 
+ 
 static game_obj_t * game_objs[MAX_GAME_OBJ_COUNT];
 static uint8_t free_idx = 0;
 
@@ -192,7 +193,9 @@ static void check_collisions(void)
                 (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) ||
                 (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) ||
                 (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN)  ||
-                (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER);
+                (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER)  ||
+                (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET) ||
+                (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER);
 
             if (!need_check) continue;
 
@@ -224,6 +227,17 @@ static void check_collisions(void)
                 else if (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER) {
                     event_dispatch(EVENT_PLAYER_HIT_COIN, b, a);
                 }
+                // 4.子弹 vs 玩家
+                 else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET) {
+                     if (bullet_get_source(b) != a) {
+                    event_dispatch(EVENT_BULLET_HIT_PLAYER, b, a);
+                    }
+                } else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER) {
+                    if (bullet_get_source(a) != b) {
+                     event_dispatch(EVENT_BULLET_HIT_PLAYER, a, b);
+                    }
+                }
+                
 
                 CONSOLE("[INFO] Collision detected between %d and %d", a->type, b->type);
             } // 用这个右括号正确闭合 if (rec_overlap(a, b))

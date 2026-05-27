@@ -107,7 +107,7 @@ void cg_play(lv_obj_t * parent)
     lv_obj_t * label2 = lv_label_create(cg_layer);
     lv_obj_set_width(label2, 850); 
     lv_label_set_long_mode(label2, LV_LABEL_LONG_WRAP); 
-    lv_label_set_text_static(label2, "Though the path be broken and uncertain, claim your place as the King of PlaneWar, and rebuild what we have lost.");
+    lv_label_set_text_static(label2, "Though the path be broken and uncertain,\n" "claim your place as the King of PlaneWar, and rebuild what we have lost.");
     lv_obj_set_style_text_color(label2, lv_color_white(), 0);
     lv_obj_set_style_text_align(label2, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(label2, LV_ALIGN_BOTTOM_MID, 0, -60);
@@ -197,8 +197,8 @@ void cg_play(lv_obj_t * parent)
     lv_obj_invalidate(img2);
     lv_obj_invalidate(cg_layer);
 
-    // 【核心修复 2】在代码最末尾，统一规范初始化，彻底杜绝初始穿透漏光
+    
     lv_obj_set_style_opa(img1, LV_OPA_TRANSP, 0);
     lv_obj_set_style_opa(img2, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_opa(label2, LV_OPA_TRANSP, 0); // 加上这一句，确保 label2 第0秒绝不偷跑出来！
+    lv_obj_set_style_opa(label2, LV_OPA_TRANSP, 0); 
 }
