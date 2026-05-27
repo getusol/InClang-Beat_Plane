@@ -3,7 +3,7 @@
  */
 
 /*********************
- *      INCLUDES
+ * INCLUDES
  *********************/
 #include "ui_play.h"
 
@@ -20,17 +20,18 @@
 #include "perf_monitor.h"
 
 /**********************
- *      MACROS
+ * MACROS
  **********************/
 
 #define HUD_IMG_NAME "play_hud.bin"
+#define COIN_IMG_NAME "coin.bin"
 
 /**********************
- *      TYPEDEFS
+ * TYPEDEFS
  **********************/
 
  /**********************
-  *  STATIC PROTOTYPES
+  * STATIC PROTOTYPES
   **********************/
 
 static void pause_exit_btn_event_cb(lv_event_t * e);
@@ -43,13 +44,13 @@ static void y_anim_cb(void * obj, int32_t y);
 static void level_anim_finish(lv_anim_t * anim);
 
 static void ui_play_event_game_start_cb(game_obj_t * a,game_obj_t * b);
-
+static void coin_update_timer_cb(lv_timer_t * timer);
 /***********************
- *   GLOBAL PROTOTYPES
+ * GLOBAL PROTOTYPES
  ***********************/
 
 /**********************
- *  STATIC VARIABLES
+ * STATIC VARIABLES
  **********************/
 
 static lv_group_t * pause_group;
@@ -59,13 +60,18 @@ static lv_obj_t * dp_play;
 
 static lv_obj_t * pause_popup;
 static lv_obj_t * over_popup;
+extern int coin_num=0; 
+static lv_obj_t * coin_label;
+
+
 
 #ifdef SIMULATOR
 static lv_img_dsc_t hud_img_dsc;
+static lv_img_dsc_t coin_img_dsc;
 #endif
 
  /**********************
- *   GLOBAL FUNCTIONS
+ * GLOBAL FUNCTIONS
  **********************/
 
 /**
@@ -91,6 +97,16 @@ void ui_play_init()
     lv_obj_t * hud_img = lv_img_create(dp_play);
     lv_img_set_src(hud_img,img_path(HUD_IMG_NAME,img_path_buf,64));
     lv_obj_set_align(hud_img,LV_ALIGN_TOP_LEFT);
+    #endif
+
+    //coin_img initialize
+    #ifdef SIMULATOR
+    lv_obj_t * coin_img = img_create_from_dsc(dp_play,img_path(COIN_IMG_NAME,img_path_buf,64),166,46,NULL,&coin_img_dsc,true);
+    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_LEFT);
+    #else
+    lv_obj_t * coin_img = lv_img_create(dp_play);
+    lv_img_set_src(coin_img,img_path(COIN_IMG_NAME,img_path_buf,64));
+    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_RIGHT);
     #endif
 
     //Popups initialization
@@ -152,14 +168,19 @@ void ui_play_init()
     lv_obj_set_align(over_exit_btn_label,LV_ALIGN_CENTER);
     lv_label_set_text(over_exit_btn_label,"Back to menu");
     lv_obj_set_style_text_font(over_exit_btn_label,&lv_font_montserrat_22,LV_STATE_DEFAULT);
-
+    //label for coin
+    coin_label = lv_label_create(coin_img);
+    lv_obj_set_pos(coin_label,120,23);
+    lv_label_set_text_fmt(coin_label, "%d", coin_num);
+    lv_obj_set_style_text_font(coin_label,&lv_font_montserrat_16,LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(coin_label,lv_color_white(),LV_STATE_DEFAULT);
 
     // 性能检测UI初始化
     perf_monitor_init(dp_play);
 
     // 事件注册
     event_register(EVENT_GAME_START,ui_play_event_game_start_cb);
-
+    lv_timer_create(coin_update_timer_cb, 50, NULL);
 }
 
 /**
@@ -230,8 +251,24 @@ void ui_play_level_enter_anim(const char * level_name)
 }
 
  /**********************
- *   STATIC FUNCTIONS
+ * STATIC FUNCTIONS
  **********************/
+/**
+ * @brief 定时器回调：用于实时刷新金币显示
+ */
+static void coin_update_timer_cb(lv_timer_t * timer)
+{
+    static int last_coin_num = -1; // 记录上一次的金币数量
+    
+    if (last_coin_num != coin_num) {
+        if (coin_label != NULL) {
+            // 使用 lv_label_set_text_fmt 动态格式化文本
+            lv_label_set_text_fmt(coin_label, "%d", coin_num);
+        }
+        last_coin_num = coin_num;
+    }
+}
+
 /**
  * @brief 按下回退到菜单
  */
@@ -311,3 +348,4 @@ static void ui_play_event_game_start_cb(game_obj_t * a,game_obj_t * b)
     CONSOLE("[INFO] Level 1 Animation Start.");
     ui_play_level_enter_anim("Level 1");
 }
+

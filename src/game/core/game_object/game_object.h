@@ -37,7 +37,8 @@ typedef enum {
     GAME_OBJ_TYPE_PLAYER = 0,
     GAME_OBJ_TYPE_BULLET,
     GAME_OBJ_TYPE_ENEMY,
-    GAME_OBJ_TYPE_COUNT
+    GAME_OBJ_TYPE_COUNT,
+    GAME_OBJ_TYPE_COIN
 } game_obj_type_t;
 
 /**
