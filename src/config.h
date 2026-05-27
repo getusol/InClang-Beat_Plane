@@ -33,7 +33,7 @@
  *-----------*/
 
 #define DEFAULT_BAUD_RATE 115200
-#define DEFAULT_COM_PORT "COM3"
+#define DEFAULT_COM_PORT "COM11"
 
 #if 1                     // 是否开启高级通信功能
     #define DO_MCU_SEND_CONSOLE 1  // 启用MCU控制台向电脑输出传输

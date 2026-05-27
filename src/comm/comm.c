@@ -21,8 +21,8 @@
  *      MACROS
  **********************/
 
-#define CONNECTION_TIMEOUT_MS 3000
-#define HEART_BEAT_INTERVAL_MS 1000 // 不能大于 CONNECTION_TIMEOUT_MS
+#define CONNECTION_TIMEOUT_MS 5000
+#define HEART_BEAT_INTERVAL_MS 2000 // 不能大于 CONNECTION_TIMEOUT_MS
 
 /**********************
  *      TYPEDEFS
@@ -67,7 +67,6 @@ void comm_init()
     comm_status = COMM_STATUS_DISCONNECTED;
     last_receive_time = 0;
     strncpy(current_port,DEFAULT_COM_PORT,sizeof(current_port) - 1);
-    uart_mcu_init(DEFAULT_BAUD_RATE);
     comm_rx_init();
 }
 
@@ -99,7 +98,10 @@ void comm_update()
 #else
 
     if (comm_has_new_heartbeat_data()) {
-        CONSOLE("[DEBUG] Received heartbeat data");
+        if (comm_status != COMM_STATUS_CONNECTED) {
+            CONSOLE("[DEBUG] Received heartbeat data");
+            uart_init(NULL,DEFAULT_BAUD_RATE);
+        }
         comm_mcu_send_heart_beat_ack();
     }
 
@@ -116,7 +118,7 @@ void comm_update()
  * @return false 失败
  * @note 连接成功后再调用会断开连接
  */
-bool comm_connect(const char *port,uint32_t baud_rate)
+bool comm_connect(const char *port)
 {
     // 断开连接 重新连接 包括错误 ？
     if (comm_status != COMM_STATUS_DISCONNECTED) {
@@ -132,7 +134,7 @@ bool comm_connect(const char *port,uint32_t baud_rate)
 
     // 开始连接
     comm_status = COMM_STATUS_CONNECTING;
-    if (uart_init(current_port,baud_rate)) {
+    if (uart_init(current_port,DEFAULT_BAUD_RATE)) {
         last_receive_time = lv_tick_get();
         return true;
     }
@@ -179,7 +181,6 @@ static void update_connection_status(void)
     if (comm_status == COMM_STATUS_CONNECTED || comm_status == COMM_STATUS_CONNECTING) {
         if (current_time - last_receive_time > CONNECTION_TIMEOUT_MS) {
             CONSOLE("[WARNING] Connection timeout!");
-            last_receive_time = current_time;
             comm_disconnect();
         }
     }

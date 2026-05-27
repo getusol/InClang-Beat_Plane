@@ -110,7 +110,7 @@ static void on_label_click(lv_event_t * e)
 {
     comm_status_t status = comm_get_status();
     if (status == COMM_STATUS_DISCONNECTED) {
-        comm_connect(NULL,115200);
+        comm_connect(NULL);
     } else {
         comm_disconnect();
     }

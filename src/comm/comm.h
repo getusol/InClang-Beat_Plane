@@ -35,7 +35,7 @@ typedef enum
 
 void comm_init();
 void comm_update();
-bool comm_connect(const char *port, uint32_t baud_rate);
+bool comm_connect(const char *port);
 void comm_disconnect();
 comm_status_t comm_get_status();
 

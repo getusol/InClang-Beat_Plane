@@ -18,7 +18,14 @@
  *  STATIC VARIABLES
  **********************/
 
+// ring_buffer
+
+
+#ifdef SIMULATOR
 static bool uart_initialized = false;
+#else
+static bool uart_initialized = true; // 在MCU上默认初始化成功
+#endif
 
 #ifdef SIMULATOR
 // window 串口句柄
@@ -123,8 +130,9 @@ bool uart_init(const char * port_name,uint32_t baud_rate)
     uart_initialized = true;
     CONSOLE("[INFO] Serial port %s initialized at %lu baud.", port_name, baud_rate);
     #else
-    (void) baud_rate;
-    (void) port_name;
+    uart_initialized = true;
+    usart_receive_config(UART7, USART_RECEIVE_ENABLE);
+    CONSOLE("[INFO] UART initialized.\n");
     #endif      //#ifdef SIMULATOR
     return true;
 }
@@ -141,7 +149,11 @@ void uart_deinit(void)
         uart_initialized = false;
     }
 #else
-    (void) 0;
+    if (uart_initialized) {
+        uart_initialized = false;
+        usart_receive_config(UART7, USART_RECEIVE_DISABLE);
+    }
+    CONSOLE("[INFO] UART deinitialized.\n");
 #endif
     CONSOLE("[INFO] Serial port closed.");
 }
@@ -154,16 +166,22 @@ void uart_deinit(void)
 void uart_send_byte(uint8_t byte)
 {
     #ifdef SIMULATOR
-    if (uart_initialized) {
+    if (uart_initialized && hSerial != INVALID_HANDLE_VALUE) {
         DWORD bytesWritten;
-        WriteFile(hSerial, &byte, 1, &bytesWritten, NULL);
-        //CONSOLE("[DEBUG] Data sended on pc!");
+        BOOL success = WriteFile(hSerial, &byte, 1, &bytesWritten, NULL);
+        if (!success || bytesWritten != 1) {
+            DWORD error = GetLastError();
+            CONSOLE("[WARNING] Failed to send byte 0x%02X, error: %lu", byte, error);
+        }
+        //CONSOLE("[DEBUG] Data sent on PC: 0x%02X", byte);
     }
     #else
     if (uart_initialized) {
-        while(usart_flag_get(USART0,USART_FLAG_TC) == RESET);
-        usart_data_transmit(USART0,byte);
+        while(usart_flag_get(UART7,USART_FLAG_TC) == RESET);
+        usart_data_transmit(UART7,byte);
         //CONSOLE("[DEBUG] Data sended on mcu!");
+    } else {
+        CONSOLE("[WARNING] UART not initialized, cannot send byte.");
     }
     #endif
 }
@@ -187,9 +205,10 @@ uint8_t uart_receive_byte(void)
     return 0;
     #else
     if (uart_initialized) {
-        while(usart_flag_get(USART0,USART_FLAG_RBNE) == RESET);
-        return usart_data_receive(USART0);
+        while(usart_flag_get(UART7,USART_FLAG_RBNE) == RESET);
+        return usart_data_receive(UART7);
     } else {
+        CONSOLE("[WARNING] UART not initialized, cannot receive byte.");
         return 0;
     }
     #endif
@@ -228,38 +247,8 @@ bool uart_receive_available(void)
     return false;
     #else
     if (!uart_initialized) return false;
-    return usart_flag_get(USART0,USART_FLAG_RBNE) != RESET;
+    return usart_flag_get(UART7,USART_FLAG_RBNE) != RESET;
     #endif
-}
-
-/**
- * @brief 单片机硬件串口打开
- */
-void uart_mcu_init(uint32_t baud_rate)
-{
-#ifdef SIMULATOR
-(void) baud_rate;
-return ;
-#else
-    rcu_periph_clock_enable(RCU_GPIOA);
-    rcu_periph_clock_enable(RCU_USART0);
-
-    gpio_af_set(GPIOA, GPIO_AF_7, GPIO_PIN_9);
-    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_9);
-    gpio_output_options_set(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_60MHZ, GPIO_PIN_9);
-
-    gpio_af_set(GPIOA, GPIO_AF_7, GPIO_PIN_10);
-    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_10);
-    gpio_output_options_set(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_60MHZ, GPIO_PIN_10);
-
-    usart_deinit(USART0);
-    usart_baudrate_set(USART0, baud_rate);
-    usart_receive_config(USART0, USART_RECEIVE_ENABLE);
-    usart_transmit_config(USART0, USART_TRANSMIT_ENABLE);
-    usart_enable(USART0);
-    uart_initialized = true;
-    CONSOLE("[INFO] UART initialized.\n");
-#endif
 }
 
 /**

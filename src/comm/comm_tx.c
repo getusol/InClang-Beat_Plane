@@ -129,6 +129,8 @@ void comm_mcu_send_log(const char *log_txt)
 void comm_pc_send_heart_beat()
 {
 #ifdef SIMULATOR
+    CONSOLE("[DEBUG] Sending heartbeat to MCU...");
+    
     // 发送帧头
     uart_send_byte(COMM_FLAG);
     
@@ -145,7 +147,7 @@ void comm_pc_send_heart_beat()
     // 发送帧尾
     uart_send_byte(COMM_FLAG);
 
-    //CONSOLE("[DEBUG] HeartBeat sent to MCU");
+    CONSOLE("[DEBUG] Heartbeat frame sent: 0x7E 0x%02X 0x00 0x00 0x00 0x7E", COMM_FRAME_HEART_BEAT);
 #else
     return ;
 #endif
