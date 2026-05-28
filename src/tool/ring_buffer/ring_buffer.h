@@ -16,18 +16,17 @@
  *      MACROS
  **********************/
 
-#define RBUF_SIZE 256
+#ifdef SIMULATOR
+#define RBUF_SIZE 4096
+#else
+#define RBUF_SIZE 128
+#endif
 
 /**********************
  *      TYPEDEFS
  **********************/
 
-typedef struct
-{
-    uint8_t data[RBUF_SIZE];
-    volatile uint32_t head;
-    volatile uint32_t tail;
-} ring_buffer_t;
+typedef struct ring_buffer_t ring_buffer_t;
 
 /**********************
  *  STATIC PROTOTYPES
@@ -38,6 +37,7 @@ typedef struct
  ***********************/
 
 void ring_buffer_init(ring_buffer_t *rbuf);
+void ring_buffer_destroy(ring_buffer_t *rbuf);
 bool ring_buffer_write(ring_buffer_t *rbuf, uint8_t data);
 bool ring_buffer_read(ring_buffer_t *rbuf, uint8_t *data);
 bool ring_buffer_is_empty(ring_buffer_t *rbuf);

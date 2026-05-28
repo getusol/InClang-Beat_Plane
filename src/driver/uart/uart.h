@@ -20,6 +20,7 @@
  ***********************/
 
 bool uart_init(const char * port_name,uint32_t baud_rate);
+void uart_enable(void);
 void uart_deinit(void);
 void uart_send_byte(uint8_t byte);
 uint8_t uart_receive_byte(void);

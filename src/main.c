@@ -3,6 +3,7 @@
 #include "tools.h"
 #include "ui.h"
 #include "fsm.h"
+#include "uart.h"
 #include "input_sw.h"
 #include "main.h"
 #include "player.h"
@@ -22,6 +23,7 @@ int main(int argc, char **argv)
     //Inits
     tools_init();
     lv_port_init();
+    uart_enable();
     comm_init();
     input_init();
     fsm_init();
