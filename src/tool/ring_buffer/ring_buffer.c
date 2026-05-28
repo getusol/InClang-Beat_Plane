@@ -7,10 +7,12 @@
  *********************/
 
 #include "ring_buffer.h"
+#include <stdlib.h>
+#include "debug.h"
 #ifdef SIMULATOR
 #include "windows.h"
 #else
-
+#include "drivers.h"
 #endif
 
 /**********************
@@ -48,16 +50,22 @@ struct ring_buffer_t
  **********************/
 
 /**
- * @brief 初始化环形缓冲区
- * @param rbuf 环形缓冲区指针
+ * @brief 创建一个新的环形缓冲区实例 使用malloc分配内存，需要调用者负责释放
+ * @return 新创建的环形缓冲区实例指针，失败返回NULL
  */
-void ring_buffer_init(ring_buffer_t *rbuf)
+ring_buffer_t *ring_buffer_create()
 {
-    rbuf->head = 0;
-    rbuf->tail = 0;
+    ring_buffer_t *rbuf = (ring_buffer_t *)malloc(sizeof(ring_buffer_t));
+    if (!rbuf) {
+        CONSOLE("[WARNING] Failed to create ring buffer: Out of memory.");
+        LOG("[WARNING] Failed to create ring buffer: Out of memory.");
+        return NULL;
+    }
+    memset(rbuf, 0, sizeof(ring_buffer_t));
 #ifdef SIMULATOR
     InitializeCriticalSection(&rbuf->lock);
 #endif
+    return rbuf;
 }
 
 /**
@@ -66,8 +74,32 @@ void ring_buffer_init(ring_buffer_t *rbuf)
  */
 void ring_buffer_destroy(ring_buffer_t *rbuf)
 {
+    if (!rbuf) return;
 #ifdef SIMULATOR
     DeleteCriticalSection(&rbuf->lock);
+#endif
+    free(rbuf);
+}
+
+/**
+ * @brief 清空环形缓冲区
+ * @param rbuf 环形缓冲区指针
+ */
+void ring_buffer_clear(ring_buffer_t *rbuf)
+{
+    if (!rbuf) return;
+#ifdef SIMULATOR
+    EnterCriticalSection(&rbuf->lock);
+#else
+    //__disable_irq(); // 禁止中断，确保操作原子性
+#endif
+    // memset(rbuf->data, 0, RBUF_SIZE); // 可选：根据需要是否清零数据区
+    rbuf->head = 0;
+    rbuf->tail = 0;
+#ifdef SIMULATOR
+    LeaveCriticalSection(&rbuf->lock);
+#else
+    //__enable_irq(); // 恢复中断
 #endif
 }
 

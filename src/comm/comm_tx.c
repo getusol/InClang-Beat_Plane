@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "config.h"
+#include "comm_status.h"
 #include "debug.h"
 
 /**********************
@@ -53,14 +54,14 @@ void comm_mcu_send_key_state(uint8_t key_mask)
 {
 #ifndef SIMULATOR
 #if DO_MCU_SEND_INPUT
-    uart_send_byte(COMM_FLAG);
+    uart_send_byte(COMM_SOF);
     send_escaped_byte(COMM_FRAME_KEY_STATE);
     send_escaped_byte(0x00); //长度高字节
     send_escaped_byte(0x01); //长度低字节（1字节）
     send_escaped_byte(key_mask); // 发送掩码
     uint8_t checksum = calculate_checksum(&key_mask, 1);
     send_escaped_byte(checksum);
-    uart_send_byte(COMM_FLAG);
+    uart_send_byte(COMM_EOF);
 #endif
 #endif
 }
@@ -80,7 +81,7 @@ void comm_mcu_send_joystick(int16_t x, int16_t y)
     data[2] = y & 0xFF;           // Y 低字节
     data[3] = (y >> 8) & 0xFF;    // Y 高字节
 
-    uart_send_byte(COMM_FLAG);
+    uart_send_byte(COMM_SOF);
     send_escaped_byte(COMM_FRAME_JOYSTICK);
     send_escaped_byte(0x00); //长度高字节
     send_escaped_byte(0x04); //长度低字节（4字节）
@@ -91,7 +92,7 @@ void comm_mcu_send_joystick(int16_t x, int16_t y)
 
     uint8_t checksum = calculate_checksum(data, 4);
     send_escaped_byte(checksum);
-    uart_send_byte(COMM_FLAG);
+    uart_send_byte(COMM_EOF);
 #endif
 #endif
 }
@@ -99,6 +100,7 @@ void comm_mcu_send_joystick(int16_t x, int16_t y)
 /**
  * @brief 发送日志
  * @param log_txt 日志字符串
+ * @note WARNING:千万不要在里面调用 console_out 或 CONSOLE，否则会死循环，因为它们会调用这个函数来发送日志
  */
 void comm_mcu_send_log(const char *log_txt)
 {
@@ -108,8 +110,7 @@ void comm_mcu_send_log(const char *log_txt)
     uint16_t len = strlen(log_txt);
     if (len > 255) len = 255; // 最大长度 255
 
-    uart_send_byte(COMM_FLAG);
-    CONSOLE("[DEBUG] Send log to MCU: %s",log_txt);
+    uart_send_byte(COMM_SOF);
     send_escaped_byte(COMM_FRAME_LOG);
     send_escaped_byte((len >> 8) & 0xFF); //长度高字节
     send_escaped_byte(len & 0xFF); //长度低字节
@@ -118,7 +119,7 @@ void comm_mcu_send_log(const char *log_txt)
     }
     uint8_t checksum = calculate_checksum((uint8_t *)log_txt, len);
     send_escaped_byte(checksum);
-    uart_send_byte(COMM_FLAG);
+    uart_send_byte(COMM_EOF);
 #endif
 #endif
 }
@@ -129,10 +130,15 @@ void comm_mcu_send_log(const char *log_txt)
 void comm_pc_send_heart_beat()
 {
 #ifdef SIMULATOR
+
+    if (comm_get_status() != COMM_STATUS_CONNECTED && comm_get_status() != COMM_STATUS_CONNECTING) {
+        return ;
+    }
+
     CONSOLE("[DEBUG] Sending heartbeat to MCU...");
     
     // 发送帧头
-    uart_send_byte(COMM_FLAG);
+    uart_send_byte(COMM_SOF);
     
     // 发送帧类型
     send_escaped_byte(COMM_FRAME_HEART_BEAT);
@@ -145,9 +151,9 @@ void comm_pc_send_heart_beat()
     send_escaped_byte(0x00);
     
     // 发送帧尾
-    uart_send_byte(COMM_FLAG);
+    uart_send_byte(COMM_EOF);
 
-    CONSOLE("[DEBUG] Heartbeat frame sent: 0x7E 0x%02X 0x00 0x00 0x00 0x7E", COMM_FRAME_HEART_BEAT);
+    CONSOLE("[DEBUG] Heartbeat frame sent: 0x7B 0x%02X 0x00 0x00 0x00 0x7D", COMM_FRAME_HEART_BEAT);
 #else
     return ;
 #endif
@@ -162,7 +168,7 @@ void comm_mcu_send_heart_beat_ack()
     return ;
 #else
     // 发送帧头
-    uart_send_byte(COMM_FLAG);
+    uart_send_byte(COMM_SOF);
     
     // 发送帧类型
     send_escaped_byte(COMM_FRAME_HEART_BEAT_ACK);
@@ -175,7 +181,7 @@ void comm_mcu_send_heart_beat_ack()
     send_escaped_byte(0x00);
     
     // 发送帧尾
-    uart_send_byte(COMM_FLAG);
+    uart_send_byte(COMM_EOF);
     
     CONSOLE("[DEBUG] Heartbeat ACK sent to PC");
 #endif
@@ -208,7 +214,7 @@ static uint8_t calculate_checksum(const uint8_t *data,uint16_t len)
  */
 static void send_escaped_byte(uint8_t byte)
 {
-    if (byte == COMM_ESC || byte == COMM_FLAG) {
+    if (byte == COMM_ESC || byte == COMM_SOF || byte == COMM_EOF) {
         uart_send_byte(COMM_ESC);
         uart_send_byte(byte ^ COMM_ESC_XOR);
     } else {

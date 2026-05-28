@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "fsm.h"
-#include "comm.h"
+#include "comm_status.h"
 #include "comm_tx.h"
 
 #ifdef SIMULATOR

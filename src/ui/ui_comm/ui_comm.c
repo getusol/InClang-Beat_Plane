@@ -8,6 +8,7 @@
 
 #include "ui_comm.h"
 #include "lvgl.h"
+#include "comm_status.h"
 #include "comm.h"
 #include "debug.h"
 
@@ -108,10 +109,14 @@ static void comm_label_update(lv_timer_t * t)
  */
 static void on_label_click(lv_event_t * e)
 {
+#ifdef SIMULATOR
     comm_status_t status = comm_get_status();
     if (status == COMM_STATUS_DISCONNECTED) {
         comm_connect(NULL);
     } else {
         comm_disconnect();
     }
+#else
+    (void)e; // MCU端点击标签无效
+#endif
 }

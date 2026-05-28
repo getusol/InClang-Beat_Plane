@@ -15,6 +15,7 @@
 #include "uart.h"
 #include <string.h>
 #include "config.h"
+#include "comm_status.h"
 #include "lvgl.h" // for lvgl tick get
 
 /**********************
@@ -33,8 +34,7 @@
  **********************/
 
 static void update_connection_status();
-static bool check_if_new_data();
-static void heart_beat_f();
+static void print_mcu_log(void);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -44,13 +44,12 @@ static void heart_beat_f();
  *  STATIC VARIABLES
  **********************/
 
-static comm_status_t comm_status = COMM_STATUS_DISCONNECTED;
 static char current_port[16] = DEFAULT_COM_PORT;
 static uint32_t last_receive_time = 0;
 
 static non_blocking_timer_t heart_beat_timer = {
     .delay_ms = HEART_BEAT_INTERVAL_MS,
-    .func = heart_beat_f,
+    .func = comm_pc_send_heart_beat,
     .tick_get = lv_tick_get,
     .last_tick = 0,
 };
@@ -64,7 +63,7 @@ static non_blocking_timer_t heart_beat_timer = {
  */
 void comm_init()
 {
-    comm_status = COMM_STATUS_DISCONNECTED;
+    comm_set_status(COMM_STATUS_DISCONNECTED);
     last_receive_time = 0;
     strncpy(current_port,DEFAULT_COM_PORT,sizeof(current_port) - 1);
     comm_rx_init();
@@ -81,31 +80,12 @@ void comm_update()
     // 更新连接状态
     update_connection_status();
 
+    // 处理数据
+    comm_handle_heartbeat();    // 处理心跳数据，可能会更新状态 即连接
+    print_mcu_log();                  // 输出日志数据到控制台
+
     // 更新心跳定时器
-    if (comm_status == COMM_STATUS_CONNECTED || comm_status == COMM_STATUS_CONNECTING) {
-        non_blocking_delay(&heart_beat_timer);
-    }
-
-    // 处理数据 now mainly logs
-#ifdef SIMULATOR
-#if DO_PC_PRINT_CONSOLE
-    if (comm_has_new_log()) {
-        char log_txt[256] = {0};
-        comm_get_log(log_txt,sizeof(log_txt));
-        printf("%s",log_txt); // 完整的log 即包含 (in xx.c line xx)
-    }
-#endif
-#else
-
-    if (comm_has_new_heartbeat_data()) {
-        if (comm_status != COMM_STATUS_CONNECTED) {
-            CONSOLE("[DEBUG] Received heartbeat data");
-            uart_init(NULL,DEFAULT_BAUD_RATE);
-        }
-        comm_mcu_send_heart_beat_ack();
-    }
-
-#endif
+    non_blocking_delay(&heart_beat_timer);
 
     // 发送数据由其它模块负责调用相关函数
 }
@@ -121,7 +101,7 @@ void comm_update()
 bool comm_connect(const char *port)
 {
     // 断开连接 重新连接 包括错误 ？
-    if (comm_status != COMM_STATUS_DISCONNECTED) {
+    if (comm_get_status() != COMM_STATUS_DISCONNECTED) {
         comm_disconnect();
     }
 
@@ -133,13 +113,13 @@ bool comm_connect(const char *port)
     }
 
     // 开始连接
-    comm_status = COMM_STATUS_CONNECTING;
+    comm_set_status(COMM_STATUS_CONNECTING);
     if (uart_init(current_port,DEFAULT_BAUD_RATE)) {
         last_receive_time = lv_tick_get();
         return true;
     }
 
-    comm_status = COMM_STATUS_ERROR;
+    comm_set_status(COMM_STATUS_ERROR);
     return false;
 }
 
@@ -149,16 +129,8 @@ bool comm_connect(const char *port)
 void comm_disconnect()
 {
     uart_deinit();
-    comm_status = COMM_STATUS_DISCONNECTED;
+    comm_set_status(COMM_STATUS_DISCONNECTED);
     last_receive_time = 0;
-}
-
-/**
- * @brief 获取当前comm状态
- */
-comm_status_t comm_get_status()
-{
-    return comm_status;
 }
 
 /**********************
@@ -172,13 +144,11 @@ static void update_connection_status(void)
 {
     uint32_t current_time = lv_tick_get();
     
-    if (check_if_new_data()) {
-        comm_status = COMM_STATUS_CONNECTED;
-        last_receive_time = current_time;
-        //CONSOLE("[INFO] MCU connected!\n");
+    if (comm_has_heartbeat()) {
+            last_receive_time = current_time;
     }
 
-    if (comm_status == COMM_STATUS_CONNECTED || comm_status == COMM_STATUS_CONNECTING) {
+    if (comm_get_status() == COMM_STATUS_CONNECTED || comm_get_status() == COMM_STATUS_CONNECTING) {
         if (current_time - last_receive_time > CONNECTION_TIMEOUT_MS) {
             CONSOLE("[WARNING] Connection timeout!");
             comm_disconnect();
@@ -187,32 +157,18 @@ static void update_connection_status(void)
 }
 
 /**
- * @brief 检查是否有新消息
+ * @brief 从缓冲区读取日志并输出到控制台
  */
-static bool check_if_new_data()
+static void print_mcu_log(void)
 {
 #ifdef SIMULATOR
-    bool res = false;
-    res = res || comm_has_new_key_data();
-    res = res || comm_has_new_joystick_data();
-    res = res || comm_has_new_log();
-    res = res || comm_has_new_heartbeat_ack_data();
-    return res;
-#else
-    bool res = false;
-    res = res || comm_has_new_heartbeat_data();
-    return res;
+#if DO_PC_PRINT_CONSOLE
+    if (comm_has_new_log()) {
+        char log_txt[256] = {0};
+        comm_get_log(log_txt,sizeof(log_txt));
+        printf("[MCU]"); // 添加前缀区分MCU日志
+        printf("%s",log_txt); // 完整的log 即包含 (in xx.c line xx)
+    }
 #endif
-}
-
-/**
- * @brief 心跳函数 负责定时发送心跳帧
- */
-void heart_beat_f()
-{
-#ifdef SIMULATOR
-    comm_pc_send_heart_beat();
-#else
-
 #endif
 }

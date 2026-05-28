@@ -36,8 +36,9 @@ typedef struct ring_buffer_t ring_buffer_t;
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void ring_buffer_init(ring_buffer_t *rbuf);
+ring_buffer_t *ring_buffer_create();
 void ring_buffer_destroy(ring_buffer_t *rbuf);
+void ring_buffer_clear(ring_buffer_t *rbuf);
 bool ring_buffer_write(ring_buffer_t *rbuf, uint8_t data);
 bool ring_buffer_read(ring_buffer_t *rbuf, uint8_t *data);
 bool ring_buffer_is_empty(ring_buffer_t *rbuf);

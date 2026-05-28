@@ -20,7 +20,7 @@
  **********************/
 
 // ring_buffer
-static ring_buffer_t uart_rx_buffer;
+static ring_buffer_t * uart_rx_buffer = NULL;
 
 static bool uart_initialized = false;
 
@@ -55,6 +55,7 @@ static DWORD WINAPI SerialReadThread(LPVOID lpParam);
  */
 bool uart_init(const char * port_name,uint32_t baud_rate)
 {
+    uart_rx_buffer = NULL;
     #ifdef SIMULATOR
     (void) baud_rate;    //Unused
     char full_port_name[64];
@@ -65,7 +66,7 @@ bool uart_init(const char * port_name,uint32_t baud_rate)
                              0,
                              0,
                              OPEN_EXISTING,
-                             FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL,
+                             FILE_ATTRIBUTE_NORMAL,
                              0);
 
     // 如果失败且端口号大于9，则尝试扩展格式
@@ -84,7 +85,7 @@ bool uart_init(const char * port_name,uint32_t baud_rate)
                                          0,
                                          0,
                                          OPEN_EXISTING,
-                                         FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL,
+                                         FILE_ATTRIBUTE_NORMAL,
                                          0);
             }
         }
@@ -111,8 +112,16 @@ bool uart_init(const char * port_name,uint32_t baud_rate)
     dcbSerialParams.ByteSize = 8;
     dcbSerialParams.StopBits = ONESTOPBIT;
     dcbSerialParams.Parity = NOPARITY;
-    dcbSerialParams.fDtrControl = DTR_CONTROL_ENABLE;
-    dcbSerialParams.fRtsControl = RTS_CONTROL_ENABLE;
+    //dcbSerialParams.fDtrControl = DTR_CONTROL_ENABLE;
+    //dcbSerialParams.fRtsControl = RTS_CONTROL_ENABLE;
+
+    dcbSerialParams.fOutxCtsFlow = FALSE;    // 禁用 CTS 输出流控
+    dcbSerialParams.fOutxDsrFlow = FALSE;    // 禁用 DSR 输出流控
+
+    dcbSerialParams.fDtrControl = DTR_CONTROL_DISABLE;   // 或者 DTR_CONTROL_ENABLE，但不影响流控
+    dcbSerialParams.fRtsControl = RTS_CONTROL_DISABLE;   // 禁用 RTS 流控
+    dcbSerialParams.fOutX = FALSE;           // 禁用软件流控 (XON/XOFF)
+    dcbSerialParams.fInX = FALSE;
 
     if(!SetCommState(temp_hSerial, &dcbSerialParams)) {
         CONSOLE("[WARNING] Failed to set serial params.");
@@ -122,11 +131,11 @@ bool uart_init(const char * port_name,uint32_t baud_rate)
     }
 
     COMMTIMEOUTS timeouts = {0};
-    timeouts.ReadIntervalTimeout = 50;
-    timeouts.ReadTotalTimeoutConstant = 50;
-    timeouts.ReadTotalTimeoutMultiplier = 10;
-    timeouts.WriteTotalTimeoutConstant = 50;
-    timeouts.WriteTotalTimeoutMultiplier = 10;
+    timeouts.ReadIntervalTimeout = MAXDWORD;
+    timeouts.ReadTotalTimeoutConstant = 0;
+    timeouts.ReadTotalTimeoutMultiplier = 0;
+    timeouts.WriteTotalTimeoutConstant = 0;
+    timeouts.WriteTotalTimeoutMultiplier = 0;
 
     if(!SetCommTimeouts(temp_hSerial, &timeouts)) {
         CONSOLE("[WARNING] Failed to set serial timeouts.");
@@ -135,7 +144,13 @@ bool uart_init(const char * port_name,uint32_t baud_rate)
         return false;
     }
 
-    ring_buffer_init(&uart_rx_buffer);
+    uart_rx_buffer = ring_buffer_create();
+    if (!uart_rx_buffer) {
+        CONSOLE("[WARNING] Failed to create RX buffer.");
+        LOG("[WARNING] Failed to create RX buffer.");
+        CloseHandle(temp_hSerial);
+        return false;
+    }
 
     readThreadRunning = TRUE;
     hReadThread = CreateThread(NULL, 0, SerialReadThread, NULL, 0, NULL);
@@ -151,10 +166,13 @@ bool uart_init(const char * port_name,uint32_t baud_rate)
     //成功 保存句柄
     hSerial = temp_hSerial;
 
+    PurgeComm(hSerial, PURGE_RXCLEAR | PURGE_TXCLEAR);  // 同时清空读写缓冲区
+
     uart_initialized = true;
     CONSOLE("[INFO] Serial port %s initialized at %lu baud.", port_name, baud_rate);
     #else
-    CONSOLE("[INFO] UART initialized.\n");
+    ring_buffer_clear(uart_rx_buffer); // 清空缓冲区，避免旧数据干扰
+    CONSOLE("[INFO] UART initialized.");
     #endif      //#ifdef SIMULATOR
     return true;
 }
@@ -179,7 +197,12 @@ void uart_enable(void)
     usart_enable(UART7);
     
     // 4. 初始化环形缓冲区
-    ring_buffer_init(&uart_rx_buffer);
+    uart_rx_buffer = ring_buffer_create();
+    if (!uart_rx_buffer) {
+        CONSOLE("[WARNING] Failed to create RX buffer.");
+        LOG("[WARNING] Failed to create RX buffer.");
+        return;
+    }
 #endif
 }
 
@@ -200,10 +223,12 @@ void uart_deinit(void)
         hSerial = INVALID_HANDLE_VALUE;
         uart_initialized = false;
     }
-    ring_buffer_destroy(&uart_rx_buffer);
 #else
-    CONSOLE("[INFO] UART deinitialized.\n");
+    ring_buffer_clear(uart_rx_buffer); // 清空缓冲区，避免旧数据干扰
+    CONSOLE("[INFO] UART deinitialized.");
 #endif
+    ring_buffer_destroy(uart_rx_buffer);
+    uart_rx_buffer = NULL;
     CONSOLE("[INFO] Serial port closed.");
 }
 
@@ -215,12 +240,14 @@ void uart_send_byte(uint8_t byte)
 {
     #ifdef SIMULATOR
     if (uart_initialized && hSerial != INVALID_HANDLE_VALUE) {
+        //CONSOLE("[DEBUG] uart_send_byte: About to send 0x%02X", byte);
         DWORD bytesWritten;
         BOOL success = WriteFile(hSerial, &byte, 1, &bytesWritten, NULL);
         if (!success || bytesWritten != 1) {
             DWORD error = GetLastError();
             CONSOLE("[WARNING] Failed to send byte 0x%02X, error: %lu", byte, error);
         }
+        //CONSOLE("[DEBUG] uart_send_byte: Sent 0x%02X successfully", byte);
         //CONSOLE("[DEBUG] Data sent on PC: 0x%02X", byte);
     }
     #else
@@ -243,26 +270,26 @@ uint8_t uart_receive_byte(void)
 {
     #ifdef SIMULATOR
     uint8_t byte = 0;
-    bool success = ring_buffer_read(&uart_rx_buffer, &byte);
+    bool success = ring_buffer_read(uart_rx_buffer, &byte);
     if (success) return byte;
     //CONSOLE("[WARNING] No data available to read.");
     //LOG("[WARNING] No data available to read.");
-    return 0;
+    return 0xFF; // 或者其他错误指示值
     #else
     uint8_t byte;
     if (uart_initialized) {
-        bool success = ring_buffer_read(&uart_rx_buffer, &byte);
+        bool success = ring_buffer_read(uart_rx_buffer, &byte);
         if (success) {
             return byte;
         } else {
             CONSOLE("[WARNING] No data available to read.");
             LOG("[WARNING] No data available to read.");
-            return 0; // 或者其他错误指示值
+            return 0xFF; // 或者其他错误指示值
         }
     } else {
         CONSOLE("[WARNING] UART not initialized, cannot receive byte.");
         LOG("[WARNING] UART not initialized, cannot receive byte.");
-        return 0; // 或者其他错误指示值
+        return 0xFF; // 或者其他错误指示值
     }
     #endif
 }
@@ -278,10 +305,10 @@ bool uart_receive_available(void)
         //CONSOLE("[DEBUG] Serial not initialized.");
         return false;
     }
-    return !ring_buffer_is_empty(&uart_rx_buffer);
+    return !ring_buffer_is_empty(uart_rx_buffer);
     #else
     if (!uart_initialized) return false;
-    return !ring_buffer_is_empty(&uart_rx_buffer);
+    return !ring_buffer_is_empty(uart_rx_buffer);
     #endif
 }
 
@@ -311,15 +338,12 @@ void UART7_IRQHandler(void) {
     if (usart_flag_get(UART7, USART_FLAG_RBNE) != RESET) {
         // 读取数据（硬件自动清除RBNE标志）
         uint8_t received = usart_data_receive(UART7);
-        ring_buffer_write(&uart_rx_buffer, received);
+        ring_buffer_write(uart_rx_buffer, received);
     }
     
     // 处理溢出错误（ORE）—— 避免发送卡死
-    if (usart_flag_get(UART7, USART_FLAG_ORE) != RESET) {
-        // 先读状态寄存器，再读数据寄存器，以清除ORE
-        volatile uint32_t tmp = USART7->STAT;
-        tmp = USART7->DATA;
-        (void)tmp;  // 避免未使用变量警告
+    if (usart_flag_get(UART7, USART_FLAG_ORERR) != RESET) {
+			uint8_t dummy __attribute__((unused)) = usart_data_receive(UART7);
     }
     
     // 如需更健壮，可类似处理 USART_FLAG_FE, USART_FLAG_NE
@@ -342,7 +366,7 @@ static DWORD WINAPI SerialReadThread(LPVOID lpParam)
         // 阻塞读取，串口超时已在打开时设置
         if (ReadFile(hSerial, buf, sizeof(buf), &bytes_read, NULL)) {
             for (DWORD i = 0; i < bytes_read; i++) {
-                ring_buffer_write(&uart_rx_buffer, buf[i]);
+                ring_buffer_write(uart_rx_buffer, buf[i]);
             }
         } else {
             // 发生错误，稍作延时避免疯狂循环

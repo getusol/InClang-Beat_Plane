@@ -15,8 +15,9 @@
  **********************/
 
 // PPP 协议标准标记
-#define COMM_FLAG 0x7E    // 帧边界标志
-#define COMM_ESC 0x7D     // 转义字符
+#define COMM_SOF 0x7B    // 帧开始标志
+#define COMM_EOF 0x7D      // 帧结束标志
+#define COMM_ESC 0x7E     // 转义字符
 #define COMM_ESC_XOR 0x20 // 转义字符 XOR 值
 
 // 按键位掩码 A B X Y
