@@ -135,7 +135,7 @@ void comm_pc_send_heart_beat()
         return ;
     }
 
-    CONSOLE("[DEBUG] Sending heartbeat to MCU...");
+    //CONSOLE("[DEBUG] Sending heartbeat to MCU...");
     
     // 发送帧头
     uart_send_byte(COMM_SOF);
@@ -153,7 +153,7 @@ void comm_pc_send_heart_beat()
     // 发送帧尾
     uart_send_byte(COMM_EOF);
 
-    CONSOLE("[DEBUG] Heartbeat frame sent: 0x7B 0x%02X 0x00 0x00 0x00 0x7D", COMM_FRAME_HEART_BEAT);
+    //CONSOLE("[DEBUG] Heartbeat frame sent: 0x7B 0x%02X 0x00 0x00 0x00 0x7D", COMM_FRAME_HEART_BEAT);
 #else
     return ;
 #endif
@@ -183,7 +183,7 @@ void comm_mcu_send_heart_beat_ack()
     // 发送帧尾
     uart_send_byte(COMM_EOF);
     
-    CONSOLE("[DEBUG] Heartbeat ACK sent to PC");
+    //CONSOLE("[DEBUG] Heartbeat ACK sent to PC");
 #endif
 }
 

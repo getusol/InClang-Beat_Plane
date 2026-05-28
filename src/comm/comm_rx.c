@@ -128,14 +128,14 @@ void comm_rx_update(void)
             case PARSER_WAITING_SOF:
                 if (byte == COMM_SOF) {
                     parser_state = PARSER_WAITING_TYPE;
-                    CONSOLE("[DEBUG] SOF 0x%02x read.", byte);
+                    //CONSOLE("[DEBUG] SOF 0x%02x read.", byte);
                 }
                 break;
                 
             case PARSER_WAITING_TYPE:
                 frame_type = byte;
                 parser_state = PARSER_WAITING_LEN_HI;
-                CONSOLE("[DEBUG] Type 0x%02x read.",frame_type);
+                //CONSOLE("[DEBUG] Type 0x%02x read.",frame_type);
                 break;
                 
             case PARSER_WAITING_LEN_HI:
@@ -146,7 +146,7 @@ void comm_rx_update(void)
             case PARSER_WAITING_LEN_LO:
                 frame_length |= byte;
                 current_data_index = 0;
-                CONSOLE("[DEBUG] Length read:%d.",frame_length);
+                //CONSOLE("[DEBUG] Length read:%d.",frame_length);
                 
                 if (frame_length == 0) {
                     // 无数据帧，直接跳到校验和
@@ -418,7 +418,7 @@ static bool data_process()
 
         case COMM_FRAME_HEART_BEAT_ACK:
 #ifdef SIMULATOR
-            CONSOLE("[DEBUG] Received heartbeat ACK frame from MCU.");
+            //CONSOLE("[DEBUG] Received heartbeat ACK frame from MCU.");
             new_heartbeat = true;
 #else
             CONSOLE("[WARNING] Heartbeat ACK frame received in non-simulator mode!");

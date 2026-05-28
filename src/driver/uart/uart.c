@@ -223,12 +223,11 @@ void uart_deinit(void)
         hSerial = INVALID_HANDLE_VALUE;
         uart_initialized = false;
     }
-#else
-    ring_buffer_clear(uart_rx_buffer); // 清空缓冲区，避免旧数据干扰
-    CONSOLE("[INFO] UART deinitialized.");
-#endif
     ring_buffer_destroy(uart_rx_buffer);
     uart_rx_buffer = NULL;
+#else
+    ring_buffer_clear(uart_rx_buffer); // 清空缓冲区，避免旧数据干扰
+#endif
     CONSOLE("[INFO] Serial port closed.");
 }
 
