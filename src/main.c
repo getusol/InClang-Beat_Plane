@@ -10,10 +10,10 @@
 #include "bullet.h"
 #include "config.h"
 #include "game.h"
-#include "event.h"B
+#include "event.h"
 #include "perf_monitor.h"
-#include <stdio.h>
-#include "bgm.h"
+#include "audio.h"
+
 int main(int argc, char **argv)
 {
     //Inits
@@ -21,16 +21,12 @@ int main(int argc, char **argv)
     lv_port_init();
     uart_debug_init(115200);
     input_init();
+    audio_init();
     fsm_init();
     event_init();
     ui_init();
     game_init();
-    i2s_config();
     
-#ifndef SIMULATOR
-    // 只有在真实硬件（非模拟器）环境下，才开启 SPI 中断
-    nvic_irq_enable(SPI1_IRQn, 0, 0);
-#endif
     non_blocking_timer_t logic_timer = {
         .func = game_update,
         .tick_get = lv_tick_get,

@@ -10,6 +10,7 @@
 #include "tools.h"
 #include "input_sw.h"
 
+#include "ui_cg.h"
 #include "ui_menu.h"
 #include "ui_play.h"
 #include "ui_sys_halt.h"
@@ -52,12 +53,13 @@ static game_state_t last_game_state = GS_MAX;
 {
 
   //各界面画图
-    ui_menu_init();
-    ui_play_init();
-    ui_sys_halt_init();
-    //按键注册
-    input_sw_register_press_callback(KEY_EVENT_B, ui_esc_pressed_handler);
-    console_out("[ui] Ui initialization finished\n");
+  ui_cg_init();
+  ui_menu_init();
+  ui_play_init();
+  ui_sys_halt_init();
+  //按键注册
+  input_sw_register_press_callback(KEY_EVENT_B, ui_esc_pressed_handler);
+  console_out("[ui] Ui initialization finished\n");
 }
 /**
  * @brief 根据当前游戏状态决定UI渲染，不同渲染函数位于相应的文件中
@@ -67,6 +69,9 @@ void ui_run()
     if (fsm_get_state() == last_game_state) return ;
     last_game_state = fsm_get_state();
     switch (fsm_get_state()) {
+        case GS_CG:
+          ui_cg_run(); 
+          break;
         case GS_MENU  : 
           ui_menu_run(); 
           break;
@@ -101,19 +106,24 @@ static void ui_esc_pressed_handler()
 {
     game_state_t game_state = fsm_get_state();
     switch (game_state) {
+    case GS_CG:
+        ui_cg_skip();
+        fsm_switch_state(GS_MENU);
+        CONSOLE("[INFO] CG skipped by user");
+        break;
     case GS_PLAY:
         fsm_switch_state(GS_PAUSE);
-        console_out("[ui] State has been changed by ESC to %d\n",GS_PAUSE);
+        CONSOLE("[INFO] State has been changed by ESC to GS_PAUSE");
         break;
     case GS_PAUSE:
         fsm_switch_state(GS_PLAY);
-        console_out("[ui] State has been changed by ESC to %d\n",GS_PLAY);
+        CONSOLE("[INFO] State has been changed by ESC to GS_PLAY");
         break;
     case GS_OVER:
         fsm_switch_state(GS_MENU);
-        console_out("[ui] State has been changed by ESC to %d\n",GS_MENU);
+        CONSOLE("[INFO] State has been changed by ESC to GS_MENU");
     default:
-        console_out("[ui] In this state,ESC has noting to do\n");
+        CONSOLE("[INFO] No ESC action defined for current state %d", game_state);
         break;
   }
 }
