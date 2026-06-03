@@ -34,7 +34,7 @@ typedef enum {
     EVENT_BULLET_HIT_PLAYER,// 子弹击中玩家
 
     EVENT_PLAYER_DIE,       // 玩家死亡(失败)
-
+    EVENT_PLAYER_HIT_COIN, // 玩家击中金币
     EVENT_COUNT             // 事件总数
 } event_code_t;
 

@@ -15,7 +15,7 @@
 #include "fsm.h"
 #include "event.h"
 #include "bullet.h"
-
+#include "coin.h"
 /**********************
  *      MACROS
  **********************/
@@ -314,6 +314,10 @@ static int16_t enemy_modify_hp(game_obj_t * g,int16_t delta)
   if (e->hp <= 0) {
     e->hp = 0;
     CONSOLE("[INFO] Enemy %d has been killed.",e->pool_index);
+
+    lv_coord_t coin_x = g->x + (g->w - 18) / 2;
+    lv_coord_t coin_y = g->y + (g->h - 18) / 2;
+    coin_spawn(coin_x, coin_y);
     e->base.hide(g);
     return 0;
   }
