@@ -12,6 +12,8 @@
 #include "config.h"
 #ifdef SIMULATOR
 #include "SDL2/SDL.h"
+#include "comm_rx.h"
+#include "comm_status.h"
 #else
 #include "drivers.h"
 #include "gd32h7xx_adc.h"
@@ -183,6 +185,29 @@ int16_t joystick_get_y()
 {
     return joystick.state.y;
 }
+
+#ifdef SIMULATOR
+/**
+ * @brief 获取PC模拟远程摇杆 x 处理值
+ */
+int16_t rjoystick_get_x()
+{
+    if (comm_get_status() != COMM_STATUS_CONNECTED) {
+        return 0; // 未连接时返回0，避免误动作
+    }
+    return comm_get_joystick_x();
+}
+/**
+ * @brief 获取PC模拟远程摇杆 y 处理值
+ */
+int16_t rjoystick_get_y()
+{
+    if (comm_get_status() != COMM_STATUS_CONNECTED) {
+        return 0; // 未连接时返回0，避免误动作
+    }
+    return comm_get_joystick_y();
+}
+#endif
 
  /**********************
  *   STATIC FUNCTIONS

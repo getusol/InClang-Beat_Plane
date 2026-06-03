@@ -15,8 +15,7 @@
 #include "comm.h"
 #include <stdio.h>
 
-#include "comm_rx.h"
-#include "comm_tx.h"
+#include "key.h"
 
 int main(int argc, char **argv)
 {

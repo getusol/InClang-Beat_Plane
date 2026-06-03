@@ -33,6 +33,11 @@ void joystick_scan(const uint8_t * ptr);
 int16_t joystick_get_x();
 int16_t joystick_get_y();
 
+#ifdef SIMULATOR
+int16_t rjoystick_get_x();
+int16_t rjoystick_get_y();
+#endif
+
 /**********************
  *  STATIC VARIABLES
  **********************/

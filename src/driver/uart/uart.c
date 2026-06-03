@@ -55,7 +55,6 @@ static DWORD WINAPI SerialReadThread(LPVOID lpParam);
  */
 bool uart_init(const char * port_name,uint32_t baud_rate)
 {
-    uart_rx_buffer = NULL;
     #ifdef SIMULATOR
     (void) baud_rate;    //Unused
     char full_port_name[64];

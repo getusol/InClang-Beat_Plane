@@ -40,7 +40,7 @@ typedef enum {
 
 static uint8_t calculate_checksum(const uint8_t *data,uint16_t len);
 static bool data_process();
-static uint8_t read_escaped_byte();
+static bool read_escaped_byte(uint8_t * byte);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -111,15 +111,16 @@ void comm_rx_init()
  */
 void comm_rx_update(void)
 {
+    uint8_t byte = 0x00;
     // 持续读取串口数据并解析
     while (uart_receive_available()) {
 
-        uint8_t byte = read_escaped_byte();
+        bool success = read_escaped_byte(&byte);
         //CONSOLE("[DEBUG] Read byte:0x%02X (%d), parser_state:%d.", byte, byte, parser_state);
         
-        if (byte == 0xFF) {
-            CONSOLE("[WARNING] Escape sequence error,resetting parser.");
-            LOG("[WARNING] Escape sequence error,resetting parser.");
+        if (!success) {
+            CONSOLE("[WARNING] Failed to read escaped byte, resetting parser.");
+            LOG("[WARNING] Failed to read escaped byte, resetting parser.");
             parser_state = PARSER_WAITING_SOF;
             continue;
         }
@@ -231,6 +232,7 @@ void comm_handle_heartbeat(void)
 {
     if (!new_heartbeat) return;
     new_heartbeat = false;
+    //CONSOLE("[DEBUG] Heartbeat processed!");
 #ifdef SIMULATOR
     if (comm_get_status() == COMM_STATUS_CONNECTING) {
         comm_set_status(COMM_STATUS_CONNECTED);
@@ -413,6 +415,7 @@ static bool data_process()
             return false;
 #else
             new_heartbeat = true;
+            //CONSOLE("[DEBUG] Heartbeat received!");
 #endif
             break;
 
@@ -437,22 +440,23 @@ static bool data_process()
 
 /**
  * @brief 读取一个字节并处理转义序列
- * @return 反转义后的字节值，失败返回0xFF
+ * @param[out] byte 读取到的字节
+ * @return 成功与否
  * @note 发送端保证转义序列完整性，所以 COMM_ESC 后一定有字节
  */
-static uint8_t read_escaped_byte()
+static bool read_escaped_byte(uint8_t * byte)
 {
     uint8_t raw_byte = uart_receive_byte();
     if (raw_byte == COMM_ESC) {
         if (!uart_receive_available()) {
             CONSOLE("[WARNING] Incomplete escape sequence!");
             LOG("[WARNING] Incomplete escape sequence!");
-            return 0xFF;
+            return false; // 转义序列不完整，读取失败 不修改 byte
         }
 
         raw_byte = uart_receive_byte() ^ COMM_ESC_XOR;
-        return raw_byte;
     }
 
-    return raw_byte;
+    *byte = raw_byte;
+    return true; // 成功读取普通字节
 }

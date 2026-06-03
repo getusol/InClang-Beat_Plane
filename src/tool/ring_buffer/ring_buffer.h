@@ -19,7 +19,7 @@
 #ifdef SIMULATOR
 #define RBUF_SIZE 4096
 #else
-#define RBUF_SIZE 128
+#define RBUF_SIZE 512 // bigger better
 #endif
 
 /**********************

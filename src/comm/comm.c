@@ -22,8 +22,8 @@
  *      MACROS
  **********************/
 
-#define CONNECTION_TIMEOUT_MS 5000
-#define HEART_BEAT_INTERVAL_MS 2000 // 不能大于 CONNECTION_TIMEOUT_MS
+#define CONNECTION_TIMEOUT_MS 6000
+#define HEART_BEAT_INTERVAL_MS 2500 // 不能大于 CONNECTION_TIMEOUT_MS
 
 /**********************
  *      TYPEDEFS
@@ -45,7 +45,7 @@ static void print_mcu_log(void);
  **********************/
 
 static char current_port[16] = DEFAULT_COM_PORT;
-static uint32_t last_receive_time = 0;
+static volatile uint32_t last_receive_time = 0;
 
 static non_blocking_timer_t heart_beat_timer = {
     .delay_ms = HEART_BEAT_INTERVAL_MS,
@@ -64,7 +64,7 @@ static non_blocking_timer_t heart_beat_timer = {
 void comm_init()
 {
     comm_set_status(COMM_STATUS_DISCONNECTED);
-    last_receive_time = 0;
+    last_receive_time = lv_tick_get();
     strncpy(current_port,DEFAULT_COM_PORT,sizeof(current_port) - 1);
     comm_rx_init();
 }
@@ -130,7 +130,7 @@ void comm_disconnect()
 {
     uart_deinit();
     comm_set_status(COMM_STATUS_DISCONNECTED);
-    last_receive_time = 0;
+    last_receive_time = lv_tick_get();
 }
 
 /**********************
@@ -145,6 +145,7 @@ static void update_connection_status(void)
     uint32_t current_time = lv_tick_get();
     
     if (comm_has_heartbeat()) {
+            //CONSOLE("[DEBUG] Heartbeat received!");
             last_receive_time = current_time;
     }
 
