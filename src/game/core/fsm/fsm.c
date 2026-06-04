@@ -28,7 +28,7 @@ static game_state_t current_state;
  */
 void fsm_init(void)
 {
-  current_state = GS_MENU;
+  current_state = GS_CG;
 }
 
 /**
@@ -46,8 +46,8 @@ game_state_t fsm_get_state(void)
 void fsm_switch_state(game_state_t new_state)
 {
   if (new_state >= GS_MAX) {
-    console_out("[Error][fsm] Unknown state!\n");
-    log_out("[Error][fsm] Unknown state!");
+    CONSOLE("[ERROR] Unknown state!");
+    LOG("[ERROR] Unknown state!");
     sys_halt();
     return ;
   }

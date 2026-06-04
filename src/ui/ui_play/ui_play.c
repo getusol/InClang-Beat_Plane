@@ -18,6 +18,7 @@
 #include "bullet.h"
 #include "event.h"
 #include "perf_monitor.h"
+#include "audio.h"
 
 /**********************
  * MACROS
@@ -45,6 +46,7 @@ static void level_anim_finish(lv_anim_t * anim);
 
 static void ui_play_event_game_start_cb(game_obj_t * a,game_obj_t * b);
 static void coin_update_timer_cb(lv_timer_t * timer);
+
 /***********************
  * GLOBAL PROTOTYPES
  ***********************/
@@ -184,11 +186,12 @@ void ui_play_init()
 }
 
 /**
- * @brief 加载play界面 && 负责控制弹窗是否显示
+ * @brief 加载play界面 && 负责控制弹窗是否显示 && 播放BGM
  */
 void ui_play_run()
 {
     lv_scr_load(dp_play);
+    audio_load(AUDIO_BGM, AUDIO_CHAN_BGM, true);
     if (fsm_get_state() == GS_PAUSE) {
         popup_show(pause_popup);
         set_group(pause_group);
@@ -348,4 +351,3 @@ static void ui_play_event_game_start_cb(game_obj_t * a,game_obj_t * b)
     CONSOLE("[INFO] Level 1 Animation Start.");
     ui_play_level_enter_anim("Level 1");
 }
-

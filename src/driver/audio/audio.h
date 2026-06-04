@@ -49,5 +49,9 @@ void audio_init();
 void audio_load(audio_id_t id,audio_channel_id_t channel_id,bool do_repeat);
 void audio_stop(audio_channel_id_t channel_id);
 void audio_stop_all();
+void audio_pause(audio_channel_id_t channel_id);
+void audio_resume(audio_channel_id_t channel_id);
+void audio_pause_all();
+void audio_resume_all();
 
 #endif // #ifndef __AUDIO_H__

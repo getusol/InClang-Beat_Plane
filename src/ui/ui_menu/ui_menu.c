@@ -18,10 +18,8 @@
 #include "lvgl_utils.h"
 #include "event.h"         // 用于分发游戏开始事件
 #include "tools.h"
-#include "cg.h"
 #ifndef SIMULATOR
 #include "drivers.h"
-#include "bgm.h"
 #endif
 
 /*********************
@@ -109,8 +107,6 @@ void ui_menu_init(void)
     lv_obj_t * label_base = lv_label_create(btn_base);
     lv_label_set_text(label_base, "Base");
     lv_obj_center(label_base);
-
-    cg_play(dp_menu);
 }
 
 /**
