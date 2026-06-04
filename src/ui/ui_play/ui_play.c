@@ -20,6 +20,7 @@
 #include "event.h"
 #include "perf_monitor.h"
 #include "ui_setting.h"
+#include "save.h"
 
 /**********************
  * MACROS
@@ -129,7 +130,7 @@ void ui_play_init()
     //exit btn for pause popup
     lv_obj_t * pause_exit_btn = lv_btn_create(pause_popup);
     lv_obj_set_size(pause_exit_btn,300,60);
-    lv_obj_set_pos(pause_exit_btn,25,280);
+    lv_obj_set_pos(pause_exit_btn,25,360);
     lv_obj_add_event_cb(pause_exit_btn,pause_exit_btn_event_cb,LV_EVENT_CLICKED,NULL);
     lv_group_add_obj(pause_group,pause_exit_btn);
     // 右上角暂停/设置图标按钮 (64x64 透明 + setting_icon.bin)
@@ -154,7 +155,7 @@ void ui_play_init()
     // Settings button in pause popup
     lv_obj_t * pause_setting_btn = lv_btn_create(pause_popup);
     lv_obj_set_size(pause_setting_btn, 300, 60);
-    lv_obj_set_pos(pause_setting_btn, 25, 360);
+    lv_obj_set_pos(pause_setting_btn, 25, 280);
     lv_obj_add_event_cb(pause_setting_btn, pause_setting_btn_event_cb, LV_EVENT_CLICKED, NULL);
     lv_group_add_obj(pause_group, pause_setting_btn);
 
@@ -207,6 +208,13 @@ void ui_play_init()
 
     // 事件注册
     event_register(EVENT_GAME_START,ui_play_event_game_start_cb);
+}
+
+/**
+ * @brief 在 coin 等数据源初始化之后注册事件，确保数据先更新再刷新 UI
+ */
+void ui_play_register_events(void)
+{
     event_register(EVENT_PLAYER_HIT_COIN, ui_play_event_hit_coin_cb);
 }
 
@@ -301,6 +309,7 @@ static void ui_play_event_hit_coin_cb(game_obj_t * src, game_obj_t * trg)
 static void pause_exit_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    save_write();
     fsm_switch_state(GS_MENU);
     CONSOLE_INFO("State has been switched to %d", fsm_get_state());
 }
@@ -384,4 +393,5 @@ static void ui_play_event_game_start_cb(game_obj_t * a,game_obj_t * b)
 {
     CONSOLE_INFO("Level 1 Animation Start.");
     ui_play_level_enter_anim("Level 1");
+    lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
 }

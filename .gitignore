@@ -4,3 +4,4 @@ js/
 logs/
 _template.c
 CMakeLists.txt
+data/

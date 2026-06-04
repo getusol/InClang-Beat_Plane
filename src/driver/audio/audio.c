@@ -236,6 +236,10 @@ void audio_resume_all()
  */
 void audio_set_vol_bgm(uint8_t vol)
 {
+    if (vol > 255 || vol < 0) {
+        vol_bgm = 255;
+        return ;
+    }
     vol_bgm = vol;
 }
 
@@ -252,6 +256,10 @@ uint8_t audio_get_vol_bgm(void)
  */
 void audio_set_vol_sfx(uint8_t vol)
 {
+    if (vol > 255 || vol < 0) {
+        vol_sfx = 255;
+        return ;
+    }
     vol_sfx = vol;
 }
 
@@ -268,7 +276,7 @@ uint8_t audio_get_vol_sfx(void)
  */
 void audio_set_vol_amp(uint8_t vol)
 {
-    if (vol > 3) vol_amp = 3;
+    if (vol > 3 || vol < 0) vol_amp = 3;
     else vol_amp = vol;
     return ;
 }

@@ -16,6 +16,7 @@
 #include "audio.h"
 #include "ui_key.h"
 #include "config.h"
+#include "save.h"
 #include <stdio.h>
 
 /**********************
@@ -215,6 +216,7 @@ static void update_volume_labels(void)
 static void back_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    save_write();
     fsm_switch_state(setting_prev_state);
 }
 

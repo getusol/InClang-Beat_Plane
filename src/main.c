@@ -10,6 +10,7 @@
 #include "bullet.h"
 #include "config.h"
 #include "game.h"
+#include "save.h"
 #include "event.h"
 #include "perf_monitor.h"
 #include "audio.h"
@@ -28,6 +29,7 @@ int main(int argc, char **argv)
     event_init();
     ui_init();
     game_init();
+    save_load();
 
     non_blocking_timer_t logic_timer = {
         .func = game_update,

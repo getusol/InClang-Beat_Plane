@@ -17,6 +17,7 @@
 #include "ui_sys_halt.h"
 #include "ui_comm.h"
 #include "ui_setting.h"
+#include "save.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,6 +99,7 @@ void ui_run()
           ui_play_run();
           break;
         case GS_OVER  :
+          save_write();
           audio_stop_all();
           ui_play_run();
           break;

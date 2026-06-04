@@ -77,6 +77,9 @@ void game_init()
     enemy_init(play_display);
     coin_init(play_display);
 
+    // coin 必须在 ui_play 注册事件之前初始化，确保碰撞时先更新数值再刷新 UI
+    ui_play_register_events();
+
     #if SHOW_HITBOX
     game_for_each_obj(init_hitbox,NULL);
     #endif
