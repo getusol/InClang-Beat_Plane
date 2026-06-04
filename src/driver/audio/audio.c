@@ -44,10 +44,12 @@
 #define SFX_CNT (AUDIO_CHAN_MAX - AUDIO_CHAN_SFX1)
 
 // 音量分配策略 此时：2 ^ AUDIO_BUDGET = AUDIO_ALLOC_BGM + SFX_CNT * AUDIO_ALLOC_SFX
-#define AUDIO_BUDGET 8 // 总和的移位 (bgm + sfx) = 2 ^ .. 9->512
-                       // 这里设置为8而非9 让音量翻倍 并通过截断来避免溢出
+#define AUDIO_BUDGET 9 // 总和的移位 (bgm + sfx) = 2 ^ .. 9->512
+                       // 此为基准值 可以通过 vol_amp 修改
 #define AUDIO_ALLOC_BGM 200 // bgm所得
 #define AUDIO_ALLOC_SFX 104 // sfx所得
+
+#define VOL_MAX 8   // 2 ^ VOL_MAX = 256，用于 mix_wavg 移位归一化 此为基准值
 
 /**********************
  *      TYPEDEFS
@@ -94,10 +96,19 @@ static void sdl_audio_callback(void *userdata, Uint8 *stream, int len);
 static const audio_asset_t audio_assets[AUDIO_MAX] = {
     [AUDIO_CG] = { .path = AUDIO_PATH("cg.pcm"), .size = 1798144 },
     [AUDIO_BGM] = { .path = AUDIO_PATH("bgm.pcm"), .size = 12996608 },
+    [AUDIO_FAH] = {.path = AUDIO_PATH("johnnybacon156fah.pcm"), .size = 154368},
+    [AUDIO_TROPICAL] = {.path = AUDIO_PATH("jonasblakewoodtropical.pcm"), .size = 1108224},
+    [AUDIO_BASKETBALLMUSIC] = {.path = AUDIO_PATH("basketballmusic.pcm"),.size = 3121920},
 };
 
 // 音频频道实例
 static audio_channel_t audio_channels[AUDIO_CHAN_MAX] = {0};
+
+// 运行时音量 (0-255, 默认最大)
+static uint8_t vol_bgm = 255;
+static uint8_t vol_sfx = 255;
+
+static uint8_t vol_amp = 1; // 0 +1(0.5) 1 +0(1.0) 2 -1(2.0) 3 -2(4.0)
 
 /**********************
  *   GLOBAL FUNCTIONS
@@ -220,6 +231,56 @@ void audio_resume_all()
     }
 }
 
+/**
+ * @brief 设置bgm音量
+ */
+void audio_set_vol_bgm(uint8_t vol)
+{
+    vol_bgm = vol;
+}
+
+/**
+ * @brief 获取bgm音量
+ */
+uint8_t audio_get_vol_bgm(void)
+{
+    return vol_bgm;
+}
+
+/**
+ * @brief 设置音效音量
+ */
+void audio_set_vol_sfx(uint8_t vol)
+{
+    vol_sfx = vol;
+}
+
+/**
+ * @brief 获取音效音量
+ */
+uint8_t audio_get_vol_sfx(void)
+{
+    return vol_sfx;
+}
+
+/**
+ * @brief 设置音量放大系数
+ */
+void audio_set_vol_amp(uint8_t vol)
+{
+    if (vol > 3) vol_amp = 3;
+    else vol_amp = vol;
+    return ;
+}
+
+/**
+ * @brief 获取音量放大系数
+ */
+uint8_t audio_get_vol_amp(void)
+{
+    return vol_amp;
+}
+
 #ifndef SIMULATOR
 void SPI1_IRQHandler(void)
 {
@@ -311,13 +372,13 @@ static void audio_play_on_channel(uint8_t channel_id, const char * path, uint32_
 static int16_t mix_wavg(int16_t bgm, int16_t* sfx, uint8_t sfx_cnt)
 {
     int32_t sum = 0;
-    sum += (int32_t)VOL_BGM * AUDIO_ALLOC_BGM * bgm;
+    sum += (int32_t)vol_bgm * AUDIO_ALLOC_BGM * bgm;
     for (int i = 0; i < sfx_cnt; i++) {
-        sum += (int32_t)VOL_SFX * AUDIO_ALLOC_SFX * sfx[i];
+        sum += (int32_t)vol_sfx * AUDIO_ALLOC_SFX * sfx[i];
     }
 
     // 修复 1：必须将移位运算结果赋值回 sum！
-    sum >>= (AUDIO_BUDGET + VOL_MAX);
+    sum >>= (AUDIO_BUDGET - vol_amp + 1 + VOL_MAX);
 
     // 修复 2：增加饱和截断保护（防止多通道重叠时产生的数值溢出导致啸叫与噪声）
     if (sum > 32767)  sum = 32767;

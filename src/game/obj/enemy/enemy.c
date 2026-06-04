@@ -208,13 +208,13 @@ static void enemy_update(game_obj_t * g)
 {
   game_state_t game_state = fsm_get_state();
   // 不显示
-  if (game_state != GS_PLAY && game_state != GS_PAUSE)
+  if (game_state != GS_PLAY && game_state != GS_PAUSE && game_state != GS_SETTING)
   {
     g->hide(g);
     return ;
   }
   // 不更新
-  if (game_state == GS_PAUSE) return ;
+  if (game_state == GS_PAUSE || game_state == GS_SETTING) return ;
   // 不活跃不更新
   if (g->active == false) return ;
   enemy_move(g);

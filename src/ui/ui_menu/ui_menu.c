@@ -18,6 +18,7 @@
 #include "lvgl_utils.h"
 #include "event.h"         // 用于分发游戏开始事件
 #include "tools.h"
+#include "ui_setting.h"
 #ifndef SIMULATOR
 #include "drivers.h"
 #endif
@@ -27,6 +28,7 @@
  *********************/
 
 #define BG_IMG_NAME "menu_bg.bin"
+#define SETTING_ICON_NAME "setting_icon.bin"
 
 /**********************
  * STATIC PROTOTYPES
@@ -35,6 +37,7 @@
 static void btn_level_event_cb(lv_event_t * e);
 static void btn_shop_event_cb(lv_event_t * e);
 static void btn_base_event_cb(lv_event_t * e);
+static void btn_setting_event_cb(lv_event_t * e);
 
 /**********************
  * STATIC VARIABLES
@@ -46,6 +49,7 @@ static lv_group_t * menu_group;     // 主菜单输入组
 #ifdef SIMULATOR
 static uint8_t * bg_img_buf = NULL;
 static lv_img_dsc_t bg_img_struct;
+static lv_img_dsc_t setting_icon_struct;
 #endif
 
 /**********************
@@ -107,6 +111,26 @@ void ui_menu_init(void)
     lv_obj_t * label_base = lv_label_create(btn_base);
     lv_label_set_text(label_base, "Base");
     lv_obj_center(label_base);
+
+    // 5. 右上角设置按钮 (64x64 透明 + 齿轮图标)
+    lv_obj_t * btn_setting = lv_btn_create(dp_menu);
+    lv_obj_set_size(btn_setting, 64, 64);
+    lv_obj_align(btn_setting, LV_ALIGN_TOP_RIGHT, 0, 0);
+    lv_obj_set_style_bg_opa(btn_setting, LV_OPA_TRANSP, LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(btn_setting, 0, LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(btn_setting, 0, LV_STATE_DEFAULT);
+    lv_obj_add_event_cb(btn_setting, btn_setting_event_cb, LV_EVENT_CLICKED, NULL);
+
+    char setting_img_path[64];
+#ifdef SIMULATOR
+    lv_obj_t * setting_icon = img_create_from_dsc(btn_setting,
+        img_path(SETTING_ICON_NAME, setting_img_path, sizeof(setting_img_path)),
+        64, 64, NULL, &setting_icon_struct, true);
+#else
+    lv_obj_t * setting_icon = lv_img_create(btn_setting);
+    lv_img_set_src(setting_icon, img_path(SETTING_ICON_NAME, setting_img_path, sizeof(setting_img_path)));
+#endif
+    lv_obj_center(setting_icon);
 }
 
 /**
@@ -138,6 +162,17 @@ static void btn_level_event_cb(lv_event_t * e)
 static void btn_shop_event_cb(lv_event_t * e)
 {
      CONSOLE_INFO("Shop.");
+}
+
+/**
+ * @brief 设置按钮事件回调
+ */
+static void btn_setting_event_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    ui_setting_set_prev_state(GS_MENU);
+    fsm_switch_state(GS_SETTING);
+    CONSOLE_INFO("Open settings from menu.");
 }
 
 static void btn_base_event_cb(lv_event_t * e)

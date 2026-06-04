@@ -219,7 +219,7 @@ int16_t player_hp_modify(int16_t delta)
  */
 static void player_update(game_obj_t * g)
 {
-  if (fsm_get_state() < GS_PLAY || fsm_get_state() > GS_PAUSE) {
+  if (fsm_get_state() != GS_PLAY && fsm_get_state() != GS_PAUSE && fsm_get_state() != GS_SETTING) {
     g->hide(g);
     return ;
   }

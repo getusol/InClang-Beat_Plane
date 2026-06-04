@@ -25,6 +25,9 @@ typedef enum audio_id_t
 {
     AUDIO_CG,
     AUDIO_BGM,
+    AUDIO_FAH,
+    AUDIO_TROPICAL,
+    AUDIO_BASKETBALLMUSIC,
 
     AUDIO_MAX,
 } audio_id_t;
@@ -53,5 +56,13 @@ void audio_pause(audio_channel_id_t channel_id);
 void audio_resume(audio_channel_id_t channel_id);
 void audio_pause_all();
 void audio_resume_all();
+
+// 运行时音量控制 (0-255)
+void audio_set_vol_bgm(uint8_t vol);
+uint8_t audio_get_vol_bgm(void);
+void audio_set_vol_sfx(uint8_t vol);
+uint8_t audio_get_vol_sfx(void);
+void audio_set_vol_amp(uint8_t vol);
+uint8_t audio_get_vol_amp(void);
 
 #endif // #ifndef __AUDIO_H__

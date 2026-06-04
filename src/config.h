@@ -133,10 +133,6 @@
  * AUDIOS
  *-----------*/
 
-#define VOL_BGM 255 // BGM 音量 0 ~ 255
-#define VOL_SFX 255 // SFX 音量 0 ~ 255
-#define VOL_MAX 8   // 2 ^ VOL_MAX = 256
-
 /*-------------
  * BULLET
  *-----------*/

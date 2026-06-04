@@ -203,11 +203,11 @@ void coin_set_num(int value)
 static void coin_update(game_obj_t * g)
 {
     game_state_t game_state = fsm_get_state();
-    if (game_state != GS_PLAY && game_state != GS_PAUSE) {
+    if (game_state != GS_PLAY && game_state != GS_PAUSE && game_state != GS_SETTING) {
         g->hide(g);
         return;
     }
-    if (game_state == GS_PAUSE) return;
+    if (game_state == GS_PAUSE || game_state == GS_SETTING) return;
     if (g->active == false) return;
 
     // 碰撞检测已交给底层游戏主循环统一分发处理

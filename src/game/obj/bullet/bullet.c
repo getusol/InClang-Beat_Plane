@@ -197,11 +197,11 @@ game_obj_t * bullet_get_source(game_obj_t * g)
   */
 static void bullet_update(game_obj_t * g)
 {
-    if (fsm_get_state() != GS_PLAY && fsm_get_state() != GS_PAUSE) {
+    if (fsm_get_state() != GS_PLAY && fsm_get_state() != GS_PAUSE && fsm_get_state() != GS_SETTING) {
         g->hide(g);
         return ;
     }
-    if (fsm_get_state() == GS_PAUSE) {
+    if (fsm_get_state() == GS_PAUSE || fsm_get_state() == GS_SETTING) {
         return ;
     }
     if (!g->active) {

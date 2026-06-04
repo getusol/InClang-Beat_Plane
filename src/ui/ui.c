@@ -16,6 +16,7 @@
 #include "ui_play.h"
 #include "ui_sys_halt.h"
 #include "ui_comm.h"
+#include "ui_setting.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,6 +59,7 @@ void ui_init()
   ui_cg_init();
   ui_menu_init();
   ui_play_init();
+  ui_setting_init();
   ui_comm_init();
   ui_sys_halt_init();
   //按键注册
@@ -82,6 +84,9 @@ void ui_run()
         CONSOLE_INFO("Come to menu");
           audio_stop_all();
           ui_menu_run();
+          break;
+        case GS_SETTING :
+          ui_setting_run();
           break;
         case GS_PLAY  :
           if (last_game_state == GS_MENU || last_game_state == GS_OVER) audio_load(AUDIO_BGM,AUDIO_CHAN_BGM,true);
@@ -132,6 +137,10 @@ static void ui_esc_pressed_handler()
     case GS_PAUSE:
         fsm_switch_state(GS_PLAY);
         CONSOLE_INFO("State has been changed by ESC to GS_PLAY");
+        break;
+    case GS_SETTING:
+        fsm_switch_state(ui_setting_get_prev_state());
+        CONSOLE_INFO("State has been changed by ESC from GS_SETTING");
         break;
     case GS_OVER:
         fsm_switch_state(GS_MENU);
