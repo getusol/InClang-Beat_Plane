@@ -31,6 +31,7 @@ static void cg_anim_ready_cb(lv_anim_t * a);
 
 static void cg_clean_up_resources(void);
 static void cg_layer_event_cb(lv_event_t * e);
+static void cg_click_skip_cb(lv_event_t * e);
 
 static void switch_timer_cb(lv_timer_t * t);
 
@@ -89,6 +90,8 @@ void ui_cg_init()
 
     // 将释放底层图片的逻辑，注册在该图层的销毁事件（DELETE）中
     lv_obj_add_event_cb(cg_layer, cg_layer_event_cb, LV_EVENT_DELETE, NULL);
+    // 点击屏幕任意位置跳过 CG
+    lv_obj_add_event_cb(cg_layer, cg_click_skip_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_set_size(cg_layer, 1024, 600);
     lv_obj_center(cg_layer);
@@ -298,6 +301,16 @@ static void cg_anim_ready_cb(lv_anim_t * a)
     audio_stop(AUDIO_CHAN_BGM); 
     switch_timer = lv_timer_create(switch_timer_cb, 500, NULL);
     lv_timer_set_repeat_count(switch_timer, 1);
+}
+
+/**
+ * @brief 点击屏幕跳过 CG
+ */
+static void cg_click_skip_cb(lv_event_t * e)
+{
+    (void)e;
+    ui_cg_skip();
+    fsm_switch_state(GS_MENU);
 }
 
 /**

@@ -44,7 +44,8 @@
 #define SFX_CNT (AUDIO_CHAN_MAX - AUDIO_CHAN_SFX1)
 
 // 音量分配策略 此时：2 ^ AUDIO_BUDGET = AUDIO_ALLOC_BGM + SFX_CNT * AUDIO_ALLOC_SFX
-#define AUDIO_BUDGET 9 // 总和的移位 (bgm + sfx) = 2 ^ .. 9->512
+#define AUDIO_BUDGET 8 // 总和的移位 (bgm + sfx) = 2 ^ .. 9->512 
+                       // 这里设置为8而非9 让音量翻倍 并通过截断来避免溢出
 #define AUDIO_ALLOC_BGM 200 // bgm所得
 #define AUDIO_ALLOC_SFX 104 // sfx所得
 

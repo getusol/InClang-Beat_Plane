@@ -19,7 +19,6 @@
 #include "coin.h"
 #include "event.h"
 #include "perf_monitor.h"
-#include "audio.h"
 
 /**********************
  * MACROS
@@ -191,7 +190,6 @@ void ui_play_init()
 void ui_play_run()
 {
     lv_scr_load(dp_play);
-    audio_load(AUDIO_BGM, AUDIO_CHAN_BGM, true);
     if (fsm_get_state() == GS_PAUSE) {
         popup_show(pause_popup);
         set_group(pause_group);

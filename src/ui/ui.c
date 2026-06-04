@@ -90,9 +90,9 @@ void ui_run()
           audio_pause_all();
           ui_play_run(); 
           break;
-        case GS_OVER  : 
-          audio_pause_all();
-          ui_play_run(); 
+        case GS_OVER  :
+          audio_stop_all();
+          ui_play_run();
           break;
         case SYS_HALT : 
           audio_stop_all(); 
