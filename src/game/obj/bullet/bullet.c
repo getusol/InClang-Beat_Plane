@@ -207,7 +207,6 @@ static void bullet_update(game_obj_t * g)
     if (!g->active) {
         return ;
     }
-    bullet_t * b = (bullet_t *)g;
     bullet_move(g);
 }
 

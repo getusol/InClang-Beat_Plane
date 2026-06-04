@@ -29,6 +29,13 @@ typedef enum
     KEY_B,
     KEY_X,
     KEY_Y,
+#ifdef SIMULATOR
+    RKEY_A,
+    RKEY_B,
+    RKEY_X,
+    RKEY_Y,
+#endif
+    KEY_MAX,
 } key_code_t;
 
 /**********************

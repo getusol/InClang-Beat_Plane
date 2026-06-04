@@ -1,19 +1,30 @@
 /**
  * @file uart.h
- * @note 单片机专用串口打印文件
+ * @note UART 硬件驱动
  */
+
 #ifndef __UART_H__
 #define __UART_H__
+
 /*********************
  *      INCLUDES
  *********************/
 #include <stdint.h>
+#include <stdbool.h>
+#ifdef SIMULATOR
+
+#endif
 
 /***********************
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void uart_debug_init(uint32_t baudrate);
+bool uart_init(const char * port_name,uint32_t baud_rate);
+void uart_enable(void);
+void uart_deinit(void);
+void uart_send_byte(uint8_t byte);
+uint8_t uart_receive_byte(void);
+bool uart_receive_available(void);
 void __aeabi_assert(const char *expr, const char *file, int line);
 
 #endif // #ifndef __UART_H__

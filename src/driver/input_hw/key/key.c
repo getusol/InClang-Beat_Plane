@@ -10,6 +10,8 @@
 #include "config.h"
 #ifdef SIMULATOR
 #include "SDL2/SDL.h"
+#include "comm_rx.h"
+#include "protocol.h"
 #else
 #include "drivers.h"
 #endif
@@ -45,8 +47,10 @@ typedef struct {
  #ifdef SIMULATOR
  /**
   * @brief 每个虚拟按键绑定的键盘按键数组，内容为SDL的ScanCode
+  *         在远程端，调整为远程按钮枚举值的数组
   */
  typedef SDL_Scancode bind_scancodes[MAX_BINDING_KEYS_COUNT];
+
 /**
  * @brief PC模拟 按钮结构体 和 长按时间 以及对应的键盘按钮映射绑定 
  */ 
@@ -57,6 +61,7 @@ typedef struct {
     uint8_t pressed_reset_cnt;
     uint8_t released_reset_cnt;
 } key_t;
+
 /**
  * @brief key_read_func 执行获取按键状态的函数
  * @param sdl_key sdl键盘状态记录数组
@@ -107,15 +112,15 @@ typedef bool (*key_read_func)(uint32_t port,uint32_t pin);
   *  STATIC PROTOTYPES
   **********************/
 
- static void key_process(key_t * key,key_read_func krf,const uint8_t * ptr);
+static void key_process(key_t * key,key_read_func krf,const uint8_t * ptr);
 
- #ifdef SIMULATOR
- static bool kb_key_read(const uint8_t * sdl_key,const bind_scancodes bind_codes);
- static void pc_key_init();
- #else
- static void hw_gpio_init();
- static bool hw_key_read(uint32_t port,uint32_t pin);
- #endif
+#ifdef SIMULATOR
+static bool kb_key_read(const uint8_t * sdl_key,const bind_scancodes bind_codes);
+static void pc_key_init();
+#else
+static void hw_gpio_init();
+static bool hw_key_read(uint32_t port,uint32_t pin);
+#endif
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -158,6 +163,34 @@ static key_t keys[] = {
         .pressed_reset_cnt = 0,
         .released_reset_cnt = 0,
     },                                  //BUTTON_KEY_Y F
+    [RKEY_A - 1] = {
+        .state = {0},
+        .bind_codes = {RKEY_A,SDL_SCANCODE_UNKNOWN},
+        .press_tick = 0,
+        .pressed_reset_cnt = 0,
+        .released_reset_cnt = 0,
+    },                                  //RKEY_A (0000 0001)
+    [RKEY_B - 1] = {
+        .state = {0},
+        .bind_codes = {RKEY_B,SDL_SCANCODE_UNKNOWN},
+        .press_tick = 0,
+        .pressed_reset_cnt = 0,
+        .released_reset_cnt = 0,
+    },                                  //RKEY_B (0000 0010)
+    [RKEY_X - 1] = {
+        .state = {0},
+        .bind_codes = {RKEY_X,SDL_SCANCODE_UNKNOWN},
+        .press_tick = 0,
+        .pressed_reset_cnt = 0,
+        .released_reset_cnt = 0,
+    },                                  //RKEY_X (0000 0100)
+    [RKEY_Y - 1] = {
+        .state = {0},
+        .bind_codes = {RKEY_Y,SDL_SCANCODE_UNKNOWN},
+        .press_tick = 0,
+        .pressed_reset_cnt = 0,
+        .released_reset_cnt = 0,
+    },                                  //RKEY_Y (0000 1000)
 };
 #else
  /**
@@ -271,6 +304,7 @@ void key_scan(const uint8_t * ptr)
 bool key_pressed(key_code_t key)
 {
     if (!key) return false;
+    if (key >= KEY_MAX) return false;
     if (!keys[key - 1].state.pressed) return false;
     keys[key - 1].state.pressed = false; //单次触发，读取后重置
     return true;
@@ -282,6 +316,7 @@ bool key_pressed(key_code_t key)
 bool key_released(key_code_t key)
 {
     if (!key) return false;
+    if (key >= KEY_MAX) return false;
     if (!keys[key - 1].state.released) return false;
     keys[key - 1].state.released = false; //单次触发，读取后重置
     return true;
@@ -293,6 +328,7 @@ bool key_released(key_code_t key)
 bool key_down(key_code_t key)
 {
     if (!key) return false;
+    if (key >= KEY_MAX) return false;
     return keys[key - 1].state.stable;
 }
 /**
@@ -302,6 +338,7 @@ bool key_down(key_code_t key)
 bool key_long_press(key_code_t key)
 {
     if (!key) return false;
+    if (key >= KEY_MAX) return false;
     return keys[key - 1].state.long_press;
 }
 
@@ -318,11 +355,29 @@ bool key_long_press(key_code_t key)
  */
 static bool kb_key_read(const uint8_t * sdl_key,const bind_scancodes bind_codes)
 {
-    bool res = false;
-    for (int i = 0;i < MAX_BINDING_KEYS_COUNT;i++)
-        res = res || sdl_key[bind_codes[i]];
-    return res;
+    if (bind_codes[0] > 8) {    // 非远程按键
+        bool res = false;
+        for (int i = 0;i < MAX_BINDING_KEYS_COUNT;i++)
+            res = res || sdl_key[bind_codes[i]];
+        return res;
+    } else {                      // 远程按键
+        uint8_t key_mask = comm_get_key_mask();
+        uint8_t key_who = bind_codes[0];
+        switch (key_who) {
+            case RKEY_A:
+                return key_mask & COMM_KEY_A_MASK;
+            case RKEY_B:
+                return key_mask & COMM_KEY_B_MASK;
+            case RKEY_X:
+                return key_mask & COMM_KEY_X_MASK;
+            case RKEY_Y:
+                return key_mask & COMM_KEY_Y_MASK;
+            default:
+                return false;
+        }
+    }
 }
+
 /**
  * @brief PC输入初始化函数
  * @note 目前没有可以做的，虚位以待
@@ -377,6 +432,7 @@ static void key_process(key_t * key,key_read_func krf,const uint8_t * ptr)
         key->state.long_press = false;
     }
 }
+
  #else
 /**
  * @brief 初始化硬件按钮port,pin,clock的函数

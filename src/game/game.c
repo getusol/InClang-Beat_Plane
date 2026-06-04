@@ -67,7 +67,7 @@ void game_init()
 {
     lv_obj_t * play_display = ui_play_get_display();
 
-    timer_init();
+    timer_pool_init();
 
     level_init();
 
