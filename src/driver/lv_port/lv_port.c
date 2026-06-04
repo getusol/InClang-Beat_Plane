@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include "sdl/sdl.h"
 #include "SDL.h"
+#include "debug.h"
 #else
 #include "drivers.h"
 #include "lv_port_disp_template.h"
@@ -24,6 +25,7 @@
  **********************/
 #ifdef SIMULATOR
 #define DISP_BUF_SIZE (1024 * 100)
+#define ICON_PATH "./assets/pics/icon.bmp"
 #endif
 
 /**********************
@@ -85,6 +87,15 @@ void lv_port_init()
             SDL_RenderSetLogicalSize(renderer, SDL_HOR_RES, SDL_VER_RES);
         }
         SDL_SetWindowTitle(window,"Plane War");
+
+        SDL_Surface * icon = SDL_LoadBMP(ICON_PATH); 
+        if (icon != NULL) {
+            SDL_SetWindowIcon(window, icon);
+            SDL_FreeSurface(icon); // 设置成功后，立刻释放临时 Surface 内存，防止泄漏
+        } else {
+            CONSOLE("[WARNING] Failed to load window icon: %s", SDL_GetError());
+            LOG("[WARNING] Failed to load window icon:%s",SDL_GetError());
+        }
     }
 
     lv_port_disp_init();
