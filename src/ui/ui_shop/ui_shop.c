@@ -26,9 +26,9 @@
 #define PLAYER_EMBER_IMG    "player_ember.bin"
 #define PLAYER_STREAM_IMG   "player_stream.bin"
 #define PLAYER_VERDANT_IMG  "player_verdant.bin"
-#define COIN_LEAVE_IMG      "coin_leave.bin"
+#define COIN_LEAVE_IMG      "coin.bin"
 #define COIN_IMG_NAME       "coin.bin"
-#define DRAW_COST           10
+#define DRAW_COST           110
 #define TOTAL_SLOTS         8
 
 // 网格单元大小
@@ -91,7 +91,7 @@ static const int slot_coords[TOTAL_SLOTS][2] = {
 };
 
 #ifdef SIMULATOR
-static lv_img_dsc_t shop_bg_dsc, ember_dsc, stream_dsc, verdant_dsc, coin_leave_dsc, popup_reward_dsc,coin_img_dsc;
+static lv_img_dsc_t shop_bg_dsc, ember_dsc, stream_dsc, verdant_dsc, coin_dsc, popup_reward_dsc,coin_img_dsc;
 #endif
 
 /**********************
@@ -217,7 +217,7 @@ void ui_shop_init(void)
                 break;
             default: // 周围四个金币框
 #ifdef SIMULATOR
-                img = img_create_from_dsc(cell, img_path(COIN_LEAVE_IMG, cell_path_bufs[i], 64), 18, 18, NULL, &coin_leave_dsc, true);
+                img = img_create_from_dsc(cell, img_path(COIN_LEAVE_IMG, cell_path_bufs[i], 64), 18, 18, NULL, &coin_dsc, true);
 #else
                 img = lv_img_create(cell); lv_img_set_src(img, img_path(COIN_LEAVE_IMG, cell_path_bufs[i], 64));
 #endif
