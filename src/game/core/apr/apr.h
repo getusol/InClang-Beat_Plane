@@ -46,28 +46,25 @@ typedef enum {
     APR_MAX
 } apr_id_t;
 
+/**
+ * @brief 外观模板结构体，定义游戏对象的视觉属性
+ * @note 外观是共享的（多个对象可共用同一个apr），LVGL图像对象(lv_obj_t)存储在game_obj中
+ */
+typedef struct apr_s {
+    uint16_t w, h;                  // 尺寸
+    int16_t hitbox_x, hitbox_y;     // 碰撞框相对位置
+    uint16_t hitbox_w, hitbox_h;    // 碰撞框大小
+    lv_img_dsc_t img_dsc;           // 图片描述符(模拟器预加载，MCU无效)
+    const char * img_name;          // 图片名称 方便创建
+    bool is_alpha;                  // 是否透明
+} apr_t;
+
 /***********************
  *   GLOBAL PROTOTYPES
  ***********************/
 
-/**
- * @brief 初始化所有外观模板，加载图片资源
- * @param parent 父LVGL对象，用于创建图片控件
- */
-void apr_init(lv_obj_t *parent);
-
-/**
- * @brief 根据枚举值获取外观模板指针
- * @param id 外观模板ID
- * @return apr_t* 外观模板指针，无效ID返回默认玩家外观
- */
+void apr_init();
 apr_t *apr_get(apr_id_t id);
-
-/**
- * @brief 将指定外观应用到游戏对象（更新图片、碰撞箱等）
- * @param obj 游戏对象指针
- * @param id 外观模板ID
- */
 void apr_apply(game_obj_t *obj, apr_id_t id);
 
 #endif // #ifndef __APR_H__

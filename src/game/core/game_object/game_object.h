@@ -19,6 +19,7 @@
  **********************/
 
 struct game_obj;
+typedef struct apr_s apr_t;
 
 typedef void (*behave_func_t)(struct game_obj * g,void * v);
 
@@ -40,19 +41,6 @@ typedef enum {
     GAME_OBJ_TYPE_COUNT,
     GAME_OBJ_TYPE_COIN
 } game_obj_type_t;
-
-/**
- * @brief 外观模板结构体，定义游戏对象的视觉属性
- * @note 外观是共享的（多个对象可共用同一个apr），LVGL图像对象(lv_obj_t)存储在game_obj中
- */
-typedef struct {
-    uint16_t w, h;                  // 尺寸
-    int16_t hitbox_x, hitbox_y;     // 碰撞框相对位置
-    uint16_t hitbox_w, hitbox_h;    // 碰撞框大小
-    const char *img_name;           // 图片文件名
-    bool is_alpha;                  // 是否包含alpha通道
-    lv_img_dsc_t img_dsc;           // 图片描述符(模拟器预加载，MCU无效)
-} apr_t;
 
 /**
  * @brief 游戏对象父结构体，包含位置、大小、速度、对应的lvgl对象指针以及一些方法指针
@@ -92,6 +80,7 @@ uint16_t game_obj_get_width(const game_obj_t * obj);
 uint16_t game_obj_get_height(const game_obj_t * obj);
 float game_obj_get_speed(const game_obj_t * obj);
 bool game_obj_is_active(const game_obj_t * obj);
+const apr_t * game_obj_get_apr(const game_obj_t * obj);
 
 // setters
 bool game_obj_set_behave(game_obj_t * obj, behave_func_t f, void * usr_data);

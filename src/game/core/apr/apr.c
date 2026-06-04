@@ -45,9 +45,8 @@ static apr_t apr_list[APR_MAX];
 /**
  * @brief 初始化所有外观模板，加载图片资源
  */
-void apr_init(lv_obj_t *parent)
+void apr_init()
 {
-    LV_UNUSED(parent);
     memset(apr_list, 0, sizeof(apr_list));
     char path[128];
 
@@ -176,7 +175,6 @@ void apr_init(lv_obj_t *parent)
     };
 
     // ==================== 预加载图片（仅模拟器） ====================
-#ifdef SIMULATOR
     for (int i = 0; i < APR_MAX; i++) {
         if (apr_list[i].img_name == NULL) continue;
         load_img_dsc(img_path(apr_list[i].img_name, path, 128),
@@ -185,13 +183,12 @@ void apr_init(lv_obj_t *parent)
                      apr_list[i].is_alpha);
         CONSOLE("[INFO] APR %d loaded: %s (%dx%d)", i, apr_list[i].img_name, apr_list[i].w, apr_list[i].h);
     }
-#else
-    CONSOLE("[INFO] APR system initialized (MCU mode, %d templates)", APR_MAX);
-#endif
 }
 
 /**
  * @brief 根据枚举值获取外观模板指针
+ * @param id 外观模板ID
+ * @return apr_t* 外观模板指针，无效ID返回默认玩家外观
  */
 apr_t *apr_get(apr_id_t id)
 {
@@ -203,23 +200,20 @@ apr_t *apr_get(apr_id_t id)
 }
 
 /**
- * @brief 将指定外观应用到游戏对象
+ * @brief 将指定外观应用到游戏对象（更新图片、碰撞箱等）
+ * @param obj 游戏对象指针
+ * @param id 外观模板ID
  */
 void apr_apply(game_obj_t *obj, apr_id_t id)
 {
     if (obj == NULL) return;
 
     apr_t *apr = apr_get(id);
-    obj->apr = apr;
+    obj->apr = (const apr_t *)apr;
 
     if (obj->obj == NULL) return;
 
-#ifdef SIMULATOR
     lv_img_set_src(obj->obj, &apr->img_dsc);
-#else
-    char path[128];
-    lv_img_set_src(obj->obj, img_path(apr->img_name, path, 128));
-#endif
 
 #if SHOW_HITBOX
     // 更新碰撞框调试显示（尺寸和位置随外观变化）

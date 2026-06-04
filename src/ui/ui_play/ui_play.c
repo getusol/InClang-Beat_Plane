@@ -25,8 +25,7 @@
  **********************/
 
 
-#define HUD_IMG_NAME "hUd.bin"
-#define HUD_IMG_NAME "play_hud.bin"
+#define HUD_IMG_NAME "hud.bin"
 #define COIN_BAR_IMG_NAME "coin_bar.bin"
 
 /**********************
@@ -115,6 +114,7 @@ void ui_play_init()
         lv_img_set_src(hud_img, img_path(HUD_IMG_NAME, img_path_buf, 64));
         lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
     }
+#endif
     //coin_img initialize
     #ifdef SIMULATOR
     lv_obj_t * coin_img = img_create_from_dsc(dp_play,img_path(COIN_BAR_IMG_NAME,img_path_buf,64),166,46,NULL,&coin_img_dsc,true);

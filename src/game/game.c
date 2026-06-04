@@ -72,8 +72,7 @@ void game_init()
 
     level_init();
 
-    // 初始化所有外观模板（已提前在 ui_init 中完成）
-    // apr_init(play_display);
+    //apr_init(); 在ui_init调用 因为base需要描述符
 
     // 程序启动时 初始化游戏对象
     player_init(play_display);

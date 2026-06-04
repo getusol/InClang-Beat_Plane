@@ -18,9 +18,6 @@
 #include "lvgl_utils.h"
 #include "ui_templates.h" // 用于 popup_create, popup_show, popup_hide
 
-// 引入全局金币变量
-extern int coin_num;
-
 /**********************
  * MACROS
  **********************/

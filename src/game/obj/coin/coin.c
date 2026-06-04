@@ -19,6 +19,7 @@
 #include "event.h"
 #include "timer.h"
 #include <string.h>
+#include "apr.h"
 
 /**********************
  * MACROS
@@ -84,20 +85,16 @@ void coin_init(lv_obj_t * parent)
     for (int i = 0; i < MAX_COIN_COUNT; i++) {
         // base init
         coins[i].base.active = false;
-        coins[i].base.w = 18;
-        coins[i].base.h = 18;
         coins[i].base.type = GAME_OBJ_TYPE_COIN;
         coins[i].base.x = 0;
         coins[i].base.y = 0;
-        coins[i].base.speed = 0.0f;
-        coins[i].base.hitbox_x = 0;
-        coins[i].base.hitbox_y = 0;
-        coins[i].base.hitbox_w = 20;
-        coins[i].base.hitbox_h = 20;
+        coins[i].base.speed = 0;
         coins[i].base.vx = 0;
         coins[i].base.vy = 0;
         coins[i].base.behave = NULL_BEHAVE;
         coins[i].base.timered = false;
+
+        apr_apply(&(coins[i].base),APR_COIN_DEFAULT);
 
         // special init
         coins[i].value = 0;

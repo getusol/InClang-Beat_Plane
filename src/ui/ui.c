@@ -57,8 +57,8 @@ static game_state_t last_game_state = GS_MAX;
  */
 void ui_init()
 {
-    // APR 外观模板必须在所有 UI 初始化之前加载（Base UI 需要预加载的图片描述符）
-    apr_init(NULL);
+  // APR 外观模板必须在所有 UI 初始化之前加载（Base UI 需要预加载的图片描述符）
+  apr_init();
 
   //各界面画图
   ui_cg_init();

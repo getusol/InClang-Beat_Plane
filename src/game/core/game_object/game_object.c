@@ -142,3 +142,12 @@ bool game_obj_set_behave(game_obj_t * obj, behave_func_t func, void * usr_data)
     obj->behave.usr_data = usr_data;
     return true;
 }
+
+/**
+ * @brief 获取外观指针
+ */
+const apr_t * game_obj_get_apr(const game_obj_t * obj)
+{
+    if (obj == NULL || obj->apr == NULL) return NULL;
+    return obj->apr;
+}
