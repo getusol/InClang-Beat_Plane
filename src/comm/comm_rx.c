@@ -97,12 +97,12 @@ void comm_rx_init()
     new_key_data = false;
     new_joystick_data = false;
     new_log_data = false;
-    
+
 #else
 
 #endif
 
-    CONSOLE("[INFO] Communication receiver initialized.\n");
+    CONSOLE_INFO("Communication receiver initialized.");
 }
 
 /**
@@ -116,99 +116,99 @@ void comm_rx_update(void)
     while (uart_receive_available()) {
 
         bool success = read_escaped_byte(&byte);
-        //CONSOLE("[DEBUG] Read byte:0x%02X (%d), parser_state:%d.", byte, byte, parser_state);
-        
+        //CONSOLE_DEBUG("Read byte:0x%02X (%d), parser_state:%d.", byte, byte, parser_state);
+
         if (!success) {
-            CONSOLE("[WARNING] Failed to read escaped byte, resetting parser.");
-            LOG("[WARNING] Failed to read escaped byte, resetting parser.");
+            CONSOLE_WARNING("Failed to read escaped byte, resetting parser.");
+            LOG_WARNING("Failed to read escaped byte, resetting parser.");
             parser_state = PARSER_WAITING_SOF;
             continue;
         }
-        
+
         switch (parser_state) {
             case PARSER_WAITING_SOF:
                 if (byte == COMM_SOF) {
                     parser_state = PARSER_WAITING_TYPE;
-                    //CONSOLE("[DEBUG] SOF 0x%02x read.", byte);
+                    //CONSOLE_DEBUG("SOF 0x%02x read.", byte);
                 }
                 break;
-                
+
             case PARSER_WAITING_TYPE:
                 frame_type = byte;
                 parser_state = PARSER_WAITING_LEN_HI;
-                //CONSOLE("[DEBUG] Type 0x%02x read.",frame_type);
+                //CONSOLE_DEBUG("Type 0x%02x read.",frame_type);
                 break;
-                
+
             case PARSER_WAITING_LEN_HI:
                 frame_length = byte << 8;
                 parser_state = PARSER_WAITING_LEN_LO;
                 break;
-                
+
             case PARSER_WAITING_LEN_LO:
                 frame_length |= byte;
                 current_data_index = 0;
-                //CONSOLE("[DEBUG] Length read:%d.",frame_length);
-                
+                //CONSOLE_DEBUG("Length read:%d.",frame_length);
+
                 if (frame_length == 0) {
                     // 无数据帧，直接跳到校验和
                     parser_state = PARSER_WAITING_CHECKSUM;
                 } else if (frame_length > sizeof(frame_data)) {
                     // 数据长度超出限制，重置解析器
-                    CONSOLE("[WARNING] Frame length %d exceeds buffer size, resetting parser.", frame_length);
-                    LOG("[WARNING] Frame length %d exceeds buffer size, resetting parser.", frame_length);
+                    CONSOLE_WARNING("Frame length %d exceeds buffer size, resetting parser.", frame_length);
+                    LOG_WARNING("Frame length %d exceeds buffer size, resetting parser.", frame_length);
                     parser_state = PARSER_WAITING_SOF;
                 } else {
                     parser_state = PARSER_WAITING_DATA;
                 }
                 break;
-                
+
             case PARSER_WAITING_DATA:
                 if (current_data_index < sizeof(frame_data)) {
                     frame_data[current_data_index++] = byte;
-                    
+
                     if (current_data_index >= frame_length) {
                         parser_state = PARSER_WAITING_CHECKSUM;
-                        //CONSOLE("[DEBUG] Data read: %s.",frame_data);
+                        //CONSOLE_DEBUG("Data read: %s.",frame_data);
                     }
                 }
                 break;
-                
+
             case PARSER_WAITING_CHECKSUM:
                 expected_checksum = byte;
-                
+
                 // 验证校验和
                 uint8_t calculated_checksum = calculate_checksum(frame_data, frame_length);
                 if (calculated_checksum == expected_checksum) {
                     // 校验成功
-                    //CONSOLE("[DEBUG] Checksum correct.");
+                    //CONSOLE_DEBUG("Checksum correct.");
                     parser_state = PARSER_WAITING_EOF; // 如果协议需要等待结束标志，可以设置为 PARSER_WAITING_EOF，否则直接处理数据
                 } else {
-                    CONSOLE("[WARNING] Checksum mismatch: expected 0x%02X, got 0x%02X", 
+                    CONSOLE_WARNING("Checksum mismatch: expected 0x%02X, got 0x%02X",
                            expected_checksum, calculated_checksum);
-                    LOG("[WARNING] Checksum mismatch: expected 0x%02X, got 0x%02X", 
+                    LOG_WARNING("Checksum mismatch: expected 0x%02X, got 0x%02X",
                            expected_checksum, calculated_checksum);
                     // 校验失败，重置解析器
                     parser_state = PARSER_WAITING_SOF;
                 }
-                
+
                 break;
 
             case PARSER_WAITING_EOF:
                 if (byte == COMM_EOF) {
                     // 成功接收完整帧，处理数据
-                    //CONSOLE("[DEBUG] EOF 0x%02x received.",byte);
+                    //CONSOLE_DEBUG("EOF 0x%02x received.",byte);
                     if (!data_process()) {
-                        CONSOLE("[WARNING] Data processing failed for frame type 0x%02X", frame_type);
-                        LOG("[WARNING] Data processing failed for frame type 0x%02X", frame_type);
+                        CONSOLE_WARNING("Data processing failed for frame type 0x%02X", frame_type);
+                        LOG_WARNING("Data processing failed for frame type 0x%02X", frame_type);
                     }
                 } else {
-                    CONSOLE("[WARNING] Expected EOF but got 0x%02X, resetting parser.", byte);
-                    LOG("[WARNING] Expected EOF but got 0x%02X, resetting parser.", byte);
+                    CONSOLE_WARNING("Expected EOF but got 0x%02X, resetting parser.", byte);
+                    LOG_WARNING("Expected EOF but got 0x%02X, resetting parser.", byte);
                 }
                 // 无论成功与否，重置解析器准备接收下一帧
                 parser_state = PARSER_WAITING_SOF;
                 break;
-                
+
             default:
                 parser_state = PARSER_WAITING_SOF;
                 break;
@@ -232,12 +232,12 @@ void comm_handle_heartbeat(void)
 {
     if (!new_heartbeat) return;
     new_heartbeat = false;
-    //CONSOLE("[DEBUG] Heartbeat processed!");
+    //CONSOLE_DEBUG("Heartbeat processed!");
 #ifdef SIMULATOR
     if (comm_get_status() == COMM_STATUS_CONNECTING) {
         comm_set_status(COMM_STATUS_CONNECTED);
-        CONSOLE("[INFO] Connection established with MCU.");
-        LOG("[INFO] Connection established with MCU.");
+        CONSOLE_INFO("Connection established with MCU.");
+        LOG_INFO("Connection established with MCU.");
     }
 #else
     if (comm_get_status() != COMM_STATUS_CONNECTED) {
@@ -318,11 +318,11 @@ bool comm_has_new_log(void)
 uint16_t comm_get_log(char *buffer, uint16_t buf_size)
 {
     if (!buffer || buf_size == 0) return 0;
-    
+
     uint16_t copy_len = (stored_log_len < buf_size - 1) ? stored_log_len : buf_size - 1;
     memcpy(buffer, stored_log, copy_len);
     buffer[copy_len] = '\0';
-    
+
     new_log_data = false;  // 读取后清除标志
     return copy_len;
 }
@@ -367,31 +367,31 @@ static bool data_process()
             if (frame_length >= 1) {
                 stored_key_mask = frame_data[0];
                 new_key_data = true;
-                //CONSOLE("[INFO] Success getting MCU key state: 0x%02X", stored_key_mask);
+                //CONSOLE_INFO("Success getting MCU key state: 0x%02X", stored_key_mask);
             }
 
 #else
-            CONSOLE("[WARNING] Key state frame received in non-simulator mode!");
-            LOG("[WARNING] Key state frame received in non-simulator mode!");
+            CONSOLE_WARNING("Key state frame received in non-simulator mode!");
+            LOG_WARNING("Key state frame received in non-simulator mode!");
             return false;
 #endif
             break;
-            
+
         case COMM_FRAME_JOYSTICK:
 #ifdef SIMULATOR
             if (frame_length >= 4) {
                 stored_joystick_x = (frame_data[1] << 8) | frame_data[0];
                 stored_joystick_y = (frame_data[3] << 8) | frame_data[2];
                 new_joystick_data = true;
-                //CONSOLE("[INFO] Success getting MCU joystick: (%d, %d)", stored_joystick_x, stored_joystick_y);
+                //CONSOLE_INFO("Success getting MCU joystick: (%d, %d)", stored_joystick_x, stored_joystick_y);
             }
 #else
-            CONSOLE("[WARNING] Joystick frame received in non-simulator mode!");
-            LOG("[WARNING] Joystick frame received in non-simulator mode!");
+            CONSOLE_WARNING("Joystick frame received in non-simulator mode!");
+            LOG_WARNING("Joystick frame received in non-simulator mode!");
             return false;
 #endif
             break;
-            
+
         case COMM_FRAME_LOG:
 #ifdef SIMULATOR
             if (frame_length <= sizeof(stored_log) - 1) {
@@ -399,40 +399,40 @@ static bool data_process()
                 stored_log[frame_length] = '\0';
                 stored_log_len = frame_length;
                 new_log_data = true;
-                //CONSOLE("[INFO] Success getting MCU log: %s", stored_log);
+                //CONSOLE_INFO("Success getting MCU log: %s", stored_log);
             }
 #else
-            CONSOLE("[WARNING] Log frame received in non-simulator mode!");
-            LOG("[WARNING] Log frame received in non-simulator mode!");
+            CONSOLE_WARNING("Log frame received in non-simulator mode!");
+            LOG_WARNING("Log frame received in non-simulator mode!");
             return false;
 #endif
             break;
-        
+
         case COMM_FRAME_HEART_BEAT:
 #ifdef SIMULATOR
-            CONSOLE("[WARNING] Heartbeat frame received in simulator mode!");
-            LOG("[WARNING] Heartbeat frame received in simulator mode!");
+            CONSOLE_WARNING("Heartbeat frame received in simulator mode!");
+            LOG_WARNING("Heartbeat frame received in simulator mode!");
             return false;
 #else
             new_heartbeat = true;
-            //CONSOLE("[DEBUG] Heartbeat received!");
+            //CONSOLE_DEBUG("Heartbeat received!");
 #endif
             break;
 
         case COMM_FRAME_HEART_BEAT_ACK:
 #ifdef SIMULATOR
-            //CONSOLE("[DEBUG] Received heartbeat ACK frame from MCU.");
+            //CONSOLE_DEBUG("Received heartbeat ACK frame from MCU.");
             new_heartbeat = true;
 #else
-            CONSOLE("[WARNING] Heartbeat ACK frame received in non-simulator mode!");
-            LOG("[WARNING] Heartbeat ACK frame received in non-simulator mode!");
+            CONSOLE_WARNING("Heartbeat ACK frame received in non-simulator mode!");
+            LOG_WARNING("Heartbeat ACK frame received in non-simulator mode!");
             return false;
 #endif
             break;
-            
+
         default:
-            CONSOLE("[WARNING] Unknown frame type: 0x%02X", frame_type);
-            LOG("[WARNING] Unknown frame type: 0x%02X", frame_type);
+            CONSOLE_WARNING("Unknown frame type: 0x%02X", frame_type);
+            LOG_WARNING("Unknown frame type: 0x%02X", frame_type);
             return false;
     }
     return true;
@@ -449,8 +449,8 @@ static bool read_escaped_byte(uint8_t * byte)
     uint8_t raw_byte = uart_receive_byte();
     if (raw_byte == COMM_ESC) {
         if (!uart_receive_available()) {
-            CONSOLE("[WARNING] Incomplete escape sequence!");
-            LOG("[WARNING] Incomplete escape sequence!");
+            CONSOLE_WARNING("Incomplete escape sequence!");
+            LOG_WARNING("Incomplete escape sequence!");
             return false; // 转义序列不完整，读取失败 不修改 byte
         }
 

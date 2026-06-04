@@ -62,7 +62,7 @@ void ui_init()
   ui_sys_halt_init();
   //按键注册
   input_sw_register_press_callback(KEY_EVENT_B, ui_esc_pressed_handler);
-  CONSOLE("[INFO] Ui initialization finished\n");
+  CONSOLE_INFO("Ui initialization finished");
 }
 /**
  * @brief 根据当前游戏状态决定UI加载和音乐加载，
@@ -76,33 +76,33 @@ void ui_run()
     switch (fsm_get_state()) {
         case GS_CG    :
           audio_load(AUDIO_CG,AUDIO_CHAN_BGM,false);
-          ui_cg_run(); 
+          ui_cg_run();
           break;
-        case GS_MENU  : 
-        CONSOLE("[INFO] Come to menu");
-          audio_stop_all(); 
+        case GS_MENU  :
+        CONSOLE_INFO("Come to menu");
+          audio_stop_all();
           ui_menu_run();
           break;
-        case GS_PLAY  : 
+        case GS_PLAY  :
           if (last_game_state == GS_MENU || last_game_state == GS_OVER) audio_load(AUDIO_BGM,AUDIO_CHAN_BGM,true);
           if (last_game_state == GS_PAUSE) audio_resume_all();
-          ui_play_run(); 
+          ui_play_run();
           break;
-        case GS_PAUSE : 
+        case GS_PAUSE :
           audio_pause_all();
-          ui_play_run(); 
+          ui_play_run();
           break;
         case GS_OVER  :
           audio_stop_all();
           ui_play_run();
           break;
-        case SYS_HALT : 
-          audio_stop_all(); 
-          ui_sys_halt_run(); 
+        case SYS_HALT :
+          audio_stop_all();
+          ui_sys_halt_run();
           break;
-        default : 
-          CONSOLE("[Error] Unknow fsm state code: %d",fsm_get_state()); 
-          LOG("[Error] Unknow fsm state code: %d",fsm_get_state()); 
+        default :
+          CONSOLE_ERROR("Unknow fsm state code: %d",fsm_get_state());
+          LOG_ERROR("Unknow fsm state code: %d",fsm_get_state());
           sys_halt();
           break;
     }
@@ -123,21 +123,21 @@ static void ui_esc_pressed_handler()
     case GS_CG:
         ui_cg_skip();
         fsm_switch_state(GS_MENU);
-        CONSOLE("[INFO] CG skipped by user");
+        CONSOLE_INFO("CG skipped by user");
         break;
     case GS_PLAY:
         fsm_switch_state(GS_PAUSE);
-        CONSOLE("[INFO] State has been changed by ESC to GS_PAUSE");
+        CONSOLE_INFO("State has been changed by ESC to GS_PAUSE");
         break;
     case GS_PAUSE:
         fsm_switch_state(GS_PLAY);
-        CONSOLE("[INFO] State has been changed by ESC to GS_PLAY");
+        CONSOLE_INFO("State has been changed by ESC to GS_PLAY");
         break;
     case GS_OVER:
         fsm_switch_state(GS_MENU);
-        CONSOLE("[INFO] State has been changed by ESC to GS_MENU");
+        CONSOLE_INFO("State has been changed by ESC to GS_MENU");
     default:
-        CONSOLE("[INFO] No ESC action defined for current state %d", game_state);
+        CONSOLE_INFO("No ESC action defined for current state %d", game_state);
         break;
   }
 }

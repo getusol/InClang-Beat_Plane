@@ -49,8 +49,8 @@ comm_status_t comm_get_status()
 void comm_set_status(comm_status_t status)
 {
     if (status >= COMM_STATUS_MAX) {
-        CONSOLE("[WARNING] Attempted to set invalid communication status: %d", status);
-        LOG("[WARNING] Attempted to set invalid communication status: %d", status);
+        CONSOLE_WARNING("Attempted to set invalid communication status: %d", status);
+        LOG_WARNING("Attempted to set invalid communication status: %d", status);
         return; // 无效状态，忽略
     }
     comm_status = status;

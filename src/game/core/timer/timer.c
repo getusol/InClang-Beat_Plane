@@ -83,8 +83,8 @@ timer_t * timer_create(game_obj_t * owner,uint32_t interval_ms,timer_mode_t mode
 
     uint16_t id = pool_alloc(&timer_pool);
     if (id == POOL_INVALID_ID) {
-        CONSOLE("[WARNING] Failed to create timer, no free index available.");
-        LOG("[WARNING] Failed to create timer, no free index available.");
+        CONSOLE_WARNING("Failed to create timer, no free index available.");
+        LOG_WARNING("Failed to create timer, no free index available.");
         return NULL;
     }
 

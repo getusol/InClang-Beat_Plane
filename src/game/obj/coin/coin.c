@@ -116,7 +116,7 @@ void coin_init(lv_obj_t * parent)
     // 注册事件回调
     event_register(EVENT_PLAYER_HIT_COIN, coin_event_hit_player_cb);
 
-    CONSOLE("[INFO] Coin system initialized with max count: %d.", MAX_COIN_COUNT);
+    CONSOLE_INFO("Coin system initialized with max count: %d.", MAX_COIN_COUNT);
 }
 
 /**
@@ -135,7 +135,7 @@ game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
 
     uint16_t id = pool_alloc(&coin_pool);
     if (id == POOL_INVALID_ID) {
-        CONSOLE("[WARNING] No available coin slots! Max coin count reached.");
+        CONSOLE_WARNING("No available coin slots! Max coin count reached.");
         return NULL;
     }
 
@@ -226,7 +226,7 @@ static void coin_event_hit_player_cb(game_obj_t * src, game_obj_t * trg)
 
     coin_t * c = (coin_t *)trg;
     coin_add_num(c->value);
-    CONSOLE("[INFO] Coin collected! value=%d total=%d", c->value, coin_num);
+    CONSOLE_INFO("Coin collected! value=%d total=%d", c->value, coin_num);
 
     trg->hide(trg);
 }
@@ -244,18 +244,18 @@ static void coin_disappear_timer_cb(game_obj_t * owner, void * usr_data)
     // 每次闪烁周期（淡出 + 淡入）占 250ms （125ms 渐隐 + 125ms 渐显）
     lv_anim_t a;
     lv_anim_init(&a);
-    
+
     // 将整个 owner 结构体指针作为动画变量传入，便于在各回调函数中安全获取
-    lv_anim_set_var(&a, owner); 
+    lv_anim_set_var(&a, owner);
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP); // 从不透明到全透明
-    
+
     lv_anim_set_time(&a, 125);               // 单向（淡出）耗时 125ms
     lv_anim_set_playback_time(&a, 125);      // 开启往返播放（淡入）耗时 125ms，组合为一个 250ms 周期
     lv_anim_set_repeat_count(&a, 4);         // 循环 4 次，总共刚好 1000ms (1秒)
-    
+
     lv_anim_set_exec_cb(&a, coin_anim_opa_cb);
     lv_anim_set_ready_cb(&a, coin_anim_ready_cb);
-    
+
     lv_anim_start(&a);
 }
 

@@ -216,7 +216,7 @@ void ui_play_run()
 lv_obj_t * ui_play_get_display(void)
 {
     return dp_play;
-}   
+}
 
 /**
  * @brief Level 进场动画
@@ -229,7 +229,7 @@ void ui_play_level_enter_anim(const char * level_name)
     lv_obj_align(label_level, LV_ALIGN_TOP_MID, 0, 100);
     lv_obj_set_style_text_color(label_level, lv_color_white(), 0);
     lv_obj_set_style_text_font(label_level, &lv_font_montserrat_44, 0);
-    
+
     lv_obj_move_foreground(label_level);
     lv_obj_set_y(label_level, -90);
     lv_obj_set_style_opa(label_level, LV_OPA_TRANSP, 0);
@@ -273,7 +273,7 @@ static void pause_exit_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     fsm_switch_state(GS_MENU);
-    console_out("[play][pause_exit_btn] State has been switched to %d\n", fsm_get_state());
+    CONSOLE_INFO("State has been switched to %d", fsm_get_state());
 }
 
 /**
@@ -283,7 +283,7 @@ static void pause_continue_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     fsm_switch_state(GS_PLAY);
-    console_out("[play][pause_continue_btn] State has been switched to %d\n", fsm_get_state());
+    CONSOLE_INFO("State has been switched to %d", fsm_get_state());
 }
 
 /**
@@ -293,8 +293,8 @@ static void pause_btn_event_cb(lv_event_t * e)
 {
     switch (fsm_get_state())
     {
-        case GS_PLAY : fsm_switch_state(GS_PAUSE); console_out("[play][pause_btn] State has been switched to %d\n", fsm_get_state()); break;
-        case GS_PAUSE : fsm_switch_state(GS_PLAY); console_out("[play][pause_btn] State has been switched to %d\n", fsm_get_state()); break;
+        case GS_PLAY : fsm_switch_state(GS_PAUSE); CONSOLE_INFO("State has been switched to %d", fsm_get_state()); break;
+        case GS_PAUSE : fsm_switch_state(GS_PLAY); CONSOLE_INFO("State has been switched to %d", fsm_get_state()); break;
     }
 }
 
@@ -305,23 +305,23 @@ static void over_exit_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     fsm_switch_state(GS_MENU);
-    console_out("[play][over_exit_btn] State has been switched to %d\n", fsm_get_state());
+    CONSOLE_INFO("State has been switched to %d", fsm_get_state());
 }
 
 /**
  * @brief 透明度动画回调 对进场level动画使用
  */
-static void opa_anim_cb(void * obj, int32_t opa) 
+static void opa_anim_cb(void * obj, int32_t opa)
 {
-    lv_obj_set_style_opa((lv_obj_t*)obj, opa, 0); 
+    lv_obj_set_style_opa((lv_obj_t*)obj, opa, 0);
 }
 
 /**
  * @brief y坐标动画回调 对进场level动画使用
  */
-static void y_anim_cb(void * obj, int32_t y) 
-{ 
-    lv_obj_set_y((lv_obj_t*)obj, y); 
+static void y_anim_cb(void * obj, int32_t y)
+{
+    lv_obj_set_y((lv_obj_t*)obj, y);
 }
 
 /**
@@ -342,6 +342,6 @@ static void level_anim_finish(lv_anim_t * anim)
 
 static void ui_play_event_game_start_cb(game_obj_t * a,game_obj_t * b)
 {
-    CONSOLE("[INFO] Level 1 Animation Start.");
+    CONSOLE_INFO("Level 1 Animation Start.");
     ui_play_level_enter_anim("Level 1");
 }

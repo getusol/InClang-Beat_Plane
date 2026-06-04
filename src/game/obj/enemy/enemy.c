@@ -120,7 +120,7 @@ void enemy_init(lv_obj_t * parent)
     enemies[i].base.show = enemy_show;
     enemies[i].base.hide = enemy_hide;
     enemies[i].base.obj = img_create_from_dsc(parent,img_path(ENEMY_IMG_NAME,enemy_img_path,64),enemies[i].base.w,enemies[i].base.h,enemy_img_buf,&enemy_img_struct,false);
-    
+
 
     // health bar
     enemies[i].health_bar = lv_bar_create(parent);
@@ -136,14 +136,14 @@ void enemy_init(lv_obj_t * parent)
 
     // register obj
     game_register_obj(&enemies[i].base);
-    CONSOLE("[INFO] Enemy object %d initialized with img: %s.",i,enemy_img_path);
+    CONSOLE_INFO("Enemy object %d initialized with img: %s.",i,enemy_img_path);
   }
 
   // event_cb
   event_register(EVENT_BULLET_HIT_ENEMY,enemy_event_hit_by_bullet_cb);
   event_register(EVENT_PLAYER_HIT_ENEMY,enemy_event_hit_player_cb);
 
-  CONSOLE("[INFO] Enemy system initalized with max enemy count: %d.",MAX_ENEMY_COUNT);
+  CONSOLE_INFO("Enemy system initalized with max enemy count: %d.",MAX_ENEMY_COUNT);
   return ;
 }
 
@@ -167,8 +167,8 @@ game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y,
   uint16_t id = pool_alloc(&enemy_pool);
   if (id == POOL_INVALID_ID)
   {
-    CONSOLE("[WARNING] No available enemy slots! Max enemy count: %d", MAX_ENEMY_COUNT);
-    LOG("[WARNING] No available enemy slots! Max enemy count: %d", MAX_ENEMY_COUNT);
+    CONSOLE_WARNING("No available enemy slots! Max enemy count: %d", MAX_ENEMY_COUNT);
+    LOG_WARNING("No available enemy slots! Max enemy count: %d", MAX_ENEMY_COUNT);
     return NULL;
   }
   enemy_t * e = &enemies[id];
@@ -186,7 +186,7 @@ game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y,
   lv_obj_set_pos(e->health_bar,x - 10,y - 10);
   lv_bar_set_value(e->health_bar,e->hp,LV_ANIM_OFF);
   e->base.show(&e->base);
-  // CONSOLE("[INFO] Enemy %d spawned at x: %d, y: %d.",e->pool_index,x,y);
+  // CONSOLE_INFO("Enemy %d spawned at x: %d, y: %d.",e->pool_index,x,y);
   return &e->base;
 }
 
@@ -251,8 +251,8 @@ static void enemy_show(game_obj_t * g)
   enemy_t * e = (enemy_t *)g;
   if (e->pool_index == POOL_INVALID_ID)
   {
-    CONSOLE("[WARNING] Enemy object is not initialized. Cannot show.");
-    LOG("[WARNING] Enemy object is not initialized. Cannot show.");
+    CONSOLE_WARNING("Enemy object is not initialized. Cannot show.");
+    LOG_WARNING("Enemy object is not initialized. Cannot show.");
     return ;
   }
   g->active = true;
@@ -284,7 +284,7 @@ static void enemy_move(game_obj_t * g)
   lv_obj_set_pos(g->obj,g->x,g->y);
   enemy_t * e = (enemy_t *)g;
   lv_obj_set_pos(e->health_bar,g->x - 10,g->y - 10);
-  
+
   // 出界检查
   if (g->x < ENEMY_MIN_X || g->x > ENEMY_MAX_X || g->y < ENEMY_MIN_Y || g->y > ENEMY_MAX_Y)
   {
@@ -307,14 +307,14 @@ static int16_t enemy_modify_hp(game_obj_t * g,int16_t delta)
 
   enemy_t * e = (enemy_t *)g;
   e->hp += delta;
-  
+
   if (e->hp > e->hp_max) {
     e->hp = e->hp_max;
     return e->hp;
   }
   if (e->hp <= 0) {
     e->hp = 0;
-    CONSOLE("[INFO] Enemy %d has been killed.",e->pool_index);
+    CONSOLE_INFO("Enemy %d has been killed.",e->pool_index);
 
     lv_coord_t coin_x = g->x + (g->w - 18) / 2;
     lv_coord_t coin_y = g->y + (g->h - 18) / 2;

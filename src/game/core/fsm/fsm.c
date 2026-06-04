@@ -46,8 +46,8 @@ game_state_t fsm_get_state(void)
 void fsm_switch_state(game_state_t new_state)
 {
   if (new_state >= GS_MAX) {
-    CONSOLE("[ERROR] Unknown state!");
-    LOG("[ERROR] Unknown state!");
+    CONSOLE_ERROR("Unknown state!");
+    LOG_ERROR("Unknown state!");
     sys_halt();
     return ;
   }

@@ -49,7 +49,7 @@ void ui_comm_init(void)
     // 在 overlay 层创建标签（始终显示在所有屏幕上方）
     lv_obj_t *overlay = lv_layer_top();
     comm_status_label = lv_label_create(overlay);
-    
+
     lv_label_set_text(comm_status_label, "Comm: Disconnected");
     lv_obj_set_style_text_font(comm_status_label, &lv_font_montserrat_14, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(comm_status_label,LV_OPA_COVER,0);
@@ -61,7 +61,7 @@ void ui_comm_init(void)
     lv_obj_add_flag(comm_status_label, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(comm_status_label, on_label_click, LV_EVENT_CLICKED, NULL);
 
-    CONSOLE("[INFO] Communication status UI initialized on overlay\n");
+    CONSOLE_INFO("Communication status UI initialized on overlay");
 }
 
 /**********************

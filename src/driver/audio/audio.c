@@ -18,8 +18,8 @@
     #include "SDL2/SDL.h"
     #include <stdlib.h>
 #else
-    #include "drivers.h" 
-    #include "gd32h7xx_adc.h" 
+    #include "drivers.h"
+    #include "gd32h7xx_adc.h"
     #include "lv_port_disp_template.h"
     #include "lv_port_indev_template.h"
 #endif
@@ -44,7 +44,7 @@
 #define SFX_CNT (AUDIO_CHAN_MAX - AUDIO_CHAN_SFX1)
 
 // 音量分配策略 此时：2 ^ AUDIO_BUDGET = AUDIO_ALLOC_BGM + SFX_CNT * AUDIO_ALLOC_SFX
-#define AUDIO_BUDGET 8 // 总和的移位 (bgm + sfx) = 2 ^ .. 9->512 
+#define AUDIO_BUDGET 8 // 总和的移位 (bgm + sfx) = 2 ^ .. 9->512
                        // 这里设置为8而非9 让音量翻倍 并通过截断来避免溢出
 #define AUDIO_ALLOC_BGM 200 // bgm所得
 #define AUDIO_ALLOC_SFX 104 // sfx所得
@@ -121,21 +121,21 @@ void audio_init()
 void audio_load(audio_id_t id, audio_channel_id_t channel_id, bool do_repeat)
 {
     if (id < 0 || id >= AUDIO_MAX) {
-        CONSOLE("[WARNING] Invalid audio ID: %d", id);
-        LOG("[WARNING] Invalid audio ID: %d", id);
+        CONSOLE_WARNING("Invalid audio ID: %d", id);
+        LOG_WARNING("Invalid audio ID: %d", id);
         return;
     }
     int target_id = channel_id;
     if (target_id < -1 || target_id >= AUDIO_CHAN_MAX) {
-        CONSOLE("[WARNING] Invalid channel ID: %d", target_id);
-        LOG("[WARNING] Invalid channel ID: %d", target_id);
+        CONSOLE_WARNING("Invalid channel ID: %d", target_id);
+        LOG_WARNING("Invalid channel ID: %d", target_id);
         return;
     }
     if (target_id == AUDIO_CHAN_AUTO) {
         target_id = find_idle_sfx_channel();
         if (target_id == -1) {
-            CONSOLE("[WARNING] No idle SFX channel found, discarding request for audio ID %d", id);
-            LOG("[WARNING] No idle SFX channel found, discarding request for audio ID %d", id);
+            CONSOLE_WARNING("No idle SFX channel found, discarding request for audio ID %d", id);
+            LOG_WARNING("No idle SFX channel found, discarding request for audio ID %d", id);
             return;
         }
     }
@@ -224,7 +224,7 @@ void audio_resume_all()
 void SPI1_IRQHandler(void)
 {
     if(SET != spi_i2s_interrupt_flag_get(SPI1, SPI_I2S_INT_FLAG_TP)) return ;
-    
+
     // 多个通道安全读取并混音输出
     int16_t bgm_sample = read_sample(AUDIO_CHAN_BGM);
     int16_t sfx_sample[SFX_CNT] = {0};
@@ -276,9 +276,9 @@ static void audio_play_on_channel(uint8_t channel_id, const char * path, uint32_
 
     // 1. 锁外申请新内存并加载文件（I/O 耗时，绝不能放在锁内，否则会导致音频播放产生卡顿）
     uint8_t * new_data = (uint8_t *)ram_malloc(size);
-    if (new_data == NULL) { 
-        CONSOLE("[WARNING] ram_malloc failed for channel %d: %s", channel_id, path);
-        LOG("[WARNING] ram_malloc failed for channel %d: %s", channel_id, path);
+    if (new_data == NULL) {
+        CONSOLE_WARNING("ram_malloc failed for channel %d: %s", channel_id, path);
+        LOG_WARNING("ram_malloc failed for channel %d: %s", channel_id, path);
         return;
     }
     read_file_to_array(path, new_data, size);
@@ -315,10 +315,10 @@ static int16_t mix_wavg(int16_t bgm, int16_t* sfx, uint8_t sfx_cnt)
     for (int i = 0; i < sfx_cnt; i++) {
         sum += (int32_t)VOL_SFX * AUDIO_ALLOC_SFX * sfx[i];
     }
-    
+
     // 修复 1：必须将移位运算结果赋值回 sum！
-    sum >>= (AUDIO_BUDGET + VOL_MAX); 
-    
+    sum >>= (AUDIO_BUDGET + VOL_MAX);
+
     // 修复 2：增加饱和截断保护（防止多通道重叠时产生的数值溢出导致啸叫与噪声）
     if (sum > 32767)  sum = 32767;
     if (sum < -32768) sum = -32768;
@@ -331,30 +331,30 @@ static int16_t mix_wavg(int16_t bgm, int16_t* sfx, uint8_t sfx_cnt)
  */
 static int16_t read_sample(audio_channel_id_t channel)
 {
-    if (!audio_channels[channel].is_active) return 0; 
-    
+    if (!audio_channels[channel].is_active) return 0;
+
     if (audio_channels[channel].data == NULL || audio_channels[channel].size == 0) {
-        audio_channels[channel].is_active = false; 
-        return 0; 
+        audio_channels[channel].is_active = false;
+        return 0;
     }
-    
-    if (audio_channels[channel].play_index + 1 >= audio_channels[channel].size) { 
+
+    if (audio_channels[channel].play_index + 1 >= audio_channels[channel].size) {
         if (audio_channels[channel].do_repeat) {
-            audio_channels[channel].play_index = 0; 
+            audio_channels[channel].play_index = 0;
         } else {
-            audio_channels[channel].is_active = false; 
-            return 0; 
+            audio_channels[channel].is_active = false;
+            return 0;
         }
     }
-    
+
     int16_t sample = READ_SAMPLE(audio_channels[channel].data, audio_channels[channel].play_index);
-    audio_channels[channel].play_index += 2; 
-    
+    audio_channels[channel].play_index += 2;
+
     if (audio_channels[channel].play_index >= audio_channels[channel].size) {
         if (audio_channels[channel].do_repeat) {
-            audio_channels[channel].play_index = 0; 
+            audio_channels[channel].play_index = 0;
         } else {
-            audio_channels[channel].is_active = false; 
+            audio_channels[channel].is_active = false;
         }
     }
     return sample;
@@ -368,7 +368,7 @@ static int find_idle_sfx_channel()
     for (int i = AUDIO_CHAN_SFX1; i < AUDIO_CHAN_MAX; i++) {
         if (!audio_channels[i].is_active) return i;
     }
-    return -1; 
+    return -1;
 }
 
 /**
@@ -378,17 +378,17 @@ static void i2s_config(void)
 {
 #ifdef SIMULATOR
     if(SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
-        CONSOLE("[WARNING] SDL_Init Audio Failed: %s\n", SDL_GetError());
-        LOG("[WARNING] SDL_Init Audio Failed: %s", SDL_GetError());
+        CONSOLE_WARNING("SDL_Init Audio Failed: %s", SDL_GetError());
+        LOG_WARNING("SDL_Init Audio Failed: %s", SDL_GetError());
         return;
     }
 
     SDL_AudioSpec wanted_spec;
-    wanted_spec.freq = 44100;           
-    wanted_spec.format = AUDIO_S16SYS;  
-    wanted_spec.channels = 1;           
+    wanted_spec.freq = 44100;
+    wanted_spec.format = AUDIO_S16SYS;
+    wanted_spec.channels = 1;
     wanted_spec.silence = 0;
-    wanted_spec.samples = 1024;         
+    wanted_spec.samples = 1024;
     wanted_spec.callback = sdl_audio_callback;
     wanted_spec.userdata = NULL;
 
@@ -414,7 +414,7 @@ static void i2s_config(void)
     spi_i2s_deinit(SPI1);
     i2s_psc_config(SPI1, I2S_AUDIOSAMPLE_44K, I2S_FRAMEFORMAT_DT16B_CH16B, I2S_MCKOUT_DISABLE);
     i2s_init(SPI1, I2S_MODE_MASTERTX, I2S_STD_PHILIPS, I2S_CKPL_LOW);
-    
+
     i2s_enable(SPI1);
     spi_master_transfer_start(SPI1, SPI_TRANS_START);
     spi_i2s_interrupt_enable(SPI1, SPI_I2S_INT_TP);
@@ -427,9 +427,9 @@ static void i2s_config(void)
  */
 static void sdl_audio_callback(void *userdata, Uint8 *stream, int len)
 {
-    int sample_count = len / sizeof(int16_t); 
+    int sample_count = len / sizeof(int16_t);
     int16_t * out = (int16_t *)stream;
-    
+
     for (int i = 0; i < sample_count; i++) {
         int16_t bgm_sample = read_sample(AUDIO_CHAN_BGM);
         int16_t sfx_sample[SFX_CNT] = {0};

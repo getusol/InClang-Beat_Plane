@@ -78,7 +78,7 @@ void console_out(const char *fmt, ...)
         printf("%s",buf);
     }
 #endif
-    
+
 }
 /**
  * @brief 日志输出，输出到特定目录的日志下
@@ -109,7 +109,7 @@ void log_out(const char *fmt, ...)
         f_close(&file);
     }
     else {
-        console_out("[Error][debug] Failed opening %s\n",LOG_PATH);
+        CONSOLE_ERROR("Failed opening %s", LOG_PATH);
     }
 #endif
 }
@@ -119,50 +119,50 @@ void log_out(const char *fmt, ...)
 void debug_init()
 {
   update_boot_count();
-  log_out("\n=====The %dth boot,log system loaded successfully!=====",g_boot_count);
+  LOG_INFO("\n=====The %dth boot,log system loaded successfully!=====",g_boot_count);
 }
 /**
  * @brief debug重置函数 清空日志并且计数归0
  */
 void debug_reset(void)
 {
-  console_out("[debug] Running debug_reset()...\n");
+  CONSOLE_INFO("Running debug_reset()...");
 #ifdef SIMULATOR
     // 1. 清空日志文件
     FILE* fp_log = fopen(LOG_PATH, "w");
     if (fp_log) {
         fclose(fp_log);
-        console_out("[debug] Log cleared!Path: %s\n",LOG_PATH);
+        CONSOLE_INFO("Log cleared!Path: %s", LOG_PATH);
     }
     else {
-        console_out("[Error][debug] Failed opening %s\n",LOG_PATH);
+        CONSOLE_ERROR("Failed opening %s", LOG_PATH);
     }
     // 2. 计数归零
     FILE* fp_boot = fopen(BOOT_COUNT_PATH, "w");
     if (fp_boot) {
         fprintf(fp_boot, "0");
         fclose(fp_boot);
-        console_out("[debug] Boot count cleared!Path: %s\n",BOOT_COUNT_PATH);
+        CONSOLE_INFO("Boot count cleared!Path: %s", BOOT_COUNT_PATH);
     }
     else {
-        console_out("[Error][debug] Failed opening %s\n",BOOT_COUNT_PATH);
+        CONSOLE_ERROR("Failed opening %s", BOOT_COUNT_PATH);
     }
 #else
     // 1. 清空日志文件
     FIL file_log;
     f_open(&file_log, LOG_PATH, FA_CREATE_ALWAYS | FA_WRITE);
     f_close(&file_log);
-    console_out("[debug] Log cleared!Path: %s\n",LOG_PATH);
+    CONSOLE_INFO("Log cleared!Path: %s", LOG_PATH);
 
     // 2. 计数归零
     FIL file_boot;
     if (f_open(&file_boot, BOOT_COUNT_PATH, FA_CREATE_ALWAYS | FA_WRITE) == FR_OK) {
         f_puts("0", &file_boot);
         f_close(&file_boot);
-        console_out("[debug] Boot count cleared!Path: %s\n",BOOT_COUNT_PATH);
+        CONSOLE_INFO("Boot count cleared!Path: %s", BOOT_COUNT_PATH);
     }
     else {
-        console_out("[Error][debug] Failed opening %s\n",BOOT_COUNT_PATH);
+        CONSOLE_ERROR("Failed opening %s", BOOT_COUNT_PATH);
     }
 #endif
 }
@@ -198,7 +198,7 @@ static void update_boot_count()
         fclose(fp);
     }
     else {
-        console_out("[Error][debug] Cannot open file: %s\n",BOOT_COUNT_PATH);
+        CONSOLE_ERROR("Cannot open file: %s", BOOT_COUNT_PATH);
     }
     g_boot_count++;
 
@@ -208,7 +208,7 @@ static void update_boot_count()
         fclose(fp);
     }
     else {
-        console_out("[Error][debug] Cannot open file: %s\n",BOOT_COUNT_PATH);
+        CONSOLE_ERROR("Cannot open file: %s", BOOT_COUNT_PATH);
     }
 #else
     // 单片机端读取计数
@@ -222,7 +222,7 @@ static void update_boot_count()
         f_close(&file);
     }
     else {
-        console_out("[Error][debug] Cannot open file: %s\n",BOOT_COUNT_PATH);
+        CONSOLE_ERROR("Cannot open file: %s", BOOT_COUNT_PATH);
     }
     g_boot_count++;
 
@@ -232,7 +232,7 @@ static void update_boot_count()
         f_close(&file);
     }
     else {
-        console_out("[Error][debug] Cannot open file: %s\n",BOOT_COUNT_PATH);
+        CONSOLE_ERROR("Cannot open file: %s", BOOT_COUNT_PATH);
     }
 #endif
 }

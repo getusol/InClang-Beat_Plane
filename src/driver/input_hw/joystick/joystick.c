@@ -30,7 +30,7 @@
 #define JOY_PORT          GPIOC
 #define JOY_PIN_Y         GPIO_PIN_2    // PC2 -> ADC2_IN0
 #define JOY_PIN_X         GPIO_PIN_3    // PC3 -> ADC2_IN1
-#define JOY_CH_Y          ADC_CHANNEL_0 
+#define JOY_CH_Y          ADC_CHANNEL_0
 #define JOY_CH_X          ADC_CHANNEL_1
 //摇杆消抖参数:
 #define JOY_CENTER          2048        // ADC 中心值（12-bit ADC: 4096/2）
@@ -154,7 +154,7 @@ void joystick_init()
     #else
     mcu_js_adc_init();
     #endif
-    console_out("[joystick] Initialization done!\n");
+    CONSOLE_INFO("Initialization done!");
 }
 /**
  * @brief 定期扫描处理joystick
@@ -220,17 +220,17 @@ int16_t rjoystick_get_y()
   */
 static void pc_js_init()
 {
-    console_out("[joystick] PC Joystick Init (using keyboard keys)\n");
+    CONSOLE_INFO("PC Joystick Init (using keyboard keys)");
     // 以后加入自定义绑定按键之后这个地方要根据文件读取修改
-    console_out("[joystick] Key bindings:\n");
-    console_out("  X+ : D or Right Arrow\n");
-    console_out("  X- : A or Left Arrow\n");
-    console_out("  Y+ : S or Down Arrow\n");
-    console_out("  Y- : W or Up Arrow\n");
-    console_out("[joystick] params:\n");
-    console_out("  ACCEL: %.2f\n", ACCEL);
-    console_out("  DECAY: %.2f\n", DECAY);
-    console_out("  Joystick values range from -%d to %d\n", JOY_MAX_VALUE, JOY_MAX_VALUE);
+    CONSOLE_INFO("Key bindings:");
+    CONSOLE_INFO("  X+ : D or Right Arrow");
+    CONSOLE_INFO("  X- : A or Left Arrow");
+    CONSOLE_INFO("  Y+ : S or Down Arrow");
+    CONSOLE_INFO("  Y- : W or Up Arrow");
+    CONSOLE_INFO("params:");
+    CONSOLE_INFO("  ACCEL: %.2f", JS_ACCEL);
+    CONSOLE_INFO("  DECAY: %.2f", JS_DECAY);
+    CONSOLE_INFO("  Joystick values range from -%d to %d", JOY_MAX_VALUE, JOY_MAX_VALUE);
     return ;
 }
 /**
@@ -256,10 +256,10 @@ static void joystick_process(joystick_t * joystick,js_read_func jrf,const uint8_
     int8_t joy_y_dir = jrf(ptr,joystick->dir_keys[JS_POS_Y])-jrf(ptr,joystick->dir_keys[JS_NEG_Y]);
     joy_x_target_value = joy_x_dir * JOY_MAX_VALUE;
     joy_y_target_value = joy_y_dir * JOY_MAX_VALUE;
-    if (joy_x_target_value != 0) joystick->state.x += (joy_x_target_value - joystick->state.x) * ACCEL;
-    else joystick->state.x *= DECAY;
-    if (joy_y_target_value != 0) joystick->state.y += (joy_y_target_value - joystick->state.y) * ACCEL;
-    else joystick->state.y *= DECAY;
+    if (joy_x_target_value != 0) joystick->state.x += (joy_x_target_value - joystick->state.x) * JS_ACCEL;
+    else joystick->state.x *= JS_DECAY;
+    if (joy_y_target_value != 0) joystick->state.y += (joy_y_target_value - joystick->state.y) * JS_ACCEL;
+    else joystick->state.y *= JS_DECAY;
     if (joystick->state.x > JOY_MAX_VALUE) joystick->state.x = JOY_MAX_VALUE;
     if (joystick->state.x < -JOY_MAX_VALUE) joystick->state.x = -JOY_MAX_VALUE;
     if (joystick->state.y > JOY_MAX_VALUE) joystick->state.y = JOY_MAX_VALUE;
@@ -271,53 +271,53 @@ static void joystick_process(joystick_t * joystick,js_read_func jrf,const uint8_
   */
 static void mcu_js_adc_init()
 {
-    console_out("[joystick] Initializing ADC...\n");
+    CONSOLE_INFO("Initializing ADC...");
     rcu_periph_clock_enable(JOY_GPIO_RCU);
     rcu_periph_clock_enable(JOY_ADC_RCU);
-    console_out("[joystick] Clocks enabled (GPIOC, ADC2)\n");
-    
+    CONSOLE_INFO("Clocks enabled (GPIOC, ADC2)");
+
     gpio_mode_set(JOY_PORT, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, JOY_PIN_X | JOY_PIN_Y);
-    console_out("[joystick] GPIO configured (PC2, PC3 as ANALOG)\n");
-    
+    CONSOLE_INFO("GPIO configured (PC2, PC3 as ANALOG)");
+
     adc_deinit(JOY_ADC);
-    
+
     /* HCLK=300MHz, DIV8=37.5MHz */
     adc_clock_config(JOY_ADC, ADC_CLK_SYNC_HCLK_DIV8);
-    console_out("[joystick] ADC clock configured (37.5MHz)\n");
-    
+    CONSOLE_INFO("ADC clock configured (37.5MHz)");
+
     adc_resolution_config(JOY_ADC, ADC_RESOLUTION_12B);
     adc_data_alignment_config(JOY_ADC, ADC_DATAALIGN_RIGHT);
     adc_special_function_config(JOY_ADC, ADC_SCAN_MODE, DISABLE);
     adc_channel_length_config(JOY_ADC, ADC_REGULAR_CHANNEL, 1);
-    
+
     adc_regular_channel_config(JOY_ADC, 0, ADC_CHANNEL_0, SQX_SMP(2));
-    
+
     adc_enable(JOY_ADC);
     delay_us(20);
-    console_out("[joystick] ADC enabled and stabilized\n");
-    
+    CONSOLE_INFO("ADC enabled and stabilized");
 
-    console_out("[joystick] Starting calibration...\n");
+
+    CONSOLE_INFO("Starting calibration...");
     adc_calibration_mode_config(JOY_ADC, ADC_CALIBRATION_OFFSET);
     adc_calibration_number(JOY_ADC, ADC_CALIBRATION_NUM16);
-    
+
     adc_calibration_enable(JOY_ADC);
-    
+
     uint32_t cal_timeout = 0x3FFFFF;
     while((ADC_CTL1(JOY_ADC) & ADC_CTL1_CLB) && (--cal_timeout));
-    
+
     if(cal_timeout == 0) {
-        console_out("[Warning][joystick] Calibration timeout, skipping...\n");
-        log_out("[Warning][joystick] Calibration timeout, skipping...");
+        CONSOLE_WARNING("Calibration timeout, skipping...");
+        LOG_WARNING("Calibration timeout, skipping...");
     } else {
-        console_out("[joystick] Calibration done\n");
+        CONSOLE_INFO("Calibration done");
     }
-    
+
     adc_regular_channel_config(JOY_ADC, 0, JOY_CH_X, SQX_SMP(2));
     adc_regular_channel_config(JOY_ADC, 0, JOY_CH_Y, SQX_SMP(2));
-    
-    console_out("[joystick] ADC Initialized!\n");
-    console_out("[joystick] Center: %d, Deadzone: %d, Max: %d\n", 
+
+    CONSOLE_INFO("ADC Initialized!");
+    CONSOLE_INFO("Center: %d, Deadzone: %d, Max: %d",
         JOY_CENTER, JOY_DEADZONE, JOY_MAX_VALUE);
 }
 /**
@@ -327,37 +327,37 @@ static void mcu_js_adc_init()
 static uint16_t get_joystick_value(uint8_t channel)
 {
     adc_regular_channel_config(JOY_ADC, 0, channel, SQX_SMP(2));
-    
+
     adc_flag_clear(JOY_ADC, ADC_FLAG_EOC);
-    
+
     ADC_CTL1(JOY_ADC) |= ADC_CTL1_SWRCST;
-    
+
     uint32_t start_timeout = 0xFFFF;
     while((ADC_CTL1(JOY_ADC) & ADC_CTL1_SWRCST) && (--start_timeout));
-    
+
     if(start_timeout == 0) {
-        console_out("[Error][joystick] SWRCST stuck! CTL1=0x%08X\n", ADC_CTL1(JOY_ADC));
-        log_out("[Error][joystick] SWRCST stuck! CTL1=0x%08X", ADC_CTL1(JOY_ADC));
+        CONSOLE_ERROR("SWRCST stuck! CTL1=0x%08X", ADC_CTL1(JOY_ADC));
+        LOG_ERROR("SWRCST stuck! CTL1=0x%08X", ADC_CTL1(JOY_ADC));
         sys_halt();
         return 0;
     }
-    
+
     uint32_t conv_timeout = 0xFFFFF;
     while((adc_flag_get(JOY_ADC, ADC_FLAG_EOC) == RESET) && (--conv_timeout));
-    
+
     if(conv_timeout == 0) {
-        console_out("[Error][joystick] Conv Timeout CH%d | STAT=0x%X CTL1=0x%X\n", 
+        CONSOLE_ERROR("Conv Timeout CH%d | STAT=0x%X CTL1=0x%X",
                channel, ADC_STAT(JOY_ADC), ADC_CTL1(JOY_ADC));
-        log_out("[Error][joystick] Conv Timeout CH%d | STAT=0x%X CTL1=0x%X", 
+        LOG_ERROR("Conv Timeout CH%d | STAT=0x%X CTL1=0x%X",
                channel, ADC_STAT(JOY_ADC), ADC_CTL1(JOY_ADC));
         sys_halt();
         return 0;
     }
-    
+
     adc_flag_clear(JOY_ADC, ADC_FLAG_EOC);
-    
+
     uint32_t data = adc_regular_data_read(JOY_ADC);
-    
+
     return (uint16_t)data;
 }
 /**
@@ -395,7 +395,7 @@ static void joystick_process(joystick_t * joystick,js_read_func jrf,const uint8_
         filtered_x = (filtered_x * (FILTER_FACTOR - 1) + (int16_t)joystick->x_raw) / FILTER_FACTOR;
         filtered_y = (filtered_y * (FILTER_FACTOR - 1) + (int16_t)joystick->y_raw) / FILTER_FACTOR;
     }
-    
+
     // 2. 减去中心值，转为有符号数
     int16_t offset_x = filtered_x - JOY_CENTER;
     int16_t offset_y = filtered_y - JOY_CENTER;
@@ -406,13 +406,13 @@ static void joystick_process(joystick_t * joystick,js_read_func jrf,const uint8_
     if (offset_y > -JOY_DEADZONE && offset_y < JOY_DEADZONE) {
         offset_y = 0;
     }
-    
+
     // 4. 映射到 -JOY_MAX_VALUE ~ +JOY_MAX_VALUE
     // ADC 范围：0-4095，中心 2048，最大偏移 2047
     // 公式：output = offset * JOY_MAX_VALUE / 2047
     joystick->state.x = ((int32_t)offset_x * JOY_MAX_VALUE) / (JOY_CENTER - 1);
     joystick->state.y = ((int32_t)offset_y * JOY_MAX_VALUE) / (JOY_CENTER - 1);
-    
+
     // 5. 限幅（防止溢出）
     if (joystick->state.x > JOY_MAX_VALUE) joystick->state.x = JOY_MAX_VALUE;
     if (joystick->state.x < -JOY_MAX_VALUE) joystick->state.x = -JOY_MAX_VALUE;

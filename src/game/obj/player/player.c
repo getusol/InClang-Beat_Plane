@@ -45,7 +45,7 @@ typedef struct {
     game_obj_t base; // 继承自游戏对象
 
     // 可以在这里添加玩家特有的属性，例如生命值、分数等
-    
+
     int16_t hp;
     int16_t hp_max;
 
@@ -106,12 +106,12 @@ void player_init(lv_obj_t * parent)
   memset(player_p,0,sizeof(player_t));
   if (player_p == NULL)
   {
-    CONSOLE("[Error] Failed to allocate memory for player object.");
-    LOG("[Error] Failed to allocate memory for player object.");
+    CONSOLE_ERROR("Failed to allocate memory for player object.");
+    LOG_ERROR("Failed to allocate memory for player object.");
     sys_halt();
     return;
   }
-  
+
   // 初始化玩家属性
   player_p->base.x = 512;
   player_p->base.y = 500;
@@ -155,16 +155,16 @@ void player_init(lv_obj_t * parent)
   event_register(EVENT_PLAYER_DIE,player_event_player_die_cb);
   event_register(EVENT_PLAYER_HIT_ENEMY,player_event_hit_by_enemy_cb);
   event_register(EVENT_BULLET_HIT_PLAYER,player_event_hit_by_bullet_cb);
-  
-  
-  CONSOLE("[INFO] Player initialization complete.\n");
-  console_out("[PLAYER] player properties:\n");
-  console_out("    width: %d\n",player_p->base.w);
-  console_out("    height: %d\n",player_p->base.h);
-  console_out("    speed: %f\n",player_p->base.speed);
-  console_out("    HP_max: %d\n",player_p->hp_max);
-  console_out("    shoot_cd: %dms\n",player_p->shoot_cd);
-  console_out("\n");
+
+
+  CONSOLE_INFO("Player initialization complete.\n");
+  CONSOLE_INFO("player properties:");
+  CONSOLE_INFO("    width: %d",player_p->base.w);
+  CONSOLE_INFO("    height: %d",player_p->base.h);
+  CONSOLE_INFO("    speed: %f",player_p->base.speed);
+  CONSOLE_INFO("    HP_max: %d",player_p->hp_max);
+  CONSOLE_INFO("    shoot_cd: %dms",player_p->shoot_cd);
+  CONSOLE_INFO("");
 
   return;
 }
@@ -186,27 +186,27 @@ game_obj_t * player_get_base()
 int16_t player_hp_modify(int16_t delta)
 {
   if (player_p == NULL) {
-    CONSOLE("[WARNING] Player object is not initialized. Cannot modify HP.");
-    LOG("[WARNING] Player object is not initialized. Cannot modify HP.");
+    CONSOLE_WARNING("Player object is not initialized. Cannot modify HP.");
+    LOG_WARNING("Player object is not initialized. Cannot modify HP.");
     return 0;
   }
   if (!player_p->base.active) {
-    CONSOLE("[WARNING] Player is not active. Cannot modify HP.");
-    LOG("[WARNING] Player is not active. Cannot modify HP.");
+    CONSOLE_WARNING("Player is not active. Cannot modify HP.");
+    LOG_WARNING("Player is not active. Cannot modify HP.");
     return player_p->hp;
   }
   player_p->hp += delta;
   if (player_p->hp > player_p->hp_max) {
     player_p->hp = player_p->hp_max;
-    CONSOLE("[INFO] Player HP modified. HP is at max: %d", player_p->hp_max);
+    CONSOLE_INFO("Player HP modified. HP is at max: %d", player_p->hp_max);
   }
   if (player_p->hp <= 0) {
     player_p->hp = 0;
-    CONSOLE("[INFO] Player HP modified. HP has dropped to 0.");
+    CONSOLE_INFO("Player HP modified. HP has dropped to 0.");
     event_dispatch(EVENT_PLAYER_DIE,NULL,NULL);
   }
   lv_bar_set_value(player_p->hp_bar, player_p->hp, LV_ANIM_OFF);
-  CONSOLE("[INFO] Player HP modified by %d. Current HP: %d", delta, player_p->hp);
+  CONSOLE_INFO("Player HP modified by %d. Current HP: %d", delta, player_p->hp);
   return player_p->hp;
 }
 
@@ -263,8 +263,8 @@ static void player_hide(game_obj_t * g)
 static void player_move(game_obj_t * g)
 {
   if (g == NULL) {
-    console_out("[Warning][player_move] Player object is not initialized. Cannot move player.\n");
-    log_out("[Warning][player_move] Player object is not initialized. Cannot move player.");
+    CONSOLE_WARNING("Player object is not initialized. Cannot move player.");
+    LOG_WARNING("Player object is not initialized. Cannot move player.");
     return ;
   }
 
@@ -275,7 +275,7 @@ static void player_move(game_obj_t * g)
   if (g->vx == 0 && g->vy == 0) {
     return ;
   }
-  
+
   player_p->base.x += g->vx;
   player_p->base.y += g->vy;
 
@@ -295,7 +295,7 @@ static void player_move(game_obj_t * g)
 
   lv_obj_set_pos(player_p->base.obj,player_p->base.x,player_p->base.y);
 
-  // console_out("[player_move] Player moved by dx: %d, dy: %d. New position - x: %d, y: %d\n", dx, dy, player_p->base.x, player_p->base.y);
+  // CONSOLE_INFO("Player moved by dx: %d, dy: %d. New position - x: %d, y: %d", dx, dy, player_p->base.x, player_p->base.y);
 
   return ;
 }
@@ -313,7 +313,7 @@ static lv_obj_t * player_hp_bar_create(game_obj_t * g,lv_obj_t * parent)
   lv_bar_set_value(hp_bar, ((player_t *)g)->hp, LV_ANIM_OFF);
   lv_obj_set_style_bg_color(hp_bar,lv_palette_main(LV_PALETTE_RED),LV_PART_INDICATOR);
 
-  console_out("[player_hp_bar_create] Player HP bar created, max HP: %d\n", ((player_t *)g)->hp_max);
+  CONSOLE_INFO("Player HP bar created, max HP: %d", ((player_t *)g)->hp_max);
 
   return hp_bar;
 }
@@ -327,7 +327,7 @@ static lv_obj_t * player_obj_create(game_obj_t * g,lv_obj_t * parent)
   lv_obj_t * img  = img_create_from_dsc(parent,img_path(PLAYER_IMG_NAME,img_path_buf,64),g->w,g->h,NULL,&player_img_struct,true);
   lv_obj_set_align(img,LV_ALIGN_TOP_LEFT);
 
-  console_out("[player_obj_create] Player object created with image: %s\n", img_path_buf);
+  CONSOLE_INFO("Player object created with image: %s", img_path_buf);
 
   return img;
 }
@@ -371,7 +371,7 @@ static void player_event_game_start_cb(game_obj_t * src,game_obj_t * trg)
   lv_bar_set_value(player_p->hp_bar, player_p->hp, LV_ANIM_OFF);
   player_p->base.show((game_obj_t *) player_p);
   lv_obj_set_pos(player_p->base.obj,player_p->base.x,player_p->base.y);
-  CONSOLE("[INFO] Player has been revived. HP reset to max: %d", player_p->hp_max);
+  CONSOLE_INFO("Player has been revived. HP reset to max: %d", player_p->hp_max);
 }
 
 /**

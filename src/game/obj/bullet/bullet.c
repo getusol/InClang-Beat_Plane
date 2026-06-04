@@ -1,5 +1,5 @@
 /**
- * @file 
+ * @file
  */
 
 /*********************
@@ -115,21 +115,21 @@ void bullet_init(lv_obj_t * parent)
 
         bullets[i].base.obj = img_create_from_dsc(parent,img_path(BULLET_IMG_NAME,bullet_img_path,64),bullets[i].base.w,bullets[i].base.h,bullet_img_buf,&bullet_img_struct,false);
         lv_obj_set_align(bullets[i].base.obj,LV_ALIGN_TOP_LEFT);
-        
-        console_out("[bullet_init] Bullet %d initialized with image: %s\n", i, bullet_img_path);
-        
+
+        CONSOLE_INFO("Bullet %d initialized with image: %s", i, bullet_img_path);
+
         bullets[i].base.hide((game_obj_t *)&bullets[i]);
 
         // obj register
-        
+
         game_register_obj((game_obj_t *)&bullets[i]);
     }
 
     // event register
     event_register(EVENT_BULLET_HIT_ENEMY,bullet_event_hit_enemy_cb);
-    event_register(EVENT_BULLET_HIT_PLAYER,bullet_event_hit_player_cb); 
+    event_register(EVENT_BULLET_HIT_PLAYER,bullet_event_hit_player_cb);
 
-    console_out("[bullet_init] Bullet system initialized with max bullet count: %d\n", MAX_BULLET_COUNT);
+    CONSOLE_INFO("Bullet system initialized with max bullet count: %d", MAX_BULLET_COUNT);
     return ;
 }
 
@@ -144,7 +144,7 @@ void bullet_init(lv_obj_t * parent)
  * @return 创建的子弹指针
  */
 game_obj_t * bullet_create(game_obj_t *source,
-                         lv_coord_t x, lv_coord_t y, 
+                         lv_coord_t x, lv_coord_t y,
                          int16_t vx, int16_t vy,
                          int16_t damage,
                          behave_t behave)
@@ -152,8 +152,8 @@ game_obj_t * bullet_create(game_obj_t *source,
     uint16_t index = pool_alloc(&bullet_pool);
     if (index == POOL_INVALID_ID)
     {
-        CONSOLE("[WARNING] No available bullet slots! Max bullet count: %d", MAX_BULLET_COUNT);
-        LOG("[WARNING] No available bullet slots! Max bullet count: %d", MAX_BULLET_COUNT);
+        CONSOLE_WARNING("No available bullet slots! Max bullet count: %d", MAX_BULLET_COUNT);
+        LOG_WARNING("No available bullet slots! Max bullet count: %d", MAX_BULLET_COUNT);
         return NULL;
     }
     bullets[index].pool_index = index;
@@ -166,7 +166,7 @@ game_obj_t * bullet_create(game_obj_t *source,
     bullets[index].base.behave = behave;
     lv_obj_set_pos(bullets[index].base.obj,x,y);
     bullets[index].base.show((game_obj_t *)&bullets[index]);
-    // console_out("[bullet_create] Bullet created at index: %d, position: (%d, %d), speed: %.2f, damage: %d\n", index, x, y, speed, damage);
+    // CONSOLE_INFO("Bullet created at index: %d, position: (%d, %d), speed: %.2f, damage: %d", index, x, y, speed, damage);
     return (game_obj_t *)&bullets[index];
 }
 
@@ -235,8 +235,8 @@ static void bullet_show(game_obj_t * g)
 {
     if (((bullet_t *)g)->pool_index == POOL_INVALID_ID)
     {
-        console_out("[Error][bullet_show] Attempting to show a bullet that is not allocated! This should not happen.\n");
-        log_out("[Error][bullet_show] Attempting to show a bullet that is not allocated! This should not happen.");
+        CONSOLE_ERROR("Attempting to show a bullet that is not allocated! This should not happen.");
+        LOG_ERROR("Attempting to show a bullet that is not allocated! This should not happen.");
         return ;
     }
     g->active = true;
@@ -251,7 +251,7 @@ void bullet_move(game_obj_t * g)
     if (g == NULL) return ;
     if (g -> active == false) return ;
     if (g->vx == 0 && g->vy == 0) return ;
-    
+
     g -> x += g->vx;
     g -> y += g->vy;
 

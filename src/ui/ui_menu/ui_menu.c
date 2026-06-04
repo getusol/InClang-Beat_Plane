@@ -71,7 +71,7 @@ void ui_menu_init(void)
     lv_obj_set_pos(btn_level, 430, 271);
     lv_obj_add_event_cb(btn_level, btn_level_event_cb, LV_EVENT_CLICKED, NULL);
     lv_group_add_obj(menu_group, btn_level);
-    
+
     lv_obj_t * label_level = lv_label_create(btn_level);
     lv_label_set_text(label_level, "Level");
     lv_obj_center(label_level);
@@ -129,7 +129,7 @@ static void btn_level_event_cb(lv_event_t * e)
 {
     fsm_switch_state(GS_PLAY);
     event_dispatch(EVENT_GAME_START, NULL, NULL); // 触发游戏开始逻辑
-    CONSOLE("[INFO] Game start.");
+    CONSOLE_INFO("Game start.");
 }
 
 /**
@@ -137,10 +137,10 @@ static void btn_level_event_cb(lv_event_t * e)
  */
 static void btn_shop_event_cb(lv_event_t * e)
 {
-     CONSOLE("[INFO] Shop.");
+     CONSOLE_INFO("Shop.");
 }
 
 static void btn_base_event_cb(lv_event_t * e)
 {
-    CONSOLE("[INFO] Base.");
+    CONSOLE_INFO("Base.");
 }

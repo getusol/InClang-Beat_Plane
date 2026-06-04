@@ -17,6 +17,29 @@
 #define SHOW_HITBOX 1  // 是否显示碰撞框
 #define PERF_MONITOR 1 // 1 开启性能检测 0 关闭
 
+/*-------------
+ * CONSOLE
+ *-----------*/
+
+// 缺点：修改这个会导致几乎所有文件的重编译
+// CONSOLE_ENABLE = 0 时所有 CONSOLE_* 宏编译为空
+// (compile-time level filtering)
+
+#define CONSOLE_ENABLE            1   // 主开关
+#define CONSOLE_DEBUG_ENABLE      0   // [DEBUG] 详细信息，默认关闭
+#define CONSOLE_INFO_ENABLE       1   // [INFO]
+#define CONSOLE_WARNING_ENABLE    1   // [WARNING]
+#define CONSOLE_ERROR_ENABLE      1   // [ERROR]
+
+/*-------------
+ * LOG
+ *-----------*/
+
+// LOG_ENABLE = 0 时所有 LOG_* 宏编译为空
+// 一般LOG只会在WARNING和ERROR级别打印 所以这里只保留总开关
+
+#define LOG_ENABLE                1   // 主开关
+
 /*=======================
  * HARDWARE PARAMS
  *=======================*/
@@ -59,8 +82,8 @@
 #ifdef SIMULATOR // ON PC
 
 #define JS_DIR_KEY_COUNT 2 // 摇杆一个方向的按键数量，默认2 即 WASD 与 上下左右
-#define ACCEL 0.3f         // 决定摇杆的响应速度 越接近0越慢
-#define DECAY 0.8f         // 决定摇杆的回落速度 越接近1越慢
+#define JS_ACCEL 0.3f      // 决定摇杆的响应速度 越接近0越慢
+#define JS_DECAY 0.8f      // 决定摇杆的回落速度 越接近1越慢
 
 #else // ON MCU
 

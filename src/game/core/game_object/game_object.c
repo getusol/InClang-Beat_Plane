@@ -76,16 +76,16 @@ lv_obj_t * game_obj_hitbox_init(game_obj_t * obj)
         return NULL;
     }
     if (obj->hitbox_obj) {
-        CONSOLE("[INFO] Hitbox object already exists. It will be deleted.");
+        CONSOLE_INFO("Hitbox object already exists. It will be deleted.");
         lv_obj_del(obj->hitbox_obj);
         obj->hitbox_obj = NULL;
-        CONSOLE("[INFO] Hitbox object already exists. It has been deleted.");
+        CONSOLE_INFO("Hitbox object already exists. It has been deleted.");
     }
 
     lv_obj_t * hitbox = lv_obj_create(obj->obj);
 
     if (hitbox == NULL) {
-        CONSOLE("[WARNING] Failed to create hitbox object.");
+        CONSOLE_WARNING("Failed to create hitbox object.");
         return NULL;
     }
 
@@ -104,7 +104,7 @@ lv_obj_t * game_obj_hitbox_init(game_obj_t * obj)
 
     obj->hitbox_obj = hitbox;
 
-    CONSOLE("[INFO] Hitbox object created.");
+    CONSOLE_INFO("Hitbox object created.");
 
     return hitbox;
 }
@@ -137,7 +137,7 @@ void game_obj_hitbox_update(game_obj_t * obj)
 bool game_obj_set_behave(game_obj_t * obj, behave_func_t func, void * usr_data)
 {
     if (obj == NULL) {
-        CONSOLE("[WARNING] Game object is NULL. Cannot set behavior.");
+        CONSOLE_WARNING("Game object is NULL. Cannot set behavior.");
         return false;
     }
     obj->behave.f = func;

@@ -143,15 +143,15 @@ void comm_disconnect()
 static void update_connection_status(void)
 {
     uint32_t current_time = lv_tick_get();
-    
+
     if (comm_has_heartbeat()) {
-            //CONSOLE("[DEBUG] Heartbeat received!");
+            //CONSOLE_DEBUG("Heartbeat received!");
             last_receive_time = current_time;
     }
 
     if (comm_get_status() == COMM_STATUS_CONNECTED || comm_get_status() == COMM_STATUS_CONNECTING) {
         if (current_time - last_receive_time > CONNECTION_TIMEOUT_MS) {
-            CONSOLE("[WARNING] Connection timeout!");
+            CONSOLE_WARNING("Connection timeout!");
             comm_disconnect();
         }
     }

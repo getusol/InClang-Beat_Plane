@@ -62,12 +62,12 @@ static lv_timer_t * switch_timer = NULL;
  */
 void ui_cg_init()
 {
-    //CONSOLE("[DEBUG] ui_cg_init() -> ENTERED");
-    //LOG("[DEBUG] ui_cg_init() -> ENTERED");
+    //CONSOLE_DEBUG("ui_cg_init() -> ENTERED");
+    //LOG_DEBUG("ui_cg_init() -> ENTERED");
 
     // 1. 如果已存在未销毁的临时图层，先执行清理
     if (cg_layer != NULL) {
-        //CONSOLE("[DEBUG] cg_layer is not NULL (pointer: %p), forcing skip cleanup", cg_layer);
+        //CONSOLE_DEBUG("cg_layer is not NULL (pointer: %p), forcing skip cleanup", cg_layer);
         ui_cg_skip();
     }
 
@@ -77,16 +77,16 @@ void ui_cg_init()
         lv_obj_set_size(dp_cg, 1024, 600);
         lv_obj_center(dp_cg);
         lv_obj_set_style_bg_color(dp_cg, lv_color_black(), 0);
-        lv_obj_set_style_bg_opa(dp_cg, LV_OPA_COVER, 0); 
+        lv_obj_set_style_bg_opa(dp_cg, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(dp_cg, 0, 0);
         lv_obj_set_style_radius(dp_cg, 0, 0);
         lv_obj_clear_flag(dp_cg, LV_OBJ_FLAG_SCROLLABLE);
-        //CONSOLE("[DEBUG] Persistent black background screen (dp_cg) created: %p", dp_cg);
+        //CONSOLE_DEBUG("Persistent black background screen (dp_cg) created: %p", dp_cg);
     }
 
     // 3. 在 dp_cg 屏幕上建立播放专用的黑色子图层
     cg_layer = lv_obj_create(dp_cg);
-    //CONSOLE("[DEBUG] Child container cg_layer created on dp_cg: %p", cg_layer);
+    //CONSOLE_DEBUG("Child container cg_layer created on dp_cg: %p", cg_layer);
 
     // 将释放底层图片的逻辑，注册在该图层的销毁事件（DELETE）中
     lv_obj_add_event_cb(cg_layer, cg_layer_event_cb, LV_EVENT_DELETE, NULL);
@@ -96,7 +96,7 @@ void ui_cg_init()
     lv_obj_set_size(cg_layer, 1024, 600);
     lv_obj_center(cg_layer);
     lv_obj_set_style_bg_color(cg_layer, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(cg_layer, LV_OPA_COVER, 0); 
+    lv_obj_set_style_bg_opa(cg_layer, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(cg_layer, 0, 0);
     lv_obj_set_style_radius(cg_layer, 0, 0);
     lv_obj_clear_flag(cg_layer, LV_OBJ_FLAG_SCROLLABLE);
@@ -131,15 +131,15 @@ void ui_cg_init()
     lv_obj_set_style_opa(label1, LV_OPA_COVER, 0);
 
     label2 = lv_label_create(cg_layer);
-    lv_obj_set_width(label2, 850); 
-    lv_label_set_long_mode(label2, LV_LABEL_LONG_WRAP); 
+    lv_obj_set_width(label2, 850);
+    lv_label_set_long_mode(label2, LV_LABEL_LONG_WRAP);
     lv_label_set_text_static(label2, "Though the path be broken and uncertain,\n" "claim your place as the King of PlaneWar, and rebuild what we have lost.");
     lv_obj_set_style_text_color(label2, lv_color_white(), 0);
     lv_obj_set_style_text_align(label2, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(label2, LV_ALIGN_BOTTOM_MID, 0, -60);
-    lv_obj_set_style_opa(label2, LV_OPA_TRANSP, 0); 
+    lv_obj_set_style_opa(label2, LV_OPA_TRANSP, 0);
 
-    //CONSOLE("[DEBUG] ui_cg_init() -> LEAVING");
+    //CONSOLE_DEBUG("ui_cg_init() -> LEAVING");
 }
 
 /**
@@ -147,9 +147,9 @@ void ui_cg_init()
  */
 void ui_cg_run()
 {
-    //CONSOLE("[DEBUG] ui_cg_run() -> ENTERED");
+    //CONSOLE_DEBUG("ui_cg_run() -> ENTERED");
     if (dp_cg == NULL || cg_layer == NULL) return;
-    
+
     // 加载黑色的底板屏幕
     lv_scr_load(dp_cg);
     lv_anim_t a;
@@ -164,7 +164,7 @@ void ui_cg_run()
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 300);
     lv_anim_set_delay(&a, 5000);
-    lv_anim_set_exec_cb(&a, anim_fade_out_cb); 
+    lv_anim_set_exec_cb(&a, anim_fade_out_cb);
     lv_anim_set_early_apply(&a, false);
     lv_anim_start(&a);
 
@@ -174,7 +174,7 @@ void ui_cg_run()
     lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
     lv_anim_set_time(&a, 800);
     lv_anim_set_delay(&a, 5000);
-    lv_anim_set_exec_cb(&a, anim_fade_in_cb);  
+    lv_anim_set_exec_cb(&a, anim_fade_in_cb);
     lv_anim_set_early_apply(&a, false);
     lv_anim_start(&a);
 
@@ -192,12 +192,12 @@ void ui_cg_run()
     lv_anim_init(&a);
     lv_anim_set_var(&a, img2);
     lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_time(&a, 800); 
+    lv_anim_set_time(&a, 800);
     lv_anim_set_delay(&a, 11000);
-    lv_anim_set_exec_cb(&a, anim_fade_in_cb);  
+    lv_anim_set_exec_cb(&a, anim_fade_in_cb);
     lv_anim_set_early_apply(&a, false);
     lv_anim_start(&a);
-    
+
 
     // ---- 【11秒点】：文字2显现 (用时800ms) ----
     lv_anim_init(&a);
@@ -205,10 +205,10 @@ void ui_cg_run()
     lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
     lv_anim_set_time(&a, 800);
     lv_anim_set_delay(&a, 11000);
-    lv_anim_set_exec_cb(&a, anim_fade_in_cb);  
+    lv_anim_set_exec_cb(&a, anim_fade_in_cb);
     lv_anim_set_early_apply(&a, false);
     lv_anim_start(&a);
-    
+
 
     // ---- 【16秒点】：图片2隐去 (用时500ms) ----
     lv_anim_init(&a);
@@ -216,10 +216,10 @@ void ui_cg_run()
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 500);
     lv_anim_set_delay(&a, 16000);
-    lv_anim_set_exec_cb(&a, anim_fade_out_cb); 
+    lv_anim_set_exec_cb(&a, anim_fade_out_cb);
     lv_anim_set_early_apply(&a, false);
     lv_anim_start(&a);
-    
+
 
     // ---- 【16秒点】：文字2隐去 (用时500ms) ----
     lv_anim_init(&a);
@@ -227,23 +227,23 @@ void ui_cg_run()
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 500);
     lv_anim_set_delay(&a, 16000);
-    lv_anim_set_exec_cb(&a, anim_fade_out_cb); 
+    lv_anim_set_exec_cb(&a, anim_fade_out_cb);
     lv_anim_set_early_apply(&a, false);
     lv_anim_start(&a);
-    
+
 
     // ---- 【16.5秒点】：全黑背景淡出，露出黑色的常驻屏幕 dp_cg （彻底杜绝白屏闪烁） ----
     lv_anim_init(&a);
     lv_anim_set_var(&a, cg_layer);
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
-    lv_anim_set_time(&a, 1500); 
+    lv_anim_set_time(&a, 1500);
     lv_anim_set_delay(&a, 16500);
     lv_anim_set_exec_cb(&a, anim_fade_out_cb);
-    lv_anim_set_ready_cb(&a, cg_anim_ready_cb); 
+    lv_anim_set_ready_cb(&a, cg_anim_ready_cb);
     lv_anim_set_early_apply(&a, false);
     lv_anim_start(&a);
 
-    //CONSOLE("[DEBUG] ui_cg_run() -> LEAVING");
+    //CONSOLE_DEBUG("ui_cg_run() -> LEAVING");
 }
 
 /**
@@ -251,8 +251,8 @@ void ui_cg_run()
  */
 void ui_cg_skip()
 {
-    //CONSOLE("[DEBUG] ui_cg_skip() -> ENTERED");
-    //LOG("[DEBUG] ui_cg_skip() -> ENTERED");
+    //CONSOLE_DEBUG("ui_cg_skip() -> ENTERED");
+    //LOG_DEBUG("ui_cg_skip() -> ENTERED");
     if (cg_layer == NULL) return;
 
     // 清理可能仍然附着在这些组件上的未完成动画
@@ -267,8 +267,8 @@ void ui_cg_skip()
     audio_stop(AUDIO_CHAN_BGM);
     fsm_switch_state(GS_MENU);
 
-    //CONSOLE("[DEBUG] ui_cg_skip() -> LEAVING");
-    //LOG("[DEBUG] ui_cg_skip() -> LEAVING");
+    //CONSOLE_DEBUG("ui_cg_skip() -> LEAVING");
+    //LOG_DEBUG("ui_cg_skip() -> LEAVING");
 }
 
 /**
@@ -276,7 +276,7 @@ void ui_cg_skip()
  */
 void ui_cg_cleanup(void)
 {
-    //CONSOLE("[DEBUG] ui_cg_cleanup() called synchronously from safe state machine context!");
+    //CONSOLE_DEBUG("ui_cg_cleanup() called synchronously from safe state machine context!");
     cg_clean_up_resources();
 }
 
@@ -296,9 +296,9 @@ static void anim_fade_out_cb(void * obj, int32_t value)
 
 static void cg_anim_ready_cb(lv_anim_t * a)
 {
-    //CONSOLE("[DEBUG] cg_anim_ready_cb() triggered!");
-    //LOG("[DEBUG] cg_anim_ready_cb() triggered!");
-    audio_stop(AUDIO_CHAN_BGM); 
+    //CONSOLE_DEBUG("cg_anim_ready_cb() triggered!");
+    //LOG_DEBUG("cg_anim_ready_cb() triggered!");
+    audio_stop(AUDIO_CHAN_BGM);
     switch_timer = lv_timer_create(switch_timer_cb, 500, NULL);
     lv_timer_set_repeat_count(switch_timer, 1);
 }
@@ -318,9 +318,9 @@ static void cg_click_skip_cb(lv_event_t * e)
  */
 static void cg_clean_up_resources(void)
 {
-    //CONSOLE("[DEBUG] cg_clean_up_resources() -> ENTERED");
+    //CONSOLE_DEBUG("cg_clean_up_resources() -> ENTERED");
     if (cg_layer == NULL) {
-        //CONSOLE("[DEBUG] cg_layer is already NULL, skipping cleanup.");
+        //CONSOLE_DEBUG("cg_layer is already NULL, skipping cleanup.");
         return ;
     }
 
@@ -334,7 +334,7 @@ static void cg_clean_up_resources(void)
     img2 = NULL;
     label1 = NULL;
     label2 = NULL;
-    //CONSOLE("[DEBUG] All pointers reset to NULL");
+    //CONSOLE_DEBUG("All pointers reset to NULL");
 }
 
 /**
@@ -344,11 +344,11 @@ static void cg_layer_event_cb(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_DELETE) {
-        //CONSOLE("[DEBUG] dp_cg_event_cb() Captured LV_EVENT_DELETE!");
+        //CONSOLE_DEBUG("dp_cg_event_cb() Captured LV_EVENT_DELETE!");
 #ifdef SIMULATOR
         free_img_dsc(&cg1_struct);
         free_img_dsc(&cg2_struct);
-        //CONSOLE("[INFO] Image descriptor memory successfully released!");
+        //CONSOLE_INFO("Image descriptor memory successfully released!");
 #endif
     }
 }

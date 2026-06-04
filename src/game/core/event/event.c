@@ -44,7 +44,7 @@ void event_init()
 {
   // 清空所有回调
   memset(callbacks,0,sizeof(callbacks));
-  CONSOLE("[INFO] Event initialization complete.");
+  CONSOLE_INFO("Event initialization complete.");
 }
 
 /**
@@ -56,8 +56,8 @@ void event_init()
 void event_dispatch(event_code_t code,game_obj_t * source,game_obj_t * target)
 {
   if (code <= EVENT_NONE || code >= EVENT_COUNT) {
-    CONSOLE("[WARNING] Event dispatch failed,invalid event type: %d",code);
-    LOG("[WARNING] Event dispatch failed,invalid event type: %d",code);
+    CONSOLE_WARNING("Event dispatch failed,invalid event type: %d",code);
+    LOG_WARNING("Event dispatch failed,invalid event type: %d",code);
     return ;
   }
 
@@ -77,13 +77,13 @@ void event_dispatch(event_code_t code,game_obj_t * source,game_obj_t * target)
 void event_register(event_code_t code,event_callback_t callback)
 {
   if (code <= EVENT_NONE || code >= EVENT_COUNT) {
-    CONSOLE("[WARNING] Event register failed,invalid event type: %d",code);
-    LOG("[WARNING] Event register failed,invalid event type: %d",code);
+    CONSOLE_WARNING("Event register failed,invalid event type: %d",code);
+    LOG_WARNING("Event register failed,invalid event type: %d",code);
     return ;
   }
   if (callback == NULL) {
-    CONSOLE("[WARNING] Event register failed,callback is NULL");
-    LOG("[WARNING] Event register failed,callback is NULL");
+    CONSOLE_WARNING("Event register failed,callback is NULL");
+    LOG_WARNING("Event register failed,callback is NULL");
     return ;
   }
 
@@ -97,14 +97,14 @@ void event_register(event_code_t code,event_callback_t callback)
   for (int i = 0; i < MAX_CALLBACKS_PRE_EVENT; i++) {
     if (callbacks[code][i] == NULL) {
       callbacks[code][i] = callback;
-      CONSOLE("[INFO] Event callback registered for event %d at index %d", code, i);
+      CONSOLE_INFO("Event callback registered for event %d at index %d", code, i);
       return ;
     }
   }
-  
+
   // 没有空位
-  CONSOLE("[WARNING] No available slot to register callback for event: %d", code);
-  LOG("[WARNING] No available slot to register callback for event: %d", code);
+  CONSOLE_WARNING("No available slot to register callback for event: %d", code);
+  LOG_WARNING("No available slot to register callback for event: %d", code);
 }
 
  /**********************

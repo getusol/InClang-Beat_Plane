@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include "config.h"
 
 /**********************
  *      MACROS
@@ -25,46 +26,87 @@
                      (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__))
 
 /**
- * @brief 控制台输出宏，格式: [级别] 函数名: 消息 (in 文件名 line 行号)
- *        参数 fmt 应以 [级别] 开头，例如 CONSOLE("[INFO] Hello");
- *        有换行
+ * @brief 内部控制台输出辅助宏
+ *        输出格式: [LEVEL] function_name: message (in filename line N)
  */
-#define CONSOLE(fmt, ...) do {                                                      \
+#define _CONSOLE_OUT(level, fmt, ...) do {                                          \
     char __msg_buf[256];                                                            \
     char __out_buf[512];                                                            \
     snprintf(__msg_buf, sizeof(__msg_buf), fmt, ##__VA_ARGS__);                     \
-    char *__space = strchr(__msg_buf, ' ');                                         \
-    if (__space) {                                                                  \
-        *__space = '\0';                                                            \
-        snprintf(__out_buf, sizeof(__out_buf), "%s %s: %s (in %s line %d)",         \
-                 __msg_buf, __func__, __space + 1, __FILENAME__, __LINE__);         \
-        *__space = ' '; /* restore */                                               \
-    } else {                                                                        \
-        snprintf(__out_buf, sizeof(__out_buf), "%s %s: (in %s line %d)",            \
-                 __msg_buf, __func__, __FILENAME__, __LINE__);                      \
-    }                                                                               \
+    snprintf(__out_buf, sizeof(__out_buf), "[%s] %s: %s (in %s line %d)",           \
+             level, __func__, __msg_buf, __FILENAME__, __LINE__);                   \
     console_out("%s\n", __out_buf);                                                   \
 } while(0)
 
 /**
- * @brief 日志输出宏（写入文件），格式同 CONSOLE 有换行
+ * @brief 内部日志输出辅助宏（写入文件）
+ *        输出格式同 _CONSOLE_OUT
  */
-#define LOG(fmt, ...) do {                                                          \
+#define _LOG_OUT(level, fmt, ...) do {                                              \
     char __msg_buf[256];                                                            \
     char __out_buf[512];                                                            \
     snprintf(__msg_buf, sizeof(__msg_buf), fmt, ##__VA_ARGS__);                     \
-    char *__space = strchr(__msg_buf, ' ');                                         \
-    if (__space) {                                                                  \
-        *__space = '\0';                                                            \
-        snprintf(__out_buf, sizeof(__out_buf), "%s %s: %s (in %s line %d)",         \
-                 __msg_buf, __func__, __space + 1, __FILENAME__, __LINE__);         \
-        *__space = ' ';                                                             \
-    } else {                                                                        \
-        snprintf(__out_buf, sizeof(__out_buf), "%s %s: (in %s line %d)",            \
-                 __msg_buf, __func__, __FILENAME__, __LINE__);                      \
-    }                                                                               \
-    log_out("%s", __out_buf);                                                       \
+    snprintf(__out_buf, sizeof(__out_buf), "[%s] %s: %s (in %s line %d)",           \
+             level, __func__, __msg_buf, __FILENAME__, __LINE__);                   \
+    log_out("%s", __out_buf);                                                         \
 } while(0)
+
+/*===========================================================================
+ *  Per-level CONSOLE macros (compile-time gated by config.h)
+ *===========================================================================*/
+#if CONSOLE_ENABLE
+
+    #if CONSOLE_DEBUG_ENABLE
+        #define CONSOLE_DEBUG(fmt, ...)    _CONSOLE_OUT("DEBUG", fmt, ##__VA_ARGS__)
+    #else
+        #define CONSOLE_DEBUG(fmt, ...)    do {} while(0)
+    #endif
+
+    #if CONSOLE_INFO_ENABLE
+        #define CONSOLE_INFO(fmt, ...)     _CONSOLE_OUT("INFO", fmt, ##__VA_ARGS__)
+    #else
+        #define CONSOLE_INFO(fmt, ...)     do {} while(0)
+    #endif
+
+    #if CONSOLE_WARNING_ENABLE
+        #define CONSOLE_WARNING(fmt, ...)  _CONSOLE_OUT("WARNING", fmt, ##__VA_ARGS__)
+    #else
+        #define CONSOLE_WARNING(fmt, ...)  do {} while(0)
+    #endif
+
+    #if CONSOLE_ERROR_ENABLE
+        #define CONSOLE_ERROR(fmt, ...)    _CONSOLE_OUT("ERROR", fmt, ##__VA_ARGS__)
+    #else
+        #define CONSOLE_ERROR(fmt, ...)    do {} while(0)
+    #endif
+
+#else /* CONSOLE_ENABLE == 0 */
+
+    #define CONSOLE_DEBUG(fmt, ...)    do {} while(0)
+    #define CONSOLE_INFO(fmt, ...)     do {} while(0)
+    #define CONSOLE_WARNING(fmt, ...)  do {} while(0)
+    #define CONSOLE_ERROR(fmt, ...)    do {} while(0)
+
+#endif /* CONSOLE_ENABLE */
+
+/*===========================================================================
+ *  Per-level LOG macros (compile-time gated by config.h)
+ *===========================================================================*/
+#if LOG_ENABLE
+
+    #define LOG_DEBUG(fmt, ...)      _LOG_OUT("DEBUG", fmt, ##__VA_ARGS__)
+    #define LOG_INFO(fmt, ...)       _LOG_OUT("INFO", fmt, ##__VA_ARGS__)
+    #define LOG_WARNING(fmt, ...)    _LOG_OUT("WARNING", fmt, ##__VA_ARGS__)
+    #define LOG_ERROR(fmt, ...)      _LOG_OUT("ERROR", fmt, ##__VA_ARGS__)
+
+#else /* LOG_ENABLE == 0 */
+
+    #define LOG_DEBUG(fmt, ...)      do {} while(0)
+    #define LOG_INFO(fmt, ...)       do {} while(0)
+    #define LOG_WARNING(fmt, ...)    do {} while(0)
+    #define LOG_ERROR(fmt, ...)      do {} while(0)
+
+#endif /* LOG_ENABLE */
 
 /**********************
  *      TYPEDEFS

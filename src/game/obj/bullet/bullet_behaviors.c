@@ -52,7 +52,7 @@ void bullet_behave_circle(game_obj_t *g, void *v)
   int16_t n_vx = (int16_t)(c_vx * cos_theta - c_vy * sin_theta);
   int16_t n_vy = (int16_t)(c_vx * sin_theta + c_vy * cos_theta);
   direction_to_velocity(n_vx,n_vy,20,&g->vx,&g->vy);
-  // CONSOLE("[INFO] Bullet speed: (%d, %d)", bullet->vx, bullet->vy);
+  // CONSOLE_INFO("Bullet speed: (%d, %d)", bullet->vx, bullet->vy);
 }
 
 /**
@@ -67,8 +67,8 @@ void bullet_behave_sine(game_obj_t *g, void *v)
   float ax = - omega * omega * (x - 0.5f);
   g->vx += ax;
   // whereas g->vy stays the same
-  // CONSOLE("[INFO] ax = %f", ax);
-  // CONSOLE("[INFO] Bullet speed: (%d, %d)", g->vx, g->vy);
+  // CONSOLE_INFO("ax = %f", ax);
+  // CONSOLE_INFO("Bullet speed: (%d, %d)", g->vx, g->vy);
 }
 
 /**

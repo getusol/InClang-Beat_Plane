@@ -109,7 +109,7 @@ void level_init()
 
     event_register(EVENT_GAME_START,on_game_start);
 
-    CONSOLE("[INFO] Level manager initialized. %d levels.", LEVEL_COUNT);
+    CONSOLE_INFO("Level manager initialized. %d levels.", LEVEL_COUNT);
 }
 
 /**
@@ -132,7 +132,7 @@ void level_update(void)
             if (lv_tick_elaps(level.wave_start_time) >= level.wave_delay) {
                 level.state = WAVE_SPAWNING;
                 wave->last_spawn = lv_tick_get();
-                CONSOLE("[LEVEL] Wave %d start!", level.current_wave + 1);
+                CONSOLE_INFO("Wave %d start!", level.current_wave + 1);
             }
             break;
 
@@ -168,7 +168,7 @@ void level_update(void)
                 level.waiting_cleanup = true;
                 level.cleanup_delay_ms = CLEAN_UP_DELAY_MS; // 给敌人消失留出时间
                 level.cleanup_start_tick = lv_tick_get();
-                CONSOLE("[LEVEL] Wave %d spawning complete, waiting for cleanup...", level.current_wave + 1);
+                CONSOLE_INFO("Wave %d spawning complete, waiting for cleanup...", level.current_wave + 1);
             }
             break;
 
@@ -186,10 +186,10 @@ void level_update(void)
                 // 设置新波为 PENDING
                 level.wave_start_time = lv_tick_get();
                 level.state = WAVE_PENDING;
-                CONSOLE("[LEVEL] Entering wave %d", level.current_wave + 1);
+                CONSOLE_INFO("Entering wave %d", level.current_wave + 1);
             } else {
                 // 关卡完成
-                CONSOLE("[LEVEL] Level %d complete!", current_level + 1);
+                CONSOLE_INFO("Level %d complete!", current_level + 1);
                 on_level_complete();
             }
         }
@@ -227,7 +227,7 @@ static void load_level(uint8_t level_id)
     snprintf(level_name, sizeof(level_name), "Level %d", level_id + 1);
     ui_play_level_enter_anim(level_name);
 
-    CONSOLE("[LEVEL] Level %d loaded, %d waves.", level_id + 1, level.total_waves);
+    CONSOLE_INFO("Level %d loaded, %d waves.", level_id + 1, level.total_waves);
 }
 
 static void on_level_complete(void)
@@ -236,7 +236,7 @@ static void on_level_complete(void)
         current_level++;
         load_level(current_level);
     } else {
-        CONSOLE("[LEVEL] All levels finished! You win!");
+        CONSOLE_INFO("All levels finished! You win!");
         // 这里可以触发游戏胜利事件或状态切换
     }
 }

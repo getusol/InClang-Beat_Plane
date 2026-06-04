@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     event_init();
     ui_init();
     game_init();
-    
+
     non_blocking_timer_t logic_timer = {
         .func = game_update,
         .tick_get = lv_tick_get,
@@ -54,15 +54,15 @@ int main(int argc, char **argv)
         .last_tick = 0,
     };
 
-    CONSOLE("[INFO] Initialization done!");
-    LOG("[INFO] Initialization done!");
+    CONSOLE_INFO("Initialization done!");
+    LOG_INFO("Initialization done!");
 
     while(1) {
         non_blocking_delay(&input_timer);
         non_blocking_delay(&logic_timer);
         non_blocking_delay(&ui_timer);
         non_blocking_delay(&comm_timer);
-        
+
         uint32_t t_start = lv_tick_get();
         lv_timer_handler();
         uint32_t t_end = lv_tick_get();

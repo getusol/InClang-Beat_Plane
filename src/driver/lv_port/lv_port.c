@@ -57,7 +57,7 @@ static lv_color_t buf[DISP_BUF_SIZE];
 #else
 
 #endif
- 
+
  /**********************
  *   GLOBAL FUNCTIONS
  **********************/
@@ -88,13 +88,13 @@ void lv_port_init()
         }
         SDL_SetWindowTitle(window,"Plane War");
 
-        SDL_Surface * icon = SDL_LoadBMP(ICON_PATH); 
+        SDL_Surface * icon = SDL_LoadBMP(ICON_PATH);
         if (icon != NULL) {
             SDL_SetWindowIcon(window, icon);
             SDL_FreeSurface(icon); // 设置成功后，立刻释放临时 Surface 内存，防止泄漏
         } else {
-            CONSOLE("[WARNING] Failed to load window icon: %s", SDL_GetError());
-            LOG("[WARNING] Failed to load window icon:%s",SDL_GetError());
+            CONSOLE_WARNING("Failed to load window icon: %s", SDL_GetError());
+            LOG_WARNING("Failed to load window icon:%s",SDL_GetError());
         }
     }
 

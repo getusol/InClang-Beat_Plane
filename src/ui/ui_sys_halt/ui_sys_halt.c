@@ -71,7 +71,7 @@ void ui_sys_halt_run()
     {
         // 获取单条日志（调用你debug的只读接口）
         const char *log_str = debug_get_halt_log(i);
-        
+
         // 日志为空则跳过
         if (log_str == NULL || log_str[0] == '\0') {
             continue;

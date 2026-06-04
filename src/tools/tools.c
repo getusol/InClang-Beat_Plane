@@ -100,7 +100,7 @@ int32_t max(int32_t a, int32_t b)
 void tools_init()
 {
     debug_init();
-    console_out("[tools] tools_init called\n");
+    CONSOLE_INFO("tools_init called");
 }
 
 /**
@@ -116,17 +116,17 @@ void direction_to_velocity(int16_t dx, int16_t dy,int8_t speed,int16_t *vx, int1
     // 绝对值
     uint16_t ax = (dx < 0) ? -dx : dx;
     uint16_t ay = (dy < 0) ? -dy : dy;
-    
+
     // 近似长度 L ≈ max + min/4
     uint16_t max_val = (ax > ay) ? ax : ay;
     uint16_t min_val = (ax < ay) ? ax : ay;
     uint32_t L_approx = max_val + (min_val >> 2);
     if (L_approx == 0) L_approx = 1;   // 防止除零
-    
+
     // 计算缩放因子 (Q16.16 格式)
     // scale = speed * 65536 / L_approx
     uint32_t scale = ((uint32_t)speed << 16) / L_approx;
-    
+
     // 计算速度分量
     *vx = (int32_t)dx * scale >> 16;
     *vy = (int32_t)dy * scale >> 16;
@@ -140,7 +140,7 @@ void direction_to_velocity(int16_t dx, int16_t dy,int8_t speed,int16_t *vx, int1
 uint16_t vec_length(int16_t x, int16_t y)
 {
     if (x == 0 && y == 0) return 0;
-    if (x == 0) return abs(y); 
+    if (x == 0) return abs(y);
     if (y == 0) return abs(x);
     uint16_t ax = (x < 0) ? -x : x;
     uint16_t ay = (y < 0) ? -y : y;

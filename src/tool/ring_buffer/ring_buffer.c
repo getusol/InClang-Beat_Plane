@@ -57,8 +57,8 @@ ring_buffer_t *ring_buffer_create()
 {
     ring_buffer_t *rbuf = (ring_buffer_t *)malloc(sizeof(ring_buffer_t));
     if (!rbuf) {
-        CONSOLE("[WARNING] Failed to create ring buffer: Out of memory.");
-        LOG("[WARNING] Failed to create ring buffer: Out of memory.");
+        CONSOLE_WARNING("Failed to create ring buffer: Out of memory.");
+        LOG_WARNING("Failed to create ring buffer: Out of memory.");
         return NULL;
     }
     memset(rbuf, 0, sizeof(ring_buffer_t));

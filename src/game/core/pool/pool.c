@@ -24,8 +24,8 @@
 void pool_init(pool_t *pool, uint16_t *free_stack, uint16_t capacity)
 {
     if (pool == NULL || free_stack == NULL || capacity == 0) {
-        console_out("[Warning][pool] init failed: invalid params\n");
-        log_out("[Warning][pool] init failed: invalid params");
+        CONSOLE_WARNING("init failed: invalid params");
+        LOG_WARNING("init failed: invalid params");
         return;
     }
 
@@ -38,7 +38,7 @@ void pool_init(pool_t *pool, uint16_t *free_stack, uint16_t capacity)
         free_stack[i] = i;
     }
 
-    console_out("[pool] init ok, capacity=%d\n", capacity);
+    CONSOLE_INFO("init ok, capacity=%d", capacity);
 }
 
 /**
@@ -49,15 +49,15 @@ void pool_init(pool_t *pool, uint16_t *free_stack, uint16_t capacity)
 uint16_t pool_alloc(pool_t *pool)
 {
     if (pool == NULL) {
-        console_out("[Warning][pool] alloc failed: invalid params\n");
-        log_out("[Warning][pool] alloc failed: invalid params");
+        CONSOLE_WARNING("alloc failed: invalid params");
+        LOG_WARNING("alloc failed: invalid params");
         return POOL_INVALID_ID;
     }
 
     /* 栈空 → 池满，无可用槽位 */
     if (pool->stack_top == 0) {
-        console_out("[Warning][pool] full, cannot alloc\n");
-        log_out("[Warning][pool] full, cannot alloc");
+        CONSOLE_WARNING("full, cannot alloc");
+        LOG_WARNING("full, cannot alloc");
         return POOL_INVALID_ID;
     }
 
@@ -73,15 +73,15 @@ uint16_t pool_alloc(pool_t *pool)
 void pool_free(pool_t *pool, uint16_t id)
 {
     if (pool == NULL || id >= pool->capacity) {
-        console_out("[Warning][pool] free failed: invalid params\n");
-        log_out("[Warning][pool] free failed: invalid params");
+        CONSOLE_WARNING("free failed: invalid params");
+        LOG_WARNING("free failed: invalid params");
         return;
     }
 
     /* 防御：检查该 id 是否已经在空闲栈中（防止重复归还） */
     for (uint16_t i = 0; i < pool->stack_top; i++) {
         if (pool->free_stack[i] == id) {
-            console_out("[pool] id %d already free, skip\n", id);
+            CONSOLE_INFO("id %d already free, skip", id);
             return;
         }
     }

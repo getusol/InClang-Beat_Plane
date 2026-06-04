@@ -61,8 +61,8 @@ void input_hw_init()
     .delay_ms = COMM_SEND_RATE_MS,
     .last_tick = 0,
   };
-  
-  console_out("[input] Initialization done!\n");
+
+  CONSOLE_INFO("Initialization done!");
 }
 
 /**
@@ -110,8 +110,8 @@ static void input_remote_send()
           key_mask |= COMM_KEY_Y_MASK;
           break;
         default:
-          CONSOLE("[Warning] Unhandled key code: %d\n", i);
-          LOG("[Warning] Unhandled key code: %d", i);
+          CONSOLE_WARNING("Unhandled key code: %d\n", i);
+          LOG_WARNING("Unhandled key code: %d", i);
           break;
       }
     }
