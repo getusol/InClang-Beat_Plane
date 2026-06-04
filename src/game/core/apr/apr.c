@@ -181,7 +181,7 @@ void apr_init()
                      &apr_list[i].img_dsc,
                      apr_list[i].w, apr_list[i].h,
                      apr_list[i].is_alpha);
-        CONSOLE("[INFO] APR %d loaded: %s (%dx%d)", i, apr_list[i].img_name, apr_list[i].w, apr_list[i].h);
+        CONSOLE_INFO("APR %d loaded: %s (%dx%d)", i, apr_list[i].img_name, apr_list[i].w, apr_list[i].h);
     }
 }
 
@@ -193,7 +193,8 @@ void apr_init()
 apr_t *apr_get(apr_id_t id)
 {
     if (id >= APR_MAX) {
-        CONSOLE("[WARNING] Invalid APR id: %d, returning default", id);
+        CONSOLE_WARNING("Invalid APR id: %d, returning default", id);
+        LOG_WARNING("Invalid APR id: %d, returning default", id);
         return &apr_list[APR_PLAYER_DEFAULT];
     }
     return &apr_list[id];

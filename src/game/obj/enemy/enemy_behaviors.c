@@ -93,7 +93,7 @@ void enemy_behave_boss(game_obj_t * g, void * v)
         timer_create(g, BOSS_TICK_MS, TIMER_MODE_REPEAT, boss_master_timer_cb, NULL);
 
         g->timered = true;
-        CONSOLE("[BOSS] Boss activated at (%d, %d)", g->x, g->y);
+        CONSOLE_INFO("Boss activated at (%d, %d)", g->x, g->y);
     }
 }
 
@@ -151,7 +151,7 @@ static void boss_master_timer_cb(game_obj_t * g, void * v)
     }
 
     if (phase_tick == 0) {
-        CONSOLE("[BOSS] Entering phase %d", phase);
+        CONSOLE_INFO(" Boss entering phase %d", phase);
     }
 
     boss_tick++;

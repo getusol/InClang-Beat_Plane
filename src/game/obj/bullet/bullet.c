@@ -1,9 +1,5 @@
 /**
-<<<<<<< HEAD
- * @file
-=======
  * @file bullet.c
->>>>>>> main
  */
 
 /*********************
@@ -102,12 +98,6 @@ void bullet_init(lv_obj_t * parent)
         bullets[i].source = NULL;
         bullets[i].base.behave = NULL_BEHAVE;
 
-<<<<<<< HEAD
-        bullets[i].base.obj = img_create_from_dsc(parent,img_path(BULLET_IMG_NAME,bullet_img_path,64),bullets[i].base.w,bullets[i].base.h,bullet_img_buf,&bullet_img_struct,false);
-        lv_obj_set_align(bullets[i].base.obj,LV_ALIGN_TOP_LEFT);
-
-        CONSOLE_INFO("Bullet %d initialized with image: %s", i, bullet_img_path);
-=======
         // 使用 APR 创建 LVGL 图像对象
 #ifdef SIMULATOR
         bullets[i].base.obj = lv_img_create(parent);
@@ -118,30 +108,19 @@ void bullet_init(lv_obj_t * parent)
         lv_img_set_src(bullets[i].base.obj, img_path(default_apr->img_name, path, 128));
 #endif
         lv_obj_set_align(bullets[i].base.obj, LV_ALIGN_TOP_LEFT);
->>>>>>> main
 
         bullets[i].base.hide((game_obj_t *)&bullets[i]);
 
         // obj register
-<<<<<<< HEAD
 
-=======
->>>>>>> main
         game_register_obj((game_obj_t *)&bullets[i]);
     }
 
     // event register
-<<<<<<< HEAD
     event_register(EVENT_BULLET_HIT_ENEMY,bullet_event_hit_enemy_cb);
     event_register(EVENT_BULLET_HIT_PLAYER,bullet_event_hit_player_cb);
 
     CONSOLE_INFO("Bullet system initialized with max bullet count: %d", MAX_BULLET_COUNT);
-=======
-    event_register(EVENT_BULLET_HIT_ENEMY, bullet_event_hit_enemy_cb);
-    event_register(EVENT_BULLET_HIT_PLAYER, bullet_event_hit_player_cb);
-
-    CONSOLE("[INFO] Bullet system initialized with max bullet count: %d", MAX_BULLET_COUNT);
->>>>>>> main
     return ;
 }
 
@@ -185,10 +164,7 @@ game_obj_t * bullet_create(game_obj_t *source,
 
     lv_obj_set_pos(bullets[index].base.obj, x, y);
     bullets[index].base.show((game_obj_t *)&bullets[index]);
-<<<<<<< HEAD
     // CONSOLE_INFO("Bullet created at index: %d, position: (%d, %d), speed: %.2f, damage: %d", index, x, y, speed, damage);
-=======
->>>>>>> main
     return (game_obj_t *)&bullets[index];
 }
 
@@ -260,13 +236,8 @@ static void bullet_show(game_obj_t * g)
 {
     if (((bullet_t *)g)->pool_index == POOL_INVALID_ID)
     {
-<<<<<<< HEAD
         CONSOLE_ERROR("Attempting to show a bullet that is not allocated! This should not happen.");
         LOG_ERROR("Attempting to show a bullet that is not allocated! This should not happen.");
-=======
-        CONSOLE("[Error][bullet_show] Attempting to show a bullet that is not allocated! This should not happen.");
-        LOG("[Error][bullet_show] Attempting to show a bullet that is not allocated! This should not happen.");
->>>>>>> main
         return ;
     }
     g->active = true;
@@ -282,13 +253,8 @@ void bullet_move(game_obj_t * g)
     if (g->active == false) return ;
     if (g->vx == 0 && g->vy == 0) return ;
 
-<<<<<<< HEAD
     g -> x += g->vx;
     g -> y += g->vy;
-=======
-    g->x += g->vx;
-    g->y += g->vy;
->>>>>>> main
 
     lv_obj_set_pos(g->obj, g->x, g->y);
 

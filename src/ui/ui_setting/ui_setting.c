@@ -217,6 +217,7 @@ static void back_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     save_write();
+    audio_stop_all();
     fsm_switch_state(setting_prev_state);
 }
 

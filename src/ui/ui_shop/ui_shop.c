@@ -409,7 +409,7 @@ static void draw_btn_event_cb(lv_event_t * e)
 
     // 检查金币是否足够
     if (coin_get_num() < DRAW_COST) {
-        CONSOLE("[SHOP] Coins insufficient! Need %d, current: %d", DRAW_COST, coin_get_num());
+        CONSOLE_INFO("Coins insufficient", DRAW_COST, coin_get_num());
         return;
     }
 
@@ -456,7 +456,7 @@ static void roulette_timer_cb(lv_timer_t * timer)
         lv_timer_del(timer);
         roulette_timer = NULL;
         
-        CONSOLE("[SHOP] Draw ended. Hit slot %d: %s", current_slot, rewards[current_slot].name);
+        CONSOLE_INFO("Draw ended. Hit slot %d: %s", current_slot, rewards[current_slot].name);
         
         give_reward(current_slot);
         show_reward_popup(current_slot); 
@@ -555,15 +555,15 @@ static void give_reward(int slot)
         case 7: coin_add_num(200); break;
         case 0:
                 ui_base_plane_unlock(PLANE_ID_EMBER);
-                CONSOLE("[SHOP] Unlocked Ember Plane!");
+                CONSOLE_INFO("Unlocked Ember Plane!");
                 break;
         case 2:
                 ui_base_plane_unlock(PLANE_ID_STREAM);
-                CONSOLE("[SHOP] Unlocked Stream Plane!");
+                CONSOLE_INFO("Unlocked Stream Plane!");
                 break;
         case 4:
                 ui_base_plane_unlock(PLANE_ID_VERDANT);
-                CONSOLE("[SHOP] Unlocked Verdant Plane!");
+                CONSOLE_INFO("Unlocked Verdant Plane!");
                 break;
     }
 

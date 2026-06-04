@@ -119,7 +119,7 @@ void ui_base_plane_unlock(plane_id_t plane_id)
 {
     if (plane_id < 0 || plane_id >= PLANE_ID_MAX) return;
     g_plane_unlocked[plane_id] = true;
-    CONSOLE("[BASE] Plane %d unlocked.", plane_id);
+    CONSOLE_INFO("Plane %d unlocked.", plane_id);
 }
 
 /**
@@ -364,7 +364,7 @@ static void choose_btn_cb(lv_event_t * e)
 
     // 💡 修改：在这里进行解锁校验，未解锁则拒绝选择
     if (!g_plane_unlocked[current_viewing_idx]) {
-        CONSOLE("[BASE] Cannot choose: Plane %s is locked. Spin the shop roulette to unlock!", plane_templates[current_viewing_idx].name);
+        CONSOLE_INFO("Cannot choose: Plane %s is locked. Spin the shop roulette to unlock!", plane_templates[current_viewing_idx].name);
         return;
     }
 
@@ -374,7 +374,7 @@ static void choose_btn_cb(lv_event_t * e)
     // 实际应用飞机配置到玩家（外观 + 游戏属性）
     player_apply_config(g_selected_plane_id);
 
-    CONSOLE("[BASE] Successfully switched to aircraft: %s", plane_templates[g_selected_plane_id].name);
+    CONSOLE_INFO("Successfully switched to aircraft: %s", plane_templates[g_selected_plane_id].name);
 }
 
 static void base_exit_btn_cb(lv_event_t * e)
@@ -394,5 +394,5 @@ static void base_back_menu_btn_cb(lv_event_t * e)
     LV_UNUSED(e);
     popup_hide(base_exit_popup);
     fsm_switch_state(GS_MENU); 
-    CONSOLE("[BASE] Returning back to main menu.");
+    CONSOLE_INFO("Returning back to main menu.");
 }

@@ -66,12 +66,9 @@ void ui_init()
   ui_cg_init();
   ui_menu_init();
   ui_play_init();
-<<<<<<< HEAD
   ui_setting_init();
-=======
   ui_shop_init();
   ui_base_init();
->>>>>>> main
   ui_comm_init();
   ui_sys_halt_init();
   //按键注册
@@ -105,9 +102,6 @@ void ui_run()
           if (last_game_state == GS_PAUSE) audio_resume_all();
           ui_play_run();
           break;
-<<<<<<< HEAD
-        case GS_PAUSE :
-=======
         case GS_SHOP  :
           audio_load(AUDIO_SHOPMUSIC,AUDIO_CHAN_BGM,true);
           ui_shop_run(); 
@@ -117,7 +111,7 @@ void ui_run()
           ui_base_run(); 
           break;
         case GS_PAUSE : 
->>>>>>> main
+          if (last_game_state == GS_SETTING) audio_load(AUDIO_BGM,AUDIO_CHAN_BGM,true);
           audio_pause_all();
           ui_play_run();
           break;
@@ -157,7 +151,7 @@ static void ui_esc_pressed_handler()
         break;
     case GS_BASE:
         fsm_switch_state(GS_MENU);
-        CONSOLE("[INFO] State has been changed by ESC to GS_MENU");
+        CONSOLE_INFO("Come to menu");
         break;
     case GS_SHOP:
         ui_shop_esc_behave();

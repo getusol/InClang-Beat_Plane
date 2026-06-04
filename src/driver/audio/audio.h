@@ -25,14 +25,11 @@ typedef enum audio_id_t
 {
     AUDIO_CG,
     AUDIO_BGM,
-<<<<<<< HEAD
     AUDIO_FAH,
     AUDIO_TROPICAL,
     AUDIO_BASKETBALLMUSIC,
-=======
     AUDIO_SHOPMUSIC,
     AUDIO_BASEMUSIC,
->>>>>>> main
 
     AUDIO_MAX,
 } audio_id_t;

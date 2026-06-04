@@ -80,10 +80,7 @@ lv_obj_t * game_obj_hitbox_init(game_obj_t * obj)
         CONSOLE_INFO("Hitbox object already exists. It will be deleted.");
         lv_obj_del(obj->hitbox_obj);
         obj->hitbox_obj = NULL;
-<<<<<<< HEAD
         CONSOLE_INFO("Hitbox object already exists. It has been deleted.");
-=======
->>>>>>> main
     }
 
     lv_obj_t * hitbox = lv_obj_create(obj->obj);
@@ -108,11 +105,8 @@ lv_obj_t * game_obj_hitbox_init(game_obj_t * obj)
 
     obj->hitbox_obj = hitbox;
 
-<<<<<<< HEAD
-    CONSOLE_INFO("Hitbox object created.");
+    //CONSOLE_INFO("Hitbox object created.");
 
-=======
->>>>>>> main
     return hitbox;
 }
 

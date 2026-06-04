@@ -325,11 +325,13 @@ int16_t player_hp_modify(int16_t delta)
 void player_apply_config(int plane_id)
 {
     if (plane_id < 0 || plane_id >= TOTAL_PLANES) {
-        CONSOLE("[WARNING] Invalid plane id: %d", plane_id);
+        CONSOLE_WARNING("Invalid plane id: %d", plane_id);
+        LOG_WARNING("Invalid plane id: %d", plane_id);
         return;
     }
     if (player_p == NULL) {
-        CONSOLE("[WARNING] Player not initialized, cannot apply config.");
+        CONSOLE_WARNING("Player not initialized, cannot apply config.");
+        LOG_WARNING("Player not initialized, cannot apply config.");
         return;
     }
 
@@ -359,7 +361,7 @@ void player_apply_config(int plane_id)
     lv_bar_set_range(player_p->hp_bar, 0, player_p->hp_max);
     lv_bar_set_value(player_p->hp_bar, player_p->hp, LV_ANIM_OFF);
 
-    CONSOLE("[INFO] Plane changed to: %s (HP=%d, bullet_dmg=%d)", cfg->name, cfg->hp_max, cfg->bullet_damage);
+    CONSOLE_INFO("Plane changed to: %s (HP=%d, bullet_dmg=%d)", cfg->name, cfg->hp_max, cfg->bullet_damage);
 }
 
 /**
@@ -595,7 +597,7 @@ static void player_skill_flame_circle(void)
  */
 static void player_skill_shield(void)
 {
-    CONSOLE("[INFO] Shield activated! (placeholder)");
+    CONSOLE_INFO("Shield activated! (placeholder)");
     // 护盾实现思路：设置一个无敌标记+定时器
     // 这里先做简单的占位实现，后续可扩展
     // 可以考虑把 shield 实现为 behave（被动持续回盾）
@@ -610,7 +612,7 @@ static void player_skill_shield(void)
 static void player_skill_hp_reclaim(void)
 {
     player_hp_modify(50);
-    CONSOLE("[INFO] HP Reclaimed: +50 HP. Current HP: %d", player_p->hp);
+    CONSOLE_INFO("HP Reclaimed: +50 HP. Current HP: %d", player_p->hp);
 }
 
 // ==================== 事件回调 ====================

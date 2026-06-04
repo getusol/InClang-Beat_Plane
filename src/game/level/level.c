@@ -185,16 +185,12 @@ void level_update(void)
             if (lv_tick_elaps(level.wave_start_time) >= level.wave_delay) {
                 level.state = WAVE_SPAWNING;
                 wave->last_spawn = lv_tick_get();
-<<<<<<< HEAD
-                CONSOLE_INFO("Wave %d start!", level.current_wave + 1);
-=======
 
                 if (wave->type == WAVE_TYPE_BOSS) {
-                    CONSOLE("[LEVEL] Boss wave %d incoming!", level.current_wave + 1);
+                    CONSOLE_INFO("Boss wave %d incoming!", level.current_wave + 1);
                 } else {
-                    CONSOLE("[LEVEL] Wave %d start! (%d enemies)", level.current_wave + 1, wave->enemy_total);
+                    CONSOLE_INFO("Wave %d start! (%d enemies)", level.current_wave + 1, wave->enemy_total);
                 }
->>>>>>> main
             }
             break;
 
@@ -215,7 +211,7 @@ void level_update(void)
                 // Boss 生成完毕 → 等待 Boss 被消灭（不设超时）
                 if (!level.waiting_cleanup) {
                     level.waiting_cleanup = true;
-                    CONSOLE("[LEVEL] Boss wave spawned, waiting for boss defeat...");
+                    CONSOLE_INFO("Boss wave waiting for boss defeat...");
                 }
 
             } else {
@@ -245,18 +241,8 @@ void level_update(void)
                     level.waiting_cleanup = true;
                     level.cleanup_delay_ms = CLEAN_UP_DELAY_MS;
                     level.cleanup_start_tick = lv_tick_get();
-                    CONSOLE("[LEVEL] Wave %d spawning complete, waiting for cleanup...", level.current_wave + 1);
+                    CONSOLE_INFO("Wave %d spawning complete, waiting for cleanup...", level.current_wave + 1);
                 }
-<<<<<<< HEAD
-            }
-            // 若已生成完毕，但没有等待清场
-            if (wave->enemy_spawned >= wave->enemy_total && !level.waiting_cleanup) {
-                level.waiting_cleanup = true;
-                level.cleanup_delay_ms = CLEAN_UP_DELAY_MS; // 给敌人消失留出时间
-                level.cleanup_start_tick = lv_tick_get();
-                CONSOLE_INFO("Wave %d spawning complete, waiting for cleanup...", level.current_wave + 1);
-=======
->>>>>>> main
             }
             break;
 
