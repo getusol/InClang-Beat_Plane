@@ -18,6 +18,7 @@
  **********************/
 //note:增加新的状态需要在ui中加入状态的ui_*_run()函数和esc在对应ui中的反应
 typedef enum {
+    GS_CG,          //开场动画状态
     GS_MENU,
     GS_PLAY,
         GS_PAUSE,   //GS_PLAY子状态

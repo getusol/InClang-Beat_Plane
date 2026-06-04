@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "sdl/sdl.h"
+#include "SDL.h"
+#include "debug.h"
 #else
 #include "drivers.h"
 #include "lv_port_disp_template.h"
@@ -23,6 +25,7 @@
  **********************/
 #ifdef SIMULATOR
 #define DISP_BUF_SIZE (1024 * 100)
+#define ICON_PATH "./assets/pics/icon.bmp"
 #endif
 
 /**********************
@@ -65,7 +68,36 @@ static lv_color_t buf[DISP_BUF_SIZE];
 void lv_port_init()
 {
     lv_init();
+
+//SDL 初始化 支持最大化窗口
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     sdl_init();
+    // 模拟器只有一个窗口，其 SDL 内部 ID 必定为 1
+    SDL_Window * window = SDL_GetWindowFromID(1);
+    if (window != NULL) {
+        // 动态设置窗口为可调节大小
+        SDL_SetWindowResizable(window, SDL_TRUE);
+        //SDL_MaximizeWindow(window);   // 最大化窗口
+
+        // 获取对应的渲染器
+        SDL_Renderer * renderer = SDL_GetRenderer(window);
+        if (renderer != NULL) {
+            // 锁定逻辑分辨率为 LVGL 设计的物理分辨率（例如 1024 * 600）
+            // SDL2 会自动处理等比例拉伸和黑边填充（Letterboxing）
+            SDL_RenderSetLogicalSize(renderer, SDL_HOR_RES, SDL_VER_RES);
+        }
+        SDL_SetWindowTitle(window,"Plane War");
+
+        SDL_Surface * icon = SDL_LoadBMP(ICON_PATH); 
+        if (icon != NULL) {
+            SDL_SetWindowIcon(window, icon);
+            SDL_FreeSurface(icon); // 设置成功后，立刻释放临时 Surface 内存，防止泄漏
+        } else {
+            CONSOLE("[WARNING] Failed to load window icon: %s", SDL_GetError());
+            LOG("[WARNING] Failed to load window icon:%s",SDL_GetError());
+        }
+    }
+
     lv_port_disp_init();
     lv_port_indev_init();
 }

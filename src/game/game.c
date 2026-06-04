@@ -256,4 +256,3 @@ static void init_hitbox(game_obj_t * obj,void * usr_data)
   game_obj_hitbox_init(obj);
   #endif
 }
-
