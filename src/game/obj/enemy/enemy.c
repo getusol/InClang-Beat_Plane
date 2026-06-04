@@ -40,7 +40,6 @@ typedef struct
     int16_t damage;
     uint16_t pool_index; // 对象池索引
     lv_obj_t * health_bar;
-    bool is_boss;       // 是否为 Boss
 } enemy_t;
 
  /**********************
@@ -56,6 +55,7 @@ static uint16_t enemy_modify_hp_max(game_obj_t * g,uint16_t trg);
 
 static void enemy_event_hit_by_bullet_cb(game_obj_t * scr,game_obj_t * trg);
 static void enemy_event_hit_player_cb(game_obj_t * src,game_obj_t * trg);
+static void enemy_on_destroyed_cb(game_obj_t * src,game_obj_t * trg);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -140,6 +140,7 @@ void enemy_init(lv_obj_t * parent)
   // event_cb
   event_register(EVENT_BULLET_HIT_ENEMY, enemy_event_hit_by_bullet_cb);
   event_register(EVENT_PLAYER_HIT_ENEMY, enemy_event_hit_player_cb);
+  event_register(EVENT_ENEMY_DESTROYED, enemy_on_destroyed_cb);
 
   CONSOLE("[INFO] Enemy system initialized with max enemy count: %d.", MAX_ENEMY_COUNT);
   return ;
@@ -151,7 +152,8 @@ void enemy_init(lv_obj_t * parent)
 game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y,
                          int16_t vx, int16_t vy,
                          uint16_t health, int16_t hit_damage,
-                         behave_t behave)
+                         behave_t behave,
+                         apr_id_t apr_id)
 {
   if (fsm_get_state() != GS_PLAY) return NULL;
   uint16_t id = pool_alloc(&enemy_pool);
@@ -170,6 +172,8 @@ game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y,
   e->base.behave = behave;
   e->damage = hit_damage;
 
+  apr_apply(&e->base, apr_id);
+
   enemy_modify_hp_max(&e->base, health);
   e->hp = e->hp_max;
   lv_obj_set_pos(e->base.obj, x, y);
@@ -179,42 +183,11 @@ game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y,
   return &e->base;
 }
 
-/**
- * @brief Boss 生成 —— 自动应用 Boss 外观和行为
- */
-game_obj_t * enemy_spawn_boss(lv_coord_t x, lv_coord_t y,
-                               uint16_t health, int16_t hit_damage)
-{
-    behave_t boss_behave = { .f = enemy_behave_boss, .usr_data = NULL };
-    // 用 vy=0 防止首帧越界被 hide；behave 里会重新定位
-    game_obj_t *g = enemy_spawn(x, y, 0, 0, health, hit_damage, boss_behave);
-    if (g != NULL) {
-        ((enemy_t *)g)->is_boss = true;
-        // 立即应用 Boss 外观，不等 behave（behave 在 update 之后才执行）
-        apr_apply(g, APR_ENEMY_BOSS);
-        // 定位到屏幕顶部中央
-        g->x = SCREEN_WIDTH / 2 - g->apr->w / 2;
-        g->y = 50;
-        g->vx = 0;
-        g->vy = 0;
-        lv_obj_set_pos(g->obj, g->x, g->y);
-        CONSOLE("[BOSS] Boss spawned at (%d, %d), HP=%d", g->x, g->y, health);
-    }
-    return g;
-}
-
 int16_t enemy_get_damage(game_obj_t * g)
 {
   if (g == NULL) return 0;
   enemy_t * e = (enemy_t *)g;
   return e->damage;
-}
-
-bool enemy_is_boss(game_obj_t * g)
-{
-    if (g == NULL) return false;
-    enemy_t * e = (enemy_t *)g;
-    return e->is_boss;
 }
 
  /**********************
@@ -321,23 +294,7 @@ static int16_t enemy_modify_hp(game_obj_t * g, int16_t delta)
   if (e->hp <= 0) {
     e->hp = 0;
     CONSOLE("[INFO] Enemy %d has been killed.", e->pool_index);
-
-    lv_coord_t coin_x = g->x + (g->apr->w - 18) / 2;
-    lv_coord_t coin_y = g->y + (g->apr->h - 18) / 2;
-
-    if (e->is_boss) {
-      // Boss 死亡掉落 8 个金币
-      for (int c = 0; c < 8; c++) {
-        lv_coord_t cx = coin_x + lv_rand(-30, 30);
-        lv_coord_t cy = coin_y + lv_rand(-30, 30);
-        coin_spawn(cx, cy,60,0);
-      }
-      CONSOLE("[BOSS] Boss defeated! 8 coins dropped.");
-    } else {
-      coin_spawn(coin_x, coin_y,50,7);
-    }
-    coin_spawn(coin_x, coin_y, 50, 2);  // value=10, never auto-disappear
-    e->base.hide(g);
+    event_dispatch(EVENT_ENEMY_DESTROYED, g, NULL);
     return 0;
   }
 
@@ -369,16 +326,32 @@ static void enemy_event_hit_by_bullet_cb(game_obj_t * scr, game_obj_t * trg)
 }
 
 /**
- * @brief 玩家撞击敌人事件回调 —— Boss 秒杀玩家
+ * @brief 玩家撞击敌人事件回调 —— 敌人触碰即销毁（Boss 的高伤害由 player 回调处理）
  */
 static void enemy_event_hit_player_cb(game_obj_t * src, game_obj_t * trg)
 {
-  enemy_t * e = (enemy_t *)trg;
-  if (e->is_boss) {
-    // Boss 碰触直接秒杀玩家
-    event_dispatch(EVENT_PLAYER_DIE, NULL, NULL);
-    CONSOLE("[BOSS] Player crushed by boss!");
-  } else {
-    trg->hide(trg);
-  }
+  trg->hide(trg);
+}
+
+/**
+ * @brief EVENT_ENEMY_DESTROYED 回调 —— 批量处理所有死亡敌人
+ *        遍历敌人池，对每个 HP<=0 的活跃敌人：
+ *        1. 用 BEHAVE_ON_DEATH 标记调用 behave.f → 执行死亡掉落
+ *        2. hide 回收对象池槽位
+ */
+static void enemy_on_destroyed_cb(game_obj_t * src, game_obj_t * trg)
+{
+    (void)src;
+    (void)trg;
+
+    for (int i = 0; i < MAX_ENEMY_COUNT; i++) {
+        if (!enemies[i].base.active) continue;
+        if (enemies[i].hp > 0) continue;
+
+        if (enemies[i].base.behave.f) {
+            enemies[i].base.behave.f(&enemies[i].base, BEHAVE_ON_DEATH);
+        }
+
+        enemies[i].base.hide(&enemies[i].base);
+    }
 }

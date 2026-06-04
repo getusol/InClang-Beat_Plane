@@ -13,6 +13,7 @@
 #include "timer.h"
 #include "player.h"
 #include "apr.h"
+#include "coin.h"
 
 /**********************
  *      MACROS
@@ -48,6 +49,12 @@ static int boss_tick = 0;
 
 void enemy_behave_normal(game_obj_t * g, void * v)
 {
+   if (v == BEHAVE_ON_DEATH) {
+       lv_coord_t cx = g->x + (g->apr->w - 18) / 2;
+       lv_coord_t cy = g->y + (g->apr->h - 18) / 2;
+       coin_spawn(cx, cy, 50, 7, APR_COIN_DEFAULT);
+       return;
+   }
    if (g == NULL || g->active == false) return ;
    if (!g->timered) {
     timer_create(g, 500, TIMER_MODE_REPEAT, enemy_move_rand_timer, NULL);
@@ -64,6 +71,14 @@ void enemy_behave_normal(game_obj_t * g, void * v)
  */
 void enemy_behave_boss(game_obj_t * g, void * v)
 {
+    if (v == BEHAVE_ON_DEATH) {
+        lv_coord_t cx = g->x + (g->apr->w - 18) / 2;
+        lv_coord_t cy = g->y + (g->apr->h - 18) / 2;
+        for (int i = 0; i < 8; i++) {
+            coin_spawn(cx + lv_rand(-30, 30), cy + lv_rand(-30, 30), 60, 0, APR_COIN_DEFAULT);
+        }
+        return;
+    }
     if (g == NULL || !g->active) return;
 
     if (!g->timered) {
@@ -72,8 +87,6 @@ void enemy_behave_boss(game_obj_t * g, void * v)
         g->x = SCREEN_WIDTH / 2 - g->apr->w / 2;
         g->y = 50;
         lv_obj_set_pos(g->obj, g->x, g->y);
-
-        apr_apply(g, APR_ENEMY_BOSS);
 
         boss_tick = 0;
 

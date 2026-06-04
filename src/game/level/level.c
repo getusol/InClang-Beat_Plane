@@ -13,6 +13,7 @@
 #include "fsm.h"
 #include "enemy.h"
 #include "enemy_behaviors.h"
+#include "apr.h"
 
 #include <stdint.h>
 
@@ -197,7 +198,13 @@ void level_update(void)
             if (wave->type == WAVE_TYPE_BOSS) {
                 // Boss 波次：立即生成 Boss，保存指针用于检测存活
                 if (wave->enemy_spawned == 0) {
-                    current_boss = enemy_spawn_boss(SCREEN_WIDTH / 2, 50, wave->boss_hp, wave->boss_damage);
+                    behave_t boss_behave = { .f = enemy_behave_boss, .usr_data = NULL };
+                    current_boss = enemy_spawn(SCREEN_WIDTH / 2, 50,
+                                               0, 0,
+                                               wave->boss_hp,
+                                               200,  // 高伤害 ≈ 触碰秒杀
+                                               boss_behave,
+                                               APR_ENEMY_BOSS);
                     wave->enemy_spawned = 1;
                 }
 
@@ -214,7 +221,7 @@ void level_update(void)
                         lv_coord_t x = lv_rand(250, 774);
                         lv_coord_t y = -64;
                         behave_t behave = { .f = enemy_behave_normal, .usr_data = NULL };
-                        enemy_spawn(x, y, 0, 0, 100, 20, behave);
+                        enemy_spawn(x, y, 0, 0, 100, 20, behave, APR_ENEMY_DEFAULT);
                         wave->enemy_spawned++;
                         wave->last_spawn = lv_tick_get();
                     }
@@ -224,7 +231,7 @@ void level_update(void)
                         lv_coord_t x = lv_rand(250, 774);
                         lv_coord_t y = -64;
                         behave_t behave = { .f = enemy_behave_normal, .usr_data = NULL };
-                        enemy_spawn(x, y, 0, 0, 1000, 20, behave);
+                        enemy_spawn(x, y, 0, 0, 1000, 20, behave, APR_ENEMY_DEFAULT);
                         wave->enemy_spawned++;
                         wave->last_spawn = lv_tick_get();
                     }

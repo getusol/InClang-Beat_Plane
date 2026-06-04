@@ -136,7 +136,8 @@ void coin_init(lv_obj_t * parent)
  * @note 消失事件到后 还有一个持续时间1s的闪烁动画 之后才会消失
  */
 game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
-                        uint16_t value, uint8_t disappear_time_s)
+                        uint16_t value, uint8_t disappear_time_s,
+                        apr_id_t apr_id)
 {
     if (fsm_get_state() != GS_PLAY) return NULL;
 
@@ -155,6 +156,8 @@ game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
     c->base.vy = 0;
     c->base.behave = NULL_BEHAVE;
     c->base.timered = false;
+
+    apr_apply(&c->base, apr_id);
 
     lv_obj_set_pos(c->base.obj, x, y);
     c->base.show(&c->base);
