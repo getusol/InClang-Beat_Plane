@@ -17,6 +17,7 @@
 #include "fsm.h"
 #include "lvgl_utils.h"
 #include "ui_templates.h" // 用于 popup_create, popup_show, popup_hide
+#include "coin.h"
 
 /**********************
  * MACROS
@@ -116,11 +117,11 @@ static void shop_coin_update_timer_cb(lv_timer_t * timer)
     static int last_shop_coin_num = -1;
     LV_UNUSED(timer);
 
-    if (last_shop_coin_num != coin_num) {
+    if (last_shop_coin_num != coin_get_num()) {
         if (coin_label != NULL) {
-            lv_label_set_text_fmt(coin_label, "%d", coin_num);
+            lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
         }
-        last_shop_coin_num = coin_num;
+        last_shop_coin_num = coin_get_num();
     }
 }
 /**
@@ -331,7 +332,7 @@ void ui_shop_init(void)
 
     coin_label = lv_label_create(coin_img);
     lv_obj_set_pos(coin_label,120,23);
-    lv_label_set_text_fmt(coin_label, "%d", coin_num);
+    lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
     lv_obj_set_style_text_font(coin_label,&lv_font_montserrat_16,LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(coin_label,lv_color_white(),LV_STATE_DEFAULT);
 
@@ -398,12 +399,12 @@ static void draw_btn_event_cb(lv_event_t * e)
     if (!lv_obj_has_flag(shop_exit_popup, LV_OBJ_FLAG_HIDDEN)) return; // 退出窗口显示时无法抽奖
 
     // 检查金币是否足够
-    if (coin_num < DRAW_COST) {
-        CONSOLE("[SHOP] Coins insufficient! Need %d, current: %d", DRAW_COST, coin_num);
-        return; 
+    if (coin_get_num() < DRAW_COST) {
+        CONSOLE("[SHOP] Coins insufficient! Need %d, current: %d", DRAW_COST, coin_get_num());
+        return;
     }
 
-    coin_num -= DRAW_COST;
+    coin_add_num(-DRAW_COST);
     target_slot = get_random_reward_slot();
     
     int base_spins = 3; 
@@ -534,10 +535,10 @@ static int get_random_reward_slot(void)
 static void give_reward(int slot)
 {
     switch (slot) {
-        case 1: coin_num += 5; break;
-        case 3: coin_num += 10; break;
-        case 5: coin_num += 20; break;
-        case 7: coin_num += 200; break;
+        case 1: coin_add_num(5); break;
+        case 3: coin_add_num(10); break;
+        case 5: coin_add_num(20); break;
+        case 7: coin_add_num(200); break;
         case 0: 
                 g_plane_unlocked[1] = true; // 解锁 Ember
                 CONSOLE("[SHOP] Unlocked Ember Plane!"); 

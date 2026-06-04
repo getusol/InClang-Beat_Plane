@@ -170,11 +170,11 @@ void apr_init()
         .w = 18, .h = 18,
         .hitbox_x = 0, .hitbox_y = 0,
         .hitbox_w = 20, .hitbox_h = 20,
-        .img_name = "coin_leave.bin",
+        .img_name = "coin.bin",
         .is_alpha = true,
     };
 
-    // ==================== 预加载图片（仅模拟器） ====================
+    // ==================== 预加载图片（所有外观模板） ====================
     for (int i = 0; i < APR_MAX; i++) {
         if (apr_list[i].img_name == NULL) continue;
         load_img_dsc(img_path(apr_list[i].img_name, path, 128),
