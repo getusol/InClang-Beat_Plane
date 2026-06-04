@@ -96,10 +96,12 @@ void ui_run()
           if (last_game_state == GS_PAUSE) audio_resume_all();
           ui_play_run(); 
           break;
-        case GS_SHOP  : 
+        case GS_SHOP  :
+          audio_load(AUDIO_SHOPMUSIC,AUDIO_CHAN_BGM,true);
           ui_shop_run(); 
           break;
         case GS_BASE : 
+          audio_load(AUDIO_BASEMUSIC,AUDIO_CHAN_BGM,true);
           ui_base_run(); 
           break;
         case GS_PAUSE : 
@@ -138,6 +140,13 @@ static void ui_esc_pressed_handler()
         ui_cg_skip();
         fsm_switch_state(GS_MENU);
         CONSOLE("[INFO] CG skipped by user");
+        break;
+    case GS_BASE:
+        fsm_switch_state(GS_MENU);
+        CONSOLE("[INFO] State has been changed by ESC to GS_MENU");
+        break;
+    case GS_SHOP:
+        ui_shop_esc_behave();
         break;
     case GS_PLAY:
         fsm_switch_state(GS_PAUSE);

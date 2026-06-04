@@ -20,7 +20,6 @@
  *********************/
 #define BASE_BG_IMG     "base_bg.bin"
 
-#define TOTAL_PLANES    4
 #define PLANE_WIDTH     160
 #define PLANE_HEIGHT    160
 #define PLANE_GAP       60
@@ -39,20 +38,16 @@ typedef struct {
 } plane_info_t;
 
 /**********************
- * GLOBAL VARIABLES
- **********************/
-bool g_plane_unlocked[TOTAL_PLANES] = {true, false, false, false}; // 默认初始只有第一台解锁
-
-/**********************
  * STATIC VARIABLES
  **********************/
-static int g_selected_plane_id = 0;                            
+static bool g_plane_unlocked[PLANE_ID_MAX] = {true, false, false, false};
+static plane_id_t g_selected_plane_id = PLANE_ID_DEFAULT;
 
 static lv_obj_t * base_screen = NULL;
 static lv_group_t * base_group = NULL;
 
-static lv_obj_t * plane_objs[TOTAL_PLANES] = {NULL};
-static lv_obj_t * lock_masks[TOTAL_PLANES] = {NULL};
+static lv_obj_t * plane_objs[PLANE_ID_MAX] = {NULL};
+static lv_obj_t * lock_masks[PLANE_ID_MAX] = {NULL};
 
 static lv_obj_t * choosed_indicator = NULL; // 头顶的 "CHOOSED" 变换标签
 static lv_obj_t * detail_panel = NULL;      // 动态移动的属性面板
@@ -66,7 +61,7 @@ static lv_obj_t * base_exit_popup = NULL;   // 退出确认弹窗
 static int current_viewing_idx = 0;         // 当前正在点击浏览的飞机索引
 
 // 飞机固有属性配置表
-static const plane_info_t plane_templates[TOTAL_PLANES] = {
+static const plane_info_t plane_templates[PLANE_ID_MAX] = {
     {0, "Player",  "player.bin",          200, 34, "Burst: 3-way shot"},
     {1, "Ember",   "player_ember.bin",    200, 20, "Flame Circle"},
     {2, "Stream",  "player_stream.bin",   200, 10, "Shield"},
@@ -74,12 +69,12 @@ static const plane_info_t plane_templates[TOTAL_PLANES] = {
 };
 
 // 静态化的长周期路径缓冲区，防止 LVGL 异步渲染时读取到脏数据导致乱码
-static char plane_path_buf[TOTAL_PLANES][64];
+static char plane_path_buf[PLANE_ID_MAX][64];
 
 #ifdef SIMULATOR
 static lv_img_dsc_t base_bg_dsc;
 static lv_img_dsc_t plane_base_dsc;
-static lv_img_dsc_t plane_dscs[TOTAL_PLANES];
+static lv_img_dsc_t plane_dscs[PLANE_ID_MAX];
 #endif
 
 /**********************
@@ -100,9 +95,31 @@ static void update_detail_panel(int idx);
  * @brief 获取当前选中的飞机ID (新添加的 Get 函数)
  * @return int 当前飞机的 ID
  */
-int ui_base_get_selected_plane_id(void)
+plane_id_t ui_base_get_selected_plane_id(void)
 {
     return g_selected_plane_id;
+}
+
+/**
+ * @brief 查询指定飞机是否已解锁
+ * @param plane_id 飞机 ID（PLANE_ID_DEFAULT / EMBER / STREAM / VERDANT）
+ * @return true 已解锁, false 未解锁或 ID 无效
+ */
+bool ui_base_plane_is_unlocked(plane_id_t plane_id)
+{
+    if (plane_id < 0 || plane_id >= PLANE_ID_MAX) return false;
+    return g_plane_unlocked[plane_id];
+}
+
+/**
+ * @brief 解锁指定飞机（从商店抽奖获得后调用）
+ * @param plane_id 飞机 ID（PLANE_ID_DEFAULT /_EMBER / STREAM / VERDANT）
+ */
+void ui_base_plane_unlock(plane_id_t plane_id)
+{
+    if (plane_id < 0 || plane_id >= PLANE_ID_MAX) return;
+    g_plane_unlocked[plane_id] = true;
+    CONSOLE("[BASE] Plane %d unlocked.", plane_id);
 }
 
 /**
@@ -146,7 +163,7 @@ void ui_base_init(void)
     lv_obj_set_style_text_font(choosed_indicator, &lv_font_montserrat_16, 0);
 
     // 3. 循环创建横向排列的四个飞机组件
-    for (int i = 0; i < TOTAL_PLANES; i++) {
+    for (int i = 0; i < PLANE_ID_MAX; i++) {
         // 飞机触控底座容器
         plane_objs[i] = lv_obj_create(base_screen);
         lv_obj_set_size(plane_objs[i], PLANE_WIDTH, PLANE_HEIGHT);
@@ -289,7 +306,7 @@ void ui_base_run(void)
     popup_hide(base_exit_popup);
 
     // 动态同步最新的解锁状态幕层 (保留遮罩展示，但点击已能穿透)
-    for (int i = 0; i < TOTAL_PLANES; i++) {
+    for (int i = 0; i < PLANE_ID_MAX; i++) {
         if (g_plane_unlocked[i]) {
             lv_obj_add_flag(lock_masks[i], LV_OBJ_FLAG_HIDDEN); 
         } else {

@@ -138,7 +138,6 @@ static void btn_level_event_cb(lv_event_t * e)
 static void btn_shop_event_cb(lv_event_t * e)
 {
     fsm_switch_state(GS_SHOP);
-     CONSOLE("[INFO] Shop.");
 }
 
 /**
@@ -147,5 +146,4 @@ static void btn_shop_event_cb(lv_event_t * e)
 static void btn_base_event_cb(lv_event_t * e)
 {
     fsm_switch_state(GS_BASE);
-    CONSOLE("[INFO] Base.");
 }

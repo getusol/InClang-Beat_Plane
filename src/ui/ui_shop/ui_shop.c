@@ -27,7 +27,7 @@
 #define PLAYER_STREAM_IMG   "player_stream.bin"
 #define PLAYER_VERDANT_IMG  "player_verdant.bin"
 #define COIN_LEAVE_IMG      "coin_leave.bin"
-#define COIN_IMG_NAME "coin.bin"
+#define COIN_IMG_NAME       "coin.bin"
 #define DRAW_COST           10
 #define TOTAL_SLOTS         8
 
@@ -64,11 +64,12 @@ static lv_obj_t * shop_exit_popup = NULL;
 
 static lv_group_t * shop_group = NULL;   
 
+static int esc_cnt = 0; // 用来反复按esc键退出弹窗
+
 static int current_slot = 0;
 static int target_slot = 0;
 static int steps_remaining = 0;
 static int current_speed_ms = 40;
-extern bool g_plane_unlocked[4];
 // 奖池定义（按顺时针排列 0~7）
 static reward_info_t rewards[TOTAL_SLOTS] = {
     {0, "Ember Plane",   PLAYER_EMBER_IMG,   150},  // 0-左上
@@ -112,20 +113,11 @@ static void shop_continue_draw_btn_event_cb(lv_event_t * e);
 /**********************
  * GLOBAL FUNCTIONS
  **********************/
-static void shop_coin_update_timer_cb(lv_timer_t * timer)
-{
-    static int last_shop_coin_num = -1;
-    LV_UNUSED(timer);
 
-    if (last_shop_coin_num != coin_get_num()) {
-        if (coin_label != NULL) {
-            lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
-        }
-        last_shop_coin_num = coin_get_num();
-    }
-}
 /**
- * @brief 商店界面全布局初始化
+ * @brief 商店界面的全布局显式初始化
+ * @note 建议在程序刚启动时（例如在 main.c 中与其他 UI 初始化函数一起）调用一次。
+ * 也可以不调用，由 ui_shop_run 内部进行第一次进入时的懒加载初始化。
  */
 void ui_shop_init(void)
 {
@@ -336,11 +328,15 @@ void ui_shop_init(void)
     lv_obj_set_style_text_font(coin_label,&lv_font_montserrat_16,LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(coin_label,lv_color_white(),LV_STATE_DEFAULT);
 
-    lv_timer_create(shop_coin_update_timer_cb, 50, NULL);
+    if (coin_label != NULL) {
+        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+    }
 }
 
 /**
- * @brief 💡 状态机绑定的核心运行函数
+ * @brief 状态机绑定的核心商店运行/切入函数
+ * @note 当状态机检测到状态切换（last_game_state != fsm_get_state()）
+ * 并且当前状态为 GS_SHOP 时，进入 switch-case 触发此函数。
  */
 void ui_shop_run(void)
 {
@@ -348,12 +344,28 @@ void ui_shop_run(void)
         ui_shop_init();
     }
     lv_scr_load(shop_screen);
+
+    if (coin_label != NULL) {
+        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+    }
     
     // 每次切回界面时重置隐藏状态
     popup_hide(shop_exit_popup);
     popup_hide(reward_popup);
     
     set_group(shop_group);
+}
+
+/**
+ * @brief 安全的ui_shop esc交互退出逻辑
+ */
+void ui_shop_esc_behave(void)
+{
+    shop_exit_btn_event_cb(NULL);
+    esc_cnt = 1 - esc_cnt;
+    if (esc_cnt == 0) {
+        popup_hide(shop_exit_popup);
+    }
 }
 
 /**********************
@@ -365,9 +377,6 @@ static void reward_close_cb(lv_event_t * e)
     popup_hide(reward_popup);
 }
 
-// ==========================================
-// 新增：退出相关的事件回调实现
-// ==========================================
 static void shop_exit_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
@@ -405,6 +414,11 @@ static void draw_btn_event_cb(lv_event_t * e)
     }
 
     coin_add_num(-DRAW_COST);
+
+    if (coin_label != NULL) {
+        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+    }
+
     target_slot = get_random_reward_slot();
     
     int base_spins = 3; 
@@ -539,17 +553,23 @@ static void give_reward(int slot)
         case 3: coin_add_num(10); break;
         case 5: coin_add_num(20); break;
         case 7: coin_add_num(200); break;
-        case 0: 
-                g_plane_unlocked[1] = true; // 解锁 Ember
-                CONSOLE("[SHOP] Unlocked Ember Plane!"); 
+        case 0:
+                ui_base_plane_unlock(PLANE_ID_EMBER);
+                CONSOLE("[SHOP] Unlocked Ember Plane!");
                 break;
-        case 2: 
-                g_plane_unlocked[2] = true; // 解锁 Stream
-                CONSOLE("[SHOP] Unlocked Stream Plane!"); 
+        case 2:
+                ui_base_plane_unlock(PLANE_ID_STREAM);
+                CONSOLE("[SHOP] Unlocked Stream Plane!");
                 break;
-        case 4: 
-                g_plane_unlocked[3] = true; // 解锁 Verdant
-                CONSOLE("[SHOP] Unlocked Verdant Plane!"); 
+        case 4:
+                ui_base_plane_unlock(PLANE_ID_VERDANT);
+                CONSOLE("[SHOP] Unlocked Verdant Plane!");
                 break;
     }
+
+    // 更新金币显示
+    if (coin_label != NULL) {
+        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+    }
+
 }

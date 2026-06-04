@@ -25,6 +25,8 @@ typedef enum audio_id_t
 {
     AUDIO_CG,
     AUDIO_BGM,
+    AUDIO_SHOPMUSIC,
+    AUDIO_BASEMUSIC,
 
     AUDIO_MAX,
 } audio_id_t;
