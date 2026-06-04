@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include <string.h>
 #include "fsm.h"
+#include "comm_status.h"
+#include "comm_tx.h"
 
 #ifdef SIMULATOR
 #include <stdlib.h>
@@ -66,7 +68,17 @@ void console_out(const char *fmt, ...)
     va_start(args, fmt);
     vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
+
+#ifdef SIMULATOR
     printf("%s", buf);
+#else
+    if (comm_get_status() == COMM_STATUS_CONNECTED) {
+        comm_mcu_send_log(buf);
+    } else if (comm_get_status() != COMM_STATUS_CONNECTING) {
+        printf("%s",buf);
+    }
+#endif
+    
 }
 /**
  * @brief 日志输出，输出到特定目录的日志下

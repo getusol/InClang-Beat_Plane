@@ -57,7 +57,7 @@ static uint16_t timer_free_indices[MAX_TIMER_COUNT] = {0}; // 空闲定时器索
 /**
  * @brief 初始化定时器对象池
  */
-void timer_init(void)
+void timer_pool_init(void)
 {
     for (int i = 0;i < MAX_TIMER_COUNT;i++) {
         timers[i].pool_index = POOL_INVALID_ID;

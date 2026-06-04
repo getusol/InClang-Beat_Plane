@@ -337,6 +337,9 @@ static int16_t enemy_modify_hp(game_obj_t * g, int16_t delta)
       coin_spawn(coin_x, coin_y);
     }
 
+    lv_coord_t coin_x = g->x + (g->w - 18) / 2;
+    lv_coord_t coin_y = g->y + (g->h - 18) / 2;
+    coin_spawn(coin_x, coin_y, 50, 2);  // value=10, never auto-disappear
     e->base.hide(g);
     return 0;
   }

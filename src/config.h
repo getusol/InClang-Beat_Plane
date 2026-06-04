@@ -29,6 +29,23 @@
 #define SCREEN_HEIGHT 600 // 屏幕高度
 
 /*-------------
+ * UART COMM
+ *-----------*/
+
+#define DEFAULT_BAUD_RATE 115200
+#define DEFAULT_COM_PORT "COM11"
+
+#if 1                     // 是否开启高级通信功能
+    #define DO_MCU_SEND_CONSOLE 1  // 启用MCU控制台向电脑输出传输
+    #define DO_MCU_SEND_INPUT   1  // 启用MCU按键摇杆状态向电脑输出传输
+    #define DO_PC_PRINT_CONSOLE 1  // 启用PC控制台打印
+#else
+    #define DO_MCU_SEND_CONSOLE 0  // 关闭MCU控制台向电脑输出传输
+    #define DO_MCU_SEND_INPUT   0  // 关闭MCU按键摇杆状态向电脑输出传输
+    #define DO_PC_PRINT_CONSOLE 0  // 关闭PC控制台打印
+#endif
+
+/*-------------
  * JOYSTICK
  *-----------*/
 
@@ -88,6 +105,14 @@
  *-----------*/
 
 #define MAX_TIMER_COUNT 20 // 最大定时器数量
+
+/*-------------
+ * AUDIOS
+ *-----------*/
+
+#define VOL_BGM 255 // BGM 音量 0 ~ 255
+#define VOL_SFX 255 // SFX 音量 0 ~ 255
+#define VOL_MAX 8   // 2 ^ VOL_MAX = 256
 
 /*-------------
  * BULLET

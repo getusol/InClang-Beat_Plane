@@ -15,6 +15,8 @@
 #include "ui_templates.h"
 #include "lvgl_utils.h"
 #include "game_object.h"
+
+#include "coin.h"
 #include "event.h"
 #include "perf_monitor.h"
 
@@ -22,8 +24,10 @@
  * MACROS
  **********************/
 
-#define COIN_IMG_NAME "coin.bin"
-#define HUD_IMG_NAME "hUD.bin"
+
+#define HUD_IMG_NAME "hUd.bin"
+#define HUD_IMG_NAME "play_hud.bin"
+#define COIN_BAR_IMG_NAME "coin_bar.bin"
 
 /**********************
  * TYPEDEFS
@@ -43,9 +47,11 @@ static void y_anim_cb(void * obj, int32_t y);
 static void level_anim_finish(lv_anim_t * anim);
 
 static void ui_play_event_game_start_cb(game_obj_t * a,game_obj_t * b);
-static void coin_update_timer_cb(lv_timer_t * timer);
+
 static void hurt_flash_timer_cb(lv_timer_t * timer);
 static void ui_play_event_player_hurt_cb(game_obj_t * a, game_obj_t * b);
+static void ui_play_event_hit_coin_cb(game_obj_t * src, game_obj_t * trg);
+
 /***********************
  * GLOBAL PROTOTYPES
  ***********************/
@@ -61,7 +67,6 @@ static lv_obj_t * dp_play;
 
 static lv_obj_t * pause_popup;
 static lv_obj_t * over_popup;
-int coin_num = 0; 
 static lv_obj_t * coin_label;
 
 #ifdef SIMULATOR
@@ -100,20 +105,6 @@ void ui_play_init()
     //coin_img initialize
     static char img_path_buf[64];
 #ifdef SIMULATOR
-    CONSOLE("[DEBUG-PLAY] Creating coin_img from dsc...");
-    lv_obj_t * coin_img = img_create_from_dsc(dp_play, img_path(COIN_IMG_NAME, img_path_buf, 64), 166, 46, NULL, &coin_img_dsc, true);
-    if (coin_img != NULL) lv_obj_set_align(coin_img, LV_ALIGN_BOTTOM_LEFT);
-#else
-    CONSOLE("[DEBUG-PLAY] Creating standard coin_img...");
-    lv_obj_t * coin_img = lv_img_create(dp_play);
-    if (coin_img != NULL) {
-        lv_img_set_src(coin_img, img_path(COIN_IMG_NAME, img_path_buf, 64));
-        lv_obj_set_align(coin_img, LV_ALIGN_BOTTOM_RIGHT);
-    }
-    #endif
-
-    
-#ifdef SIMULATOR
     CONSOLE("[DEBUG-PLAY] Creating hud_img from dsc...");
     lv_obj_t * hud_img = img_create_from_dsc(dp_play, img_path(HUD_IMG_NAME, img_path_buf, 64), 200, 52, NULL, &hud_img_dsc, false);
     if (hud_img != NULL) lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
@@ -124,6 +115,14 @@ void ui_play_init()
         lv_img_set_src(hud_img, img_path(HUD_IMG_NAME, img_path_buf, 64));
         lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
     }
+    //coin_img initialize
+    #ifdef SIMULATOR
+    lv_obj_t * coin_img = img_create_from_dsc(dp_play,img_path(COIN_BAR_IMG_NAME,img_path_buf,64),166,46,NULL,&coin_img_dsc,true);
+    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_LEFT);
+    #else
+    lv_obj_t * coin_img = lv_img_create(dp_play);
+    lv_img_set_src(coin_img,img_path(COIN_BAR_IMG_NAME,img_path_buf,64));
+    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_RIGHT);
     #endif
 
     if (coin_img == NULL) {
@@ -201,12 +200,11 @@ void ui_play_init()
     lv_obj_set_style_text_font(over_exit_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
     
     //label for coin
-    CONSOLE("[DEBUG-PLAY] Creating coin_label...");
-    coin_label = lv_label_create(coin_img ? coin_img : dp_play);
-    lv_obj_set_pos(coin_label, 120, 23);
-    lv_label_set_text_fmt(coin_label, "%d", coin_num);
-    lv_obj_set_style_text_font(coin_label, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(coin_label, lv_color_white(), LV_STATE_DEFAULT);
+    coin_label = lv_label_create(coin_img);
+    lv_obj_set_pos(coin_label,120,23);
+    lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+    lv_obj_set_style_text_font(coin_label,&lv_font_montserrat_16,LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(coin_label,lv_color_white(),LV_STATE_DEFAULT);
 
     // 性能检测UI初始化
     perf_monitor_init(dp_play);
@@ -229,16 +227,12 @@ void ui_play_init()
     }
 
     // 事件注册
-    event_register(EVENT_GAME_START, ui_play_event_game_start_cb);
-    event_register(EVENT_PLAYER_HIT_ENEMY, ui_play_event_player_hurt_cb);
-    event_register(EVENT_BULLET_HIT_PLAYER, ui_play_event_player_hurt_cb);
-    lv_timer_create(coin_update_timer_cb, 50, NULL);
-    
-    CONSOLE("[DEBUG-PLAY] ui_play_init finished successfully.");
+    event_register(EVENT_GAME_START,ui_play_event_game_start_cb);
+    event_register(EVENT_PLAYER_HIT_COIN, ui_play_event_hit_coin_cb);
 }
 
 /**
- * @brief 加载play界面 && 负责控制弹窗是否显示
+ * @brief 加载play界面 && 负责控制弹窗是否显示 && 播放BGM
  */
 void ui_play_run()
 {
@@ -345,22 +339,14 @@ void ui_play_level_enter_anim(const char * level_name)
  * STATIC FUNCTIONS
  **********************/
 /**
- * @brief 定时器回调：用于实时刷新金币显示
+ * @brief 玩家拾取金币事件回调：实时更新金币标签显示
  */
-static void coin_update_timer_cb(lv_timer_t * timer)
+static void ui_play_event_hit_coin_cb(game_obj_t * src, game_obj_t * trg)
 {
-    static int last_coin_num = -1;
-    
-    if (last_coin_num != coin_num) {
-        CONSOLE("[DEBUG-PLAY] coin_update_timer_cb: coin_num changed from %d to %d", last_coin_num, coin_num);
-        if (coin_label != NULL) {
-            CONSOLE("[DEBUG-PLAY] coin_update_timer_cb: Calling lv_label_set_text_fmt...");
-            lv_label_set_text_fmt(coin_label, "%d", coin_num);
-            CONSOLE("[DEBUG-PLAY] coin_update_timer_cb: Text format updated successfully.");
-        } else {
-            CONSOLE("[WARNING-PLAY] coin_update_timer_cb: coin_label is NULL!");
-        }
-        last_coin_num = coin_num;
+    (void)src;
+    (void)trg;
+    if (coin_label != NULL) {
+        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
     }
 }
 
