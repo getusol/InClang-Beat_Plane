@@ -19,6 +19,7 @@
  **********************/
 
 struct game_obj;
+typedef struct apr_s apr_t;
 
 typedef void (*behave_func_t)(struct game_obj * g,void * v);
 
@@ -45,21 +46,19 @@ typedef enum {
  * @brief 游戏对象父结构体，包含位置、大小、速度、对应的lvgl对象指针以及一些方法指针
  */
 typedef struct game_obj {
-    lv_coord_t x, y; //position
-    uint16_t w, h;   //size
-    int16_t hitbox_x, hitbox_y; //hitbox relative position
-    uint16_t hitbox_w, hitbox_h;
-    int8_t speed;   //@deprecated movement speed （dx / dt)
-    int16_t vx,vy;  //velocity
-    lv_obj_t * obj;  //the lvgl object representing this game object
-    #if SHOW_HITBOX
-    lv_obj_t * hitbox_obj; //the lvgl object representing this game object's hitbox
-    #endif
-    bool active;     //is the object active in the game
+    lv_coord_t x, y;       // position
+    int8_t speed;           // @deprecated movement speed (dx/dt)
+    int16_t vx, vy;         // velocity
+    const apr_t *apr;       // 外观指针（共享）
+    lv_obj_t *obj;          // LVGL 图像控件（每个对象私有）
+#if SHOW_HITBOX
+    lv_obj_t *hitbox_obj;   // LVGL 碰撞框调试控件
+#endif
+    bool active;            // is the object active in the game
     game_obj_type_t type;
-    behave_t behave; // AI
-    bool timered;   // 是否有定时器 用在behave中初始化一次
-    // general methods for game objects, like update, can be added here
+    behave_t behave;        // AI / 被动行为
+    bool timered;           // 是否有定时器 用在behave中初始化一次
+    // general methods for game objects
     void (*update)(struct game_obj *self);
     void (*show)(struct game_obj *self);
     void (*hide)(struct game_obj *self);
@@ -81,6 +80,7 @@ uint16_t game_obj_get_width(const game_obj_t * obj);
 uint16_t game_obj_get_height(const game_obj_t * obj);
 float game_obj_get_speed(const game_obj_t * obj);
 bool game_obj_is_active(const game_obj_t * obj);
+const apr_t * game_obj_get_apr(const game_obj_t * obj);
 
 // setters
 bool game_obj_set_behave(game_obj_t * obj, behave_func_t f, void * usr_data);

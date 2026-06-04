@@ -9,6 +9,7 @@
  *      INCLUDES
  *********************/
 #include "game_object.h"
+#include "apr.h"
 
 /**********************
  *      MACROS
@@ -36,10 +37,11 @@
 
 void bullet_init(lv_obj_t *parent);
 game_obj_t * bullet_create(game_obj_t *source,
-                         lv_coord_t x, lv_coord_t y, 
+                         lv_coord_t x, lv_coord_t y,
                          int16_t vx, int16_t vy,
                          int16_t damage,
-                         behave_t behave);
+                         behave_t behave,
+                         apr_id_t bullet_apr);
 int16_t bullet_get_damage(game_obj_t * bullet);
 game_obj_t * bullet_get_source(game_obj_t * g);
 

@@ -96,9 +96,14 @@ static void sdl_audio_callback(void *userdata, Uint8 *stream, int len);
 static const audio_asset_t audio_assets[AUDIO_MAX] = {
     [AUDIO_CG] = { .path = AUDIO_PATH("cg.pcm"), .size = 1798144 },
     [AUDIO_BGM] = { .path = AUDIO_PATH("bgm.pcm"), .size = 12996608 },
+<<<<<<< HEAD
     [AUDIO_FAH] = {.path = AUDIO_PATH("johnnybacon156fah.pcm"), .size = 154368},
     [AUDIO_TROPICAL] = {.path = AUDIO_PATH("jonasblakewoodtropical.pcm"), .size = 1108224},
     [AUDIO_BASKETBALLMUSIC] = {.path = AUDIO_PATH("basketballmusic.pcm"),.size = 3121920},
+=======
+    [AUDIO_SHOPMUSIC] = {.path = AUDIO_PATH("PixelGameShopMusic.pcm"), .size = 2651904},
+    [AUDIO_BASEMUSIC] = {.path = AUDIO_PATH("SoftBaseAmbient.pcm"), .size = 32693762 },
+>>>>>>> main
 };
 
 // 音频频道实例

@@ -161,6 +161,7 @@ static void btn_level_event_cb(lv_event_t * e)
  */
 static void btn_shop_event_cb(lv_event_t * e)
 {
+<<<<<<< HEAD
      CONSOLE_INFO("Shop.");
 }
 
@@ -173,9 +174,19 @@ static void btn_setting_event_cb(lv_event_t * e)
     ui_setting_set_prev_state(GS_MENU);
     fsm_switch_state(GS_SETTING);
     CONSOLE_INFO("Open settings from menu.");
+=======
+    fsm_switch_state(GS_SHOP);
+>>>>>>> main
 }
 
+/**
+ * @brief 菜单中的 Base 按钮事件回调
+ */
 static void btn_base_event_cb(lv_event_t * e)
 {
+<<<<<<< HEAD
     CONSOLE_INFO("Base.");
+=======
+    fsm_switch_state(GS_BASE);
+>>>>>>> main
 }

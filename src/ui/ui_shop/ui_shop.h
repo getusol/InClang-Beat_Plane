@@ -1,0 +1,22 @@
+/**
+ * @file shop.h
+ * @brief 商店抽奖界面头文件 (适配 LVGL 原生定时器与状态机)
+ */
+
+#ifndef __SHOP_H__
+#define __SHOP_H__
+
+/*********************
+ * INCLUDES
+ *********************/
+/* 如果有其他底层依赖可以写在这里 */
+
+/**********************
+ * GLOBAL PROTOTYPES
+ **********************/
+
+void ui_shop_init(void);
+void ui_shop_run(void);
+void ui_shop_esc_behave(void);
+
+#endif // #ifndef __SHOP_H__ 

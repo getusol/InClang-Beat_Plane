@@ -137,7 +137,7 @@
  * BULLET
  *-----------*/
 
-#define MAX_BULLET_COUNT 12 // 最大子弹数量
+#define MAX_BULLET_COUNT 100 // 最大子弹数量
 
 /*-------------
  * ENEMY

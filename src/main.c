@@ -27,6 +27,8 @@ int main(int argc, char **argv)
     audio_init();
     fsm_init();
     event_init();
+
+
     ui_init();
     game_init();
     save_load();

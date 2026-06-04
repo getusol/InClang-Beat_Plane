@@ -13,9 +13,13 @@
 #include "game.h"
 #include "tools.h"
 #include "fsm.h"
+#include "player.h"
+#include "event.h"
+#include "apr.h"
 #include "event.h"
 #include "timer.h"
 #include <string.h>
+#include "apr.h"
 
 /**********************
  * MACROS
@@ -76,24 +80,21 @@ void coin_init(lv_obj_t * parent)
     memset(coins, 0, sizeof(coins));
     pool_init(&coin_pool, coin_free_indices, MAX_COIN_COUNT);
 
-    char coin_img_path[64];
+    apr_t *coin_apr = apr_get(APR_COIN_DEFAULT);
+
     for (int i = 0; i < MAX_COIN_COUNT; i++) {
         // base init
         coins[i].base.active = false;
-        coins[i].base.w = 18;
-        coins[i].base.h = 18;
         coins[i].base.type = GAME_OBJ_TYPE_COIN;
         coins[i].base.x = 0;
         coins[i].base.y = 0;
-        coins[i].base.speed = 0.0f;
-        coins[i].base.hitbox_x = 0;
-        coins[i].base.hitbox_y = 0;
-        coins[i].base.hitbox_w = 20;
-        coins[i].base.hitbox_h = 20;
+        coins[i].base.speed = 0;
         coins[i].base.vx = 0;
         coins[i].base.vy = 0;
         coins[i].base.behave = NULL_BEHAVE;
         coins[i].base.timered = false;
+
+        apr_apply(&(coins[i].base),APR_COIN_DEFAULT);
 
         // special init
         coins[i].value = 0;
@@ -103,12 +104,18 @@ void coin_init(lv_obj_t * parent)
         coins[i].base.update = coin_update;
         coins[i].base.show = coin_show;
         coins[i].base.hide = coin_hide;
-        coins[i].base.obj = img_create_from_dsc(parent,
-            img_path(COIN_IMG_NAME, coin_img_path, 64),
-            coins[i].base.w, coins[i].base.h,
-            coin_img_buf, &coin_img_struct, true);
 
-        // 默认隐藏并注册到游戏全局对象管理中
+        // 使用 APR 创建 LVGL 图像
+#ifdef SIMULATOR
+        coins[i].base.obj = lv_img_create(parent);
+        lv_img_set_src(coins[i].base.obj, &coin_apr->img_dsc);
+#else
+        char path[128];
+        coins[i].base.obj = lv_img_create(parent);
+        lv_img_set_src(coins[i].base.obj, img_path(coin_apr->img_name, path, 128));
+#endif
+
+        // 默认隐藏并注册
         coins[i].base.hide(&coins[i].base);
         game_register_obj(&coins[i].base);
     }
@@ -129,7 +136,8 @@ void coin_init(lv_obj_t * parent)
  * @note 消失事件到后 还有一个持续时间1s的闪烁动画 之后才会消失
  */
 game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
-                        uint16_t value, uint8_t disappear_time_s)
+                        uint16_t value, uint8_t disappear_time_s,
+                        apr_id_t apr_id)
 {
     if (fsm_get_state() != GS_PLAY) return NULL;
 
@@ -148,6 +156,8 @@ game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
     c->base.vy = 0;
     c->base.behave = NULL_BEHAVE;
     c->base.timered = false;
+
+    apr_apply(&c->base, apr_id);
 
     lv_obj_set_pos(c->base.obj, x, y);
     c->base.show(&c->base);
@@ -197,9 +207,6 @@ void coin_set_num(int value)
  * STATIC FUNCTIONS
  **********************/
 
-/**
- * @brief 金币每帧状态更新
- */
 static void coin_update(game_obj_t * g)
 {
     game_state_t game_state = fsm_get_state();

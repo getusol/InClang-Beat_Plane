@@ -24,6 +24,8 @@ typedef enum {
     GS_PLAY,
         GS_PAUSE,   //GS_PLAY子状态
         GS_OVER,    //GS_PLAY子状态
+    GS_SHOP,
+    GS_BASE,
     SYS_HALT,       //停机状态
 
     GS_MAX          //GS最大个数，不是有效的游戏状态

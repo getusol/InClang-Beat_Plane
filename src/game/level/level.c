@@ -13,6 +13,7 @@
 #include "fsm.h"
 #include "enemy.h"
 #include "enemy_behaviors.h"
+#include "apr.h"
 
 #include <stdint.h>
 
@@ -20,8 +21,8 @@
  *      MACROS
  **********************/
 
-#define LEVEL_COUNT 2
-#define CLEAN_UP_DELAY_MS 3000  // 波次完成 敌人自然退场时间
+#define LEVEL_COUNT         5
+#define CLEAN_UP_DELAY_MS   1500
 
 /**********************
  *      TYPEDEFS
@@ -33,13 +34,23 @@ typedef enum {
     WAVE_DONE
 } wave_state_t;
 
+typedef enum {
+    WAVE_TYPE_NORMAL = 0,   // 普通敌人波次
+    WAVE_TYPE_BOSS,         // Boss 波次
+} wave_type_t;
+
 typedef struct
 {
+    wave_type_t type;
+    // 普通敌人参数
     uint16_t enemy_total;
-    uint16_t enemy_spawned;     // 生成指定数量 而不是杀灭指定数量
     uint32_t spawn_interval;
+    // Boss 参数
+    uint16_t boss_hp;
+    int16_t boss_damage;
+    // 运行时
+    uint16_t enemy_spawned;
     uint32_t last_spawn;
-    uint32_t wave_complete_tick;
 } wave_t;
 
 typedef struct {
@@ -48,16 +59,16 @@ typedef struct {
     uint32_t wave_delay;
     uint32_t wave_start_time;
     wave_state_t state;
-    bool waiting_cleanup;       // 敌人全部清空下一波？直接下一波？
+    bool waiting_cleanup;
     uint32_t cleanup_delay_ms;
     uint32_t cleanup_start_tick;
-    wave_t * waves;
+    wave_t *waves;
 } level_t;
 
 
- /**********************
-  *  STATIC PROTOTYPES
-  **********************/
+/**********************
+ *  STATIC PROTOTYPES
+ **********************/
 
 static void on_game_start(game_obj_t *source, game_obj_t *target);
 static void load_level(uint8_t level_id);
@@ -71,24 +82,53 @@ static void on_level_complete(void);
  *  STATIC VARIABLES
  **********************/
 
+// ==================== 关卡定义 ====================
+
+// Level 1: 1 波普通敌人（入门）
 static wave_t level1_waves[] = {
-    { .enemy_total = 3,  .spawn_interval = 2000 },
-    { .enemy_total = 4,  .spawn_interval = 1500 },
-    { .enemy_total = 5, .spawn_interval = 1200 }
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 2, .spawn_interval = 1200 },
 };
 
+// Level 2: 2 波普通敌人 + 1 波 Boss
 static wave_t level2_waves[] = {
-    { .enemy_total = 4,  .spawn_interval = 1200 },
-    { .enemy_total = 5, .spawn_interval = 800  },
-    { .enemy_total = 6, .spawn_interval = 600  }
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 3, .spawn_interval = 1000 },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 4, .spawn_interval = 800  },
+    { .type = WAVE_TYPE_BOSS,   .boss_hp = 800,    .boss_damage = 30 },
+};
+
+// Level 3: 3 波普通敌人 + 1 波 Boss
+static wave_t level3_waves[] = {
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 3, .spawn_interval = 900  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 4, .spawn_interval = 700  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 600  },
+    { .type = WAVE_TYPE_BOSS,   .boss_hp = 1500,   .boss_damage = 40 },
+};
+
+// Level 4: 4 波普通敌人 + 1 波 Boss
+static wave_t level4_waves[] = {
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 4, .spawn_interval = 800  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 700  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 600  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 6, .spawn_interval = 500  },
+    { .type = WAVE_TYPE_BOSS,   .boss_hp = 2500,   .boss_damage = 50 },
+};
+
+// Level 5: 4 波普通敌人 + 1 波 Boss（噩梦难度）
+static wave_t level5_waves[] = {
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 700  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 6, .spawn_interval = 600  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 7, .spawn_interval = 500  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 8, .spawn_interval = 400  },
+    { .type = WAVE_TYPE_BOSS,   .boss_hp = 4000,   .boss_damage = 60 },
 };
 
 
 static uint8_t current_level = 0;
 static level_t level;
 static level_t levels[LEVEL_COUNT];
+static game_obj_t *current_boss = NULL;  // 追踪当前 Boss 是否存活
 
- /**********************
+/**********************
  *   GLOBAL FUNCTIONS
  **********************/
 
@@ -99,15 +139,30 @@ void level_init()
 {
     levels[0].total_waves = sizeof(level1_waves) / sizeof(wave_t);
     levels[0].current_wave = 0;
-    levels[0].wave_delay = 3000;
+    levels[0].wave_delay = 1500;
     levels[0].waves = level1_waves;
 
     levels[1].total_waves = sizeof(level2_waves) / sizeof(wave_t);
     levels[1].current_wave = 0;
-    levels[1].wave_delay = 2000;
+    levels[1].wave_delay = 1500;
     levels[1].waves = level2_waves;
 
-    event_register(EVENT_GAME_START,on_game_start);
+    levels[2].total_waves = sizeof(level3_waves) / sizeof(wave_t);
+    levels[2].current_wave = 0;
+    levels[2].wave_delay = 1200;
+    levels[2].waves = level3_waves;
+
+    levels[3].total_waves = sizeof(level4_waves) / sizeof(wave_t);
+    levels[3].current_wave = 0;
+    levels[3].wave_delay = 1000;
+    levels[3].waves = level4_waves;
+
+    levels[4].total_waves = sizeof(level5_waves) / sizeof(wave_t);
+    levels[4].current_wave = 0;
+    levels[4].wave_delay = 1000;
+    levels[4].waves = level5_waves;
+
+    event_register(EVENT_GAME_START, on_game_start);
 
     CONSOLE_INFO("Level manager initialized. %d levels.", LEVEL_COUNT);
 }
@@ -120,7 +175,6 @@ void level_update(void)
     if (fsm_get_state() != GS_PLAY) return;
 
     if (level.current_wave >= level.total_waves) {
-        // 所有波次完成，可能已通关
         return;
     }
 
@@ -128,40 +182,72 @@ void level_update(void)
 
     switch (level.state) {
         case WAVE_PENDING:
-            // 等待波前延迟
             if (lv_tick_elaps(level.wave_start_time) >= level.wave_delay) {
                 level.state = WAVE_SPAWNING;
                 wave->last_spawn = lv_tick_get();
+<<<<<<< HEAD
                 CONSOLE_INFO("Wave %d start!", level.current_wave + 1);
+=======
+
+                if (wave->type == WAVE_TYPE_BOSS) {
+                    CONSOLE("[LEVEL] Boss wave %d incoming!", level.current_wave + 1);
+                } else {
+                    CONSOLE("[LEVEL] Wave %d start! (%d enemies)", level.current_wave + 1, wave->enemy_total);
+                }
+>>>>>>> main
             }
             break;
 
         case WAVE_SPAWNING:
-            // 生成敌人
-            if (wave->enemy_spawned < wave->enemy_total - 1) {
-                if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval) {
-                    lv_coord_t x = lv_rand(250,774);
-                    lv_coord_t y = -64;
-                    behave_t behave = {
-                        .f = enemy_behave_normal,
-                        .usr_data = NULL,
-                    };
-                    enemy_spawn(x, y,0,0,100,20,behave);
-                    wave->enemy_spawned++;
-                    wave->last_spawn = lv_tick_get();
+            if (wave->type == WAVE_TYPE_BOSS) {
+                // Boss 波次：立即生成 Boss，保存指针用于检测存活
+                if (wave->enemy_spawned == 0) {
+                    behave_t boss_behave = { .f = enemy_behave_boss, .usr_data = NULL };
+                    current_boss = enemy_spawn(SCREEN_WIDTH / 2, 50,
+                                               0, 0,
+                                               wave->boss_hp,
+                                               200,  // 高伤害 ≈ 触碰秒杀
+                                               boss_behave,
+                                               APR_ENEMY_BOSS);
+                    wave->enemy_spawned = 1;
                 }
-            }else if (wave->enemy_spawned == wave->enemy_total - 1){
-                if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval * 2) {
-                    lv_coord_t x = lv_rand(250,774);
-                    lv_coord_t y = -64;
-                    behave_t behave = {
-                        .f = enemy_behave_normal,
-                        .usr_data = NULL,
-                    };
-                    enemy_spawn(x, y,0,0,1000,20,behave);
-                    wave->enemy_spawned++;
-                    wave->last_spawn = lv_tick_get();
+
+                // Boss 生成完毕 → 等待 Boss 被消灭（不设超时）
+                if (!level.waiting_cleanup) {
+                    level.waiting_cleanup = true;
+                    CONSOLE("[LEVEL] Boss wave spawned, waiting for boss defeat...");
                 }
+
+            } else {
+                // 普通敌人波次：逐个生成
+                if (wave->enemy_spawned < wave->enemy_total - 1) {
+                    if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval) {
+                        lv_coord_t x = lv_rand(250, 774);
+                        lv_coord_t y = -64;
+                        behave_t behave = { .f = enemy_behave_normal, .usr_data = NULL };
+                        enemy_spawn(x, y, 0, 0, 100, 20, behave, APR_ENEMY_DEFAULT);
+                        wave->enemy_spawned++;
+                        wave->last_spawn = lv_tick_get();
+                    }
+                } else if (wave->enemy_spawned == wave->enemy_total - 1) {
+                    // 最后一个敌人：大怪
+                    if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval * 2) {
+                        lv_coord_t x = lv_rand(250, 774);
+                        lv_coord_t y = -64;
+                        behave_t behave = { .f = enemy_behave_normal, .usr_data = NULL };
+                        enemy_spawn(x, y, 0, 0, 1000, 20, behave, APR_ENEMY_DEFAULT);
+                        wave->enemy_spawned++;
+                        wave->last_spawn = lv_tick_get();
+                    }
+                }
+
+                if (wave->enemy_spawned >= wave->enemy_total && !level.waiting_cleanup) {
+                    level.waiting_cleanup = true;
+                    level.cleanup_delay_ms = CLEAN_UP_DELAY_MS;
+                    level.cleanup_start_tick = lv_tick_get();
+                    CONSOLE("[LEVEL] Wave %d spawning complete, waiting for cleanup...", level.current_wave + 1);
+                }
+<<<<<<< HEAD
             }
             // 若已生成完毕，但没有等待清场
             if (wave->enemy_spawned >= wave->enemy_total && !level.waiting_cleanup) {
@@ -169,6 +255,8 @@ void level_update(void)
                 level.cleanup_delay_ms = CLEAN_UP_DELAY_MS; // 给敌人消失留出时间
                 level.cleanup_start_tick = lv_tick_get();
                 CONSOLE_INFO("Wave %d spawning complete, waiting for cleanup...", level.current_wave + 1);
+=======
+>>>>>>> main
             }
             break;
 
@@ -176,14 +264,28 @@ void level_update(void)
             break;
     }
 
-    // 等待清场延迟结束后，进入下一波
+    // 等待清场后进入下一波
     if (level.waiting_cleanup) {
-        if (lv_tick_elaps(level.cleanup_start_tick) >= level.cleanup_delay_ms) {
+        bool can_advance = false;
+
+        if (wave->type == WAVE_TYPE_BOSS) {
+            // Boss 波次：等到 Boss 被消灭
+            if (current_boss == NULL || !game_obj_is_active(current_boss)) {
+                can_advance = true;
+                current_boss = NULL;
+            }
+        } else {
+            // 普通波次：计时清场
+            if (lv_tick_elaps(level.cleanup_start_tick) >= level.cleanup_delay_ms) {
+                can_advance = true;
+            }
+        }
+
+        if (can_advance) {
             level.waiting_cleanup = false;
             level.current_wave++;
 
             if (level.current_wave < level.total_waves) {
-                // 设置新波为 PENDING
                 level.wave_start_time = lv_tick_get();
                 level.state = WAVE_PENDING;
                 CONSOLE_INFO("Entering wave %d", level.current_wave + 1);
@@ -196,7 +298,7 @@ void level_update(void)
     }
 }
 
- /**********************
+/**********************
  *   STATIC FUNCTIONS
  **********************/
 
@@ -215,14 +317,13 @@ static void load_level(uint8_t level_id)
     level.state = WAVE_PENDING;
     level.wave_start_time = lv_tick_get();
     level.waiting_cleanup = false;
+    current_boss = NULL;
 
-    // 重置每波的生成计数
     for (int i = 0; i < level.total_waves; i++) {
         level.waves[i].enemy_spawned = 0;
         level.waves[i].last_spawn = 0;
     }
 
-    // 播放关卡进场动画（UI 模块提供）
     char level_name[32];
     snprintf(level_name, sizeof(level_name), "Level %d", level_id + 1);
     ui_play_level_enter_anim(level_name);
@@ -236,7 +337,8 @@ static void on_level_complete(void)
         current_level++;
         load_level(current_level);
     } else {
-        CONSOLE_INFO("All levels finished! You win!");
-        // 这里可以触发游戏胜利事件或状态切换
+        CONSOLE_INFO("All %d levels finished! You win!", LEVEL_COUNT);
+        // 游戏通关后可循环到最后一关
+        load_level(LEVEL_COUNT - 1);
     }
 }

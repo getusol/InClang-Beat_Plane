@@ -35,7 +35,6 @@
  /**********************
  *   GLOBAL FUNCTIONS
  **********************/
-
 void ui_play_init();
 void ui_play_run();
 void ui_play_register_events(void);
