@@ -38,3 +38,4 @@ void coin_init(lv_obj_t * parent);
 game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y);
 
 #endif /* COIN_H */
+

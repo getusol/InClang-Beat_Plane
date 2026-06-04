@@ -138,7 +138,7 @@ void level_update(void)
 
         case WAVE_SPAWNING:
             // 生成敌人
-            if (wave->enemy_spawned < wave->enemy_total) {
+            if (wave->enemy_spawned < wave->enemy_total - 1) {
                 if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval) {
                     lv_coord_t x = lv_rand(250,774);
                     lv_coord_t y = -64;
@@ -147,6 +147,18 @@ void level_update(void)
                         .usr_data = NULL,
                     };
                     enemy_spawn(x, y,0,0,100,20,behave);
+                    wave->enemy_spawned++;
+                    wave->last_spawn = lv_tick_get();
+                }
+            }else if (wave->enemy_spawned == wave->enemy_total - 1){
+                if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval * 2) {
+                    lv_coord_t x = lv_rand(250,774);
+                    lv_coord_t y = -64;
+                    behave_t behave = {
+                        .f = enemy_behave_normal,
+                        .usr_data = NULL,
+                    };
+                    enemy_spawn(x, y,0,0,1000,20,behave);
                     wave->enemy_spawned++;
                     wave->last_spawn = lv_tick_get();
                 }

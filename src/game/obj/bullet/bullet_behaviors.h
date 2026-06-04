@@ -26,5 +26,6 @@
 
 void bullet_behave_circle(game_obj_t *g, void *v);
 void bullet_behave_sine(game_obj_t *g, void *v);
+void bullet_behave_track_player(game_obj_t *g, void *v);
 
 #endif // #ifndef __BULLET_BEHAVIORS_H__

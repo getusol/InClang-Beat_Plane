@@ -146,7 +146,7 @@ static key_t keys[] = {
     },                                  //BUTTON_KEY_B Q和ESCAPE
     [KEY_X - 1] = {
         .state = {0},
-        .bind_codes = {SDL_SCANCODE_LSHIFT,SDL_SCANCODE_UNKNOWN},
+        .bind_codes = {SDL_SCANCODE_E,SDL_SCANCODE_UNKNOWN},
         .press_tick = 0,
         .released_reset_cnt = 0,
         .pressed_reset_cnt = 0,
