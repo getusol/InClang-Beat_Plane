@@ -110,7 +110,7 @@ void ui_menu_init(void)
     lv_label_set_text(label_base, "Base");
     lv_obj_center(label_base);
 
-    cg_play(dp_menu);
+    cg_play(dp_menu, menu_group);
 }
 
 /**

@@ -16,11 +16,6 @@ static uint8_t * cg2_buf = NULL;
 static lv_img_dsc_t cg2_struct;
 #endif
 
-/* =============================================================
- * 【核心修复 1】分离淡入和淡出的回调函数！
- * 名字不同，LVGL 内部就不会把它们当成冲突动画去覆盖吞掉。
- * 统一改用全局 opa 属性，Label 和 图片 都能百分百完美隐藏。
- * ============================================================= */
 static void anim_fade_in_cb(void * obj, int32_t value)
 {
     lv_obj_set_style_opa((lv_obj_t *)obj, (lv_opa_t)value, 0);
@@ -31,7 +26,42 @@ static void anim_fade_out_cb(void * obj, int32_t value)
     lv_obj_set_style_opa((lv_obj_t *)obj, (lv_opa_t)value, 0);
 }
 
-// 动画彻底结束后的回调
+
+//必须先强行删除所有正在跑的渐变动画，防止图层被删后动画回调引发崩溃。
+
+static void cg_skip(lv_obj_t * cg_layer)
+{
+    // 1. 立即清除所有相关的渐变动画（通过回调函数名精确清除）
+    lv_anim_del(NULL, anim_fade_in_cb);
+    lv_anim_del(NULL, anim_fade_out_cb);
+    
+    // 2. 销毁图层并释放内存（复用原有的清理逻辑）
+    if (cg_layer) {
+        lv_obj_del(cg_layer); // 删掉父图层，所有子图片和文字会自动被连带删除
+        
+#ifdef SIMULATOR
+        if(cg1_buf) { free(cg1_buf); cg1_buf = NULL; }
+        if(cg2_buf) { free(cg2_buf); cg2_buf = NULL; }
+#endif
+        music_bgm_load(); // 立即切回游戏主菜单的背景音乐
+    }
+}
+
+//按键与点击的事件过滤器
+
+static void cg_event_cb(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * cg_layer = lv_event_get_target(e);
+
+    // LV_EVENT_CLICKED 拦截：屏幕触摸、鼠标点击
+    // LV_EVENT_KEY     拦截：键盘任意键、游戏手柄/实体按键
+    if (code == LV_EVENT_CLICKED || code == LV_EVENT_KEY) {
+        cg_skip(cg_layer);
+    }
+}
+
+// 动画正常播放彻底结束后的回调（保持不变）
 static void cg_anim_ready_cb(lv_anim_t * a)
 {
     lv_obj_t * cg_layer = (lv_obj_t *)a->var;
@@ -46,7 +76,9 @@ static void cg_anim_ready_cb(lv_anim_t * a)
     }
 }
 
-void cg_play(lv_obj_t * parent)
+//cg_play 函数支持传入输入组（group）
+
+void cg_play(lv_obj_t * parent, lv_group_t * group)
 {
     audio_switch_track("CG.pcm", 1798144);
 
@@ -69,6 +101,17 @@ void cg_play(lv_obj_t * parent)
     lv_obj_set_style_radius(cg_layer, 0, 0);
     lv_obj_clear_flag(cg_layer, LV_OBJ_FLAG_SCROLLABLE);
 
+    
+    lv_obj_add_flag(cg_layer, LV_OBJ_FLAG_CLICKABLE);              // 允许被点击
+    lv_obj_set_style_outline_width(cg_layer, 0, LV_STATE_FOCUSED); // 隐藏聚焦时难看的橙色/蓝色外边框
+    lv_obj_add_event_cb(cg_layer, cg_event_cb, LV_EVENT_ALL, NULL); // 绑定刚刚写的跳过事件
+
+    if (group) {
+        lv_group_add_obj(group, cg_layer); // 把 CG 图层塞进输入组
+        lv_group_focus_obj(cg_layer);     // 强行聚焦到 CG 图层，这样按键才会优先发给它
+    }
+    // ----------------------------------------
+
     lv_obj_invalidate(cg_layer);
 
     char img_path_buf[64];
@@ -82,7 +125,7 @@ void cg_play(lv_obj_t * parent)
     lv_img_set_src(img1, img_path(CG_IMG1_NAME, img_path_buf, 64));
 #endif
     lv_obj_center(img1);
-    lv_obj_set_style_opa(img1, LV_OPA_TRANSP, 0); // 初始完全透明
+    lv_obj_set_style_opa(img1, LV_OPA_TRANSP, 0); 
 
     // 3. 创建第二幕图片
     lv_obj_t * img2;
@@ -93,7 +136,7 @@ void cg_play(lv_obj_t * parent)
     lv_img_set_src(img2, img_path(CG_IMG2_NAME, img_path_buf, 64));
 #endif
     lv_obj_center(img2);
-    lv_obj_set_style_opa(img2, LV_OPA_TRANSP, 0); // 初始完全透明
+    lv_obj_set_style_opa(img2, LV_OPA_TRANSP, 0); 
 
     // 4. 创建第一幕文字
     lv_obj_t * label1 = lv_label_create(cg_layer);
@@ -101,7 +144,7 @@ void cg_play(lv_obj_t * parent)
     lv_obj_set_style_text_color(label1, lv_color_white(), 0);
     lv_obj_set_style_text_align(label1, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(label1, LV_ALIGN_BOTTOM_MID, 0, -60);
-    lv_obj_set_style_opa(label1, LV_OPA_COVER, 0); // 第一幕文字初始直接显示
+    lv_obj_set_style_opa(label1, LV_OPA_COVER, 0); 
 
     // 5. 创建第二幕文字
     lv_obj_t * label2 = lv_label_create(cg_layer);
@@ -111,12 +154,11 @@ void cg_play(lv_obj_t * parent)
     lv_obj_set_style_text_color(label2, lv_color_white(), 0);
     lv_obj_set_style_text_align(label2, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(label2, LV_ALIGN_BOTTOM_MID, 0, -60);
-    lv_obj_set_style_opa(label2, LV_OPA_TRANSP, 0); // 初始完全透明
+    lv_obj_set_style_opa(label2, LV_OPA_TRANSP, 0); 
 
-
-    // =============================================================
+    
     // 6. 级联动画配置
-    // =============================================================
+    
     lv_anim_t a;
 
     // ---- 【5秒点】：文字1隐去 (用时300ms) ----
@@ -125,7 +167,7 @@ void cg_play(lv_obj_t * parent)
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 300);
     lv_anim_set_delay(&a, 5000);
-    lv_anim_set_exec_cb(&a, anim_fade_out_cb); // 使用淡出
+    lv_anim_set_exec_cb(&a, anim_fade_out_cb); 
     lv_anim_start(&a);
 
     // ---- 【5秒点】：图片1显现 (用时800ms) ----
@@ -134,7 +176,7 @@ void cg_play(lv_obj_t * parent)
     lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
     lv_anim_set_time(&a, 800);
     lv_anim_set_delay(&a, 5000);
-    lv_anim_set_exec_cb(&a, anim_fade_in_cb);  // 使用淡入
+    lv_anim_set_exec_cb(&a, anim_fade_in_cb);  
     lv_anim_start(&a);
 
     // ---- 【10秒点】：图片1隐去切回黑屏 (用时400ms) ----
@@ -143,16 +185,16 @@ void cg_play(lv_obj_t * parent)
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 400);
     lv_anim_set_delay(&a, 10000);
-    lv_anim_set_exec_cb(&a, anim_fade_out_cb); // 使用淡出，不会覆盖上面的淡入！
+    lv_anim_set_exec_cb(&a, anim_fade_out_cb); 
     lv_anim_start(&a);
 
     // ---- 【11秒点】：图片2显现 (用时800ms) ----
     lv_anim_init(&a);
     lv_anim_set_var(&a, img2);
     lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_time(&a, 800); // 修复：从原先错误的 100 恢复为 800ms 柔和渐变
+    lv_anim_set_time(&a, 800); 
     lv_anim_set_delay(&a, 11000);
-    lv_anim_set_exec_cb(&a, anim_fade_in_cb);  // 使用淡入
+    lv_anim_set_exec_cb(&a, anim_fade_in_cb);  
     lv_anim_start(&a);
 
     // ---- 【11秒点】：文字2显现 (用时800ms) ----
@@ -161,7 +203,7 @@ void cg_play(lv_obj_t * parent)
     lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
     lv_anim_set_time(&a, 800);
     lv_anim_set_delay(&a, 11000);
-    lv_anim_set_exec_cb(&a, anim_fade_in_cb);  // 使用淡入
+    lv_anim_set_exec_cb(&a, anim_fade_in_cb);  
     lv_anim_start(&a);
 
     // ---- 【16秒点】：图片2隐去 (用时500ms) ----
@@ -170,7 +212,7 @@ void cg_play(lv_obj_t * parent)
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 500);
     lv_anim_set_delay(&a, 16000);
-    lv_anim_set_exec_cb(&a, anim_fade_out_cb); // 使用淡出
+    lv_anim_set_exec_cb(&a, anim_fade_out_cb); 
     lv_anim_start(&a);
 
     // ---- 【16秒点】：文字2隐去 (用时500ms) ----
@@ -179,7 +221,7 @@ void cg_play(lv_obj_t * parent)
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 500);
     lv_anim_set_delay(&a, 16000);
-    lv_anim_set_exec_cb(&a, anim_fade_out_cb); // 使用淡出
+    lv_anim_set_exec_cb(&a, anim_fade_out_cb); 
     lv_anim_start(&a);
 
     // ---- 【16.5秒点】：全黑背景淡出，露出主菜单 ----
@@ -192,11 +234,9 @@ void cg_play(lv_obj_t * parent)
     lv_anim_set_ready_cb(&a, cg_anim_ready_cb); 
     lv_anim_start(&a);
 
-
     lv_obj_invalidate(img1);
     lv_obj_invalidate(img2);
     lv_obj_invalidate(cg_layer);
-
     
     lv_obj_set_style_opa(img1, LV_OPA_TRANSP, 0);
     lv_obj_set_style_opa(img2, LV_OPA_TRANSP, 0);
