@@ -24,7 +24,8 @@
 #include "game_object.h"
 #include "timer.h"
 #include "coin.h"
-
+#include "ui_shop.h"
+#include "apr.h"
 /**********************
  *      MACROS
  **********************/
@@ -71,12 +72,15 @@ void game_init()
 
     level_init();
 
+    // 初始化所有外观模板（已提前在 ui_init 中完成）
+    // apr_init(play_display);
+
     // 程序启动时 初始化游戏对象
     player_init(play_display);
     bullet_init(play_display);
     enemy_init(play_display);
     coin_init(play_display);
-
+    
     #if SHOW_HITBOX
     game_for_each_obj(init_hitbox,NULL);
     #endif
@@ -153,17 +157,17 @@ void game_for_each_obj(void (*fuc)(game_obj_t * ,void *),void * usr_data)
  */
 static bool rec_overlap(game_obj_t * obj1, game_obj_t * obj2)
 {
-  // 获取 obj1 碰撞箱边界
-    int16_t ax1 = obj1->x + obj1->hitbox_x;
-    int16_t ay1 = obj1->y + obj1->hitbox_y;
-    int16_t ax2 = ax1 + obj1->hitbox_w;
-    int16_t ay2 = ay1 + obj1->hitbox_h;
+    // 获取 obj1 碰撞箱边界
+    int16_t ax1 = obj1->x + obj1->apr->hitbox_x;
+    int16_t ay1 = obj1->y + obj1->apr->hitbox_y;
+    int16_t ax2 = ax1 + obj1->apr->hitbox_w;
+    int16_t ay2 = ay1 + obj1->apr->hitbox_h;
 
     // 获取 obj2 碰撞箱边界
-    int16_t bx1 = obj2->x + obj2->hitbox_x;
-    int16_t by1 = obj2->y + obj2->hitbox_y;
-    int16_t bx2 = bx1 + obj2->hitbox_w;
-    int16_t by2 = by1 + obj2->hitbox_h;
+    int16_t bx1 = obj2->x + obj2->apr->hitbox_x;
+    int16_t by1 = obj2->y + obj2->apr->hitbox_y;
+    int16_t bx2 = bx1 + obj2->apr->hitbox_w;
+    int16_t by2 = by1 + obj2->apr->hitbox_h;
 
     return (ax1 < bx2 && ax2 > bx1 && ay1 < by2 && ay2 > by1);
 }
@@ -171,9 +175,7 @@ static bool rec_overlap(game_obj_t * obj1, game_obj_t * obj2)
 /**
  * @brief 全局碰撞检测 遍历已注册的对象 对活动对象进行碰撞检测 并派发相应的事件
  */
-/**
- * @brief 全局碰撞检测 遍历已注册的对象 对活动对象进行碰撞检测 并派发相应的事件
- */
+
 static void check_collisions(void)
 {
     if (fsm_get_state() != GS_PLAY) return;

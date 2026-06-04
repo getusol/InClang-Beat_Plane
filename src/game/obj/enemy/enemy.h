@@ -27,8 +27,11 @@
 void enemy_init(lv_obj_t * parent);
 game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y,
                          int16_t vx, int16_t vy,
-                         uint16_t health,int16_t hit_damage,
+                         uint16_t health, int16_t hit_damage,
                          behave_t behave);
+game_obj_t * enemy_spawn_boss(lv_coord_t x, lv_coord_t y,
+                              uint16_t health, int16_t hit_damage);
 int16_t enemy_get_damage(game_obj_t * g);
+bool enemy_is_boss(game_obj_t * g);
 
 #endif // #ifndef __ENEMY_H__

@@ -8,6 +8,7 @@
 
 #include "bullet_behaviors.h"
 #include <stdint.h>
+#include <math.h>
 #include "tools.h"
 #include "timer.h"
 
@@ -98,6 +99,12 @@ void bullet_behave_track_player(game_obj_t *g, void *v)
     direction_to_velocity(dx, dy, 5, &vx, &vy);
     g->vx = vx;
     g->vy = vy;
+
+    // 旋转三角形尖端朝向玩家（参照开发板参考代码）
+    float angle_rad = atan2f((float)vy, (float)vx);
+    int16_t angle_lvgl = (int16_t)(angle_rad * 1800.0f / 3.14159f);
+    lv_img_set_pivot(g->obj, g->apr->w / 2, g->apr->h / 2);
+    lv_img_set_angle(g->obj, angle_lvgl);
 }
 
 /**

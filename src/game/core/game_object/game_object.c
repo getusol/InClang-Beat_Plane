@@ -6,6 +6,7 @@
  *      INCLUDES
  *********************/
 #include "game_object.h"
+#include "apr.h"
 #include "tools.h"
 
  /**********************
@@ -29,7 +30,7 @@ lv_point_t game_obj_get_pos(const game_obj_t * obj)
  */
 uint16_t game_obj_get_width(const game_obj_t * obj)
 {
-    return obj ? obj->w : 0;
+    return (obj && obj->apr) ? obj->apr->w : 0;
 }
 
 /**
@@ -39,7 +40,7 @@ uint16_t game_obj_get_width(const game_obj_t * obj)
  */
 uint16_t game_obj_get_height(const game_obj_t * obj)
 {
-    return obj ? obj->h : 0;
+    return (obj && obj->apr) ? obj->apr->h : 0;
 }
 
 /**
@@ -49,7 +50,7 @@ uint16_t game_obj_get_height(const game_obj_t * obj)
  */
 float game_obj_get_speed(const game_obj_t * obj)
 {
-    return obj ? obj->speed : 0.0f;
+    return obj ? obj->speed : 0;
 }
 
 /**
@@ -72,14 +73,13 @@ bool game_obj_is_active(const game_obj_t * obj)
  */
 lv_obj_t * game_obj_hitbox_init(game_obj_t * obj)
 {
-    if (obj == NULL || obj->obj == NULL) {
+    if (obj == NULL || obj->obj == NULL || obj->apr == NULL) {
         return NULL;
     }
     if (obj->hitbox_obj) {
         CONSOLE("[INFO] Hitbox object already exists. It will be deleted.");
         lv_obj_del(obj->hitbox_obj);
         obj->hitbox_obj = NULL;
-        CONSOLE("[INFO] Hitbox object already exists. It has been deleted.");
     }
 
     lv_obj_t * hitbox = lv_obj_create(obj->obj);
@@ -91,20 +91,18 @@ lv_obj_t * game_obj_hitbox_init(game_obj_t * obj)
 
     // 移除默认样式，设置为纯线框
     lv_obj_remove_style_all(hitbox);
-    lv_obj_set_style_border_width(hitbox, 1, 0);   // 红色边框
+    lv_obj_set_style_border_width(hitbox, 1, 0);
     lv_obj_set_style_border_color(hitbox, lv_color_make(255, 0, 0), 0);
     lv_obj_set_style_border_opa(hitbox, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_opa(hitbox, LV_OPA_0, 0);  // 填充透明
-    lv_obj_set_style_radius(hitbox, 0, 0);        // 无圆角
-    lv_obj_clear_flag(hitbox, LV_OBJ_FLAG_CLICKABLE); // 不可交互
+    lv_obj_set_style_bg_opa(hitbox, LV_OPA_0, 0);
+    lv_obj_set_style_radius(hitbox, 0, 0);
+    lv_obj_clear_flag(hitbox, LV_OBJ_FLAG_CLICKABLE);
 
     // 设置相对位置和大小（相对于图片）
-    lv_obj_set_pos(hitbox, obj->hitbox_x, obj->hitbox_y);
-    lv_obj_set_size(hitbox, obj->hitbox_w, obj->hitbox_h);
+    lv_obj_set_pos(hitbox, obj->apr->hitbox_x, obj->apr->hitbox_y);
+    lv_obj_set_size(hitbox, obj->apr->hitbox_w, obj->apr->hitbox_h);
 
     obj->hitbox_obj = hitbox;
-
-    CONSOLE("[INFO] Hitbox object created.");
 
     return hitbox;
 }

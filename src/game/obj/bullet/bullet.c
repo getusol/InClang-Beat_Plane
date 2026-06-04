@@ -1,5 +1,5 @@
 /**
- * @file 
+ * @file bullet.c
  */
 
 /*********************
@@ -20,18 +20,10 @@
  *      MACROS
  **********************/
 
-// bullet image name
-#define BULLET_IMG_NAME "bullet.bin"
-
 #define BULLET_MAX_X SCREEN_WIDTH         // 子弹最大X坐标
 #define BULLET_MIN_X 0                    // 子弹最小X坐标
 #define BULLET_MAX_Y SCREEN_HEIGHT        // 子弹最大Y坐标
 #define BULLET_MIN_Y 0                    // 子弹最小Y坐标
-
-//子弹大小
-
-#define BULLET_WIDTH 6
-#define BULLET_HIGHT 16
 
 /**********************
  *      TYPEDEFS
@@ -72,9 +64,6 @@ static bullet_t bullets[MAX_BULLET_COUNT];                      // 子弹对象�
 static pool_t bullet_pool;                                      // 子弹对象池管理器
 static uint16_t bullet_free_indices[MAX_BULLET_COUNT];          // 子弹对象池空闲索引栈
 
-static lv_img_dsc_t bullet_img_struct;                          // 子弹图像描述结构体
-static uint8_t * bullet_img_buf = NULL;                         // 子弹图像缓冲区
-
  /**********************
  *   GLOBAL FUNCTIONS
  **********************/
@@ -87,67 +76,71 @@ void bullet_init(lv_obj_t * parent)
     memset(bullets,0,sizeof(bullets));
     //初始化子弹对象池
     pool_init(&bullet_pool, bullet_free_indices, MAX_BULLET_COUNT);
-    //初始化子弹属性
 
-    char bullet_img_path[64];
+    // 获取默认子弹外观
+    apr_t *default_apr = apr_get(APR_BULLET_DEFAULT);
+
     for (uint16_t i = 0;i < MAX_BULLET_COUNT;i++)
     {
         bullets[i].base.active = false;
-        bullets[i].base.w = BULLET_WIDTH;
-        bullets[i].base.h = BULLET_HIGHT;
-        bullets[i].base.hitbox_x = 0;
-        bullets[i].base.hitbox_y = 0;
-        bullets[i].base.hitbox_h = 16;
-        bullets[i].base.hitbox_w = 6;
-        bullets[i].base.speed = 0.0f;
+        bullets[i].base.apr = default_apr;
+        bullets[i].base.speed = 0;
         bullets[i].base.x = 0;
         bullets[i].base.y = 0;
         bullets[i].base.vx = 0;
         bullets[i].base.vy = 0;
         bullets[i].base.type = GAME_OBJ_TYPE_BULLET;
         bullets[i].damage = 0;
-        bullets[i].pool_index = POOL_INVALID_ID; //注意这里没有给他们分配内存 只是初始化了索引值，真正分配内存是在create函数中
+        bullets[i].pool_index = POOL_INVALID_ID;
         bullets[i].base.update = bullet_update;
         bullets[i].base.show = bullet_show;
         bullets[i].base.hide = bullet_hide;
         bullets[i].source = NULL;
         bullets[i].base.behave = NULL_BEHAVE;
 
-        bullets[i].base.obj = img_create_from_dsc(parent,img_path(BULLET_IMG_NAME,bullet_img_path,64),bullets[i].base.w,bullets[i].base.h,bullet_img_buf,&bullet_img_struct,false);
-        lv_obj_set_align(bullets[i].base.obj,LV_ALIGN_TOP_LEFT);
-        
-        console_out("[bullet_init] Bullet %d initialized with image: %s\n", i, bullet_img_path);
-        
+        // 使用 APR 创建 LVGL 图像对象
+#ifdef SIMULATOR
+        bullets[i].base.obj = lv_img_create(parent);
+        lv_img_set_src(bullets[i].base.obj, &default_apr->img_dsc);
+#else
+        char path[128];
+        bullets[i].base.obj = lv_img_create(parent);
+        lv_img_set_src(bullets[i].base.obj, img_path(default_apr->img_name, path, 128));
+#endif
+        lv_obj_set_align(bullets[i].base.obj, LV_ALIGN_TOP_LEFT);
+
         bullets[i].base.hide((game_obj_t *)&bullets[i]);
 
         // obj register
-        
         game_register_obj((game_obj_t *)&bullets[i]);
     }
 
     // event register
-    event_register(EVENT_BULLET_HIT_ENEMY,bullet_event_hit_enemy_cb);
-    event_register(EVENT_BULLET_HIT_PLAYER,bullet_event_hit_player_cb); 
+    event_register(EVENT_BULLET_HIT_ENEMY, bullet_event_hit_enemy_cb);
+    event_register(EVENT_BULLET_HIT_PLAYER, bullet_event_hit_player_cb);
 
-    console_out("[bullet_init] Bullet system initialized with max bullet count: %d\n", MAX_BULLET_COUNT);
+    CONSOLE("[INFO] Bullet system initialized with max bullet count: %d", MAX_BULLET_COUNT);
     return ;
 }
 
 /**
  * @brief 创建子弹
  * @param source 子弹发射源
- * @param damage 子弹伤害
- * @param speed 子弹速度
  * @param x 子弹初始x坐标
  * @param y 子弹初始y坐标
- * @param behave 子弹行为结构体 决定了子弹如何移动
+ * @param vx 子弹x轴速度
+ * @param vy 子弹y轴速度
+ * @param damage 子弹伤害
+ * @param behave 子弹行为结构体
+ * @param bullet_apr 子弹外观模板ID
  * @return 创建的子弹指针
  */
 game_obj_t * bullet_create(game_obj_t *source,
-                         lv_coord_t x, lv_coord_t y, 
+                         lv_coord_t x, lv_coord_t y,
                          int16_t vx, int16_t vy,
                          int16_t damage,
-                         behave_t behave)
+                         behave_t behave,
+                         apr_id_t bullet_apr)
 {
     uint16_t index = pool_alloc(&bullet_pool);
     if (index == POOL_INVALID_ID)
@@ -164,9 +157,12 @@ game_obj_t * bullet_create(game_obj_t *source,
     bullets[index].base.x = x;
     bullets[index].base.y = y;
     bullets[index].base.behave = behave;
-    lv_obj_set_pos(bullets[index].base.obj,x,y);
+
+    // 应用子弹外观
+    apr_apply(&bullets[index].base, bullet_apr);
+
+    lv_obj_set_pos(bullets[index].base.obj, x, y);
     bullets[index].base.show((game_obj_t *)&bullets[index]);
-    // console_out("[bullet_create] Bullet created at index: %d, position: (%d, %d), speed: %.2f, damage: %d\n", index, x, y, speed, damage);
     return (game_obj_t *)&bullets[index];
 }
 
@@ -179,7 +175,7 @@ int16_t bullet_get_damage(game_obj_t * bullet)
 }
 
 /**
- * @brief
+ * @brief 获取子弹发射源
  */
 game_obj_t * bullet_get_source(game_obj_t * g)
 {
@@ -207,7 +203,6 @@ static void bullet_update(game_obj_t * g)
     if (!g->active) {
         return ;
     }
-    bullet_t * b = (bullet_t *)g;
     bullet_move(g);
 }
 
@@ -217,8 +212,11 @@ static void bullet_update(game_obj_t * g)
 static void bullet_hide(game_obj_t * g)
 {
     g->active = false;
-    lv_obj_add_flag(g->obj,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
     g->timered = false;
+    // 重置旋转（防止追踪弹角度残留到下次复用）
+    lv_img_set_angle(g->obj, 0);
+    lv_img_set_pivot(g->obj, 0, 0);
     //归还内存
     bullet_t * b = (bullet_t *)g;
     if (b->pool_index == POOL_INVALID_ID)
@@ -236,12 +234,12 @@ static void bullet_show(game_obj_t * g)
 {
     if (((bullet_t *)g)->pool_index == POOL_INVALID_ID)
     {
-        console_out("[Error][bullet_show] Attempting to show a bullet that is not allocated! This should not happen.\n");
-        log_out("[Error][bullet_show] Attempting to show a bullet that is not allocated! This should not happen.");
+        CONSOLE("[Error][bullet_show] Attempting to show a bullet that is not allocated! This should not happen.");
+        LOG("[Error][bullet_show] Attempting to show a bullet that is not allocated! This should not happen.");
         return ;
     }
     g->active = true;
-    lv_obj_clear_flag(g->obj,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
 }
 
 /**
@@ -250,11 +248,11 @@ static void bullet_show(game_obj_t * g)
 void bullet_move(game_obj_t * g)
 {
     if (g == NULL) return ;
-    if (g -> active == false) return ;
+    if (g->active == false) return ;
     if (g->vx == 0 && g->vy == 0) return ;
-    
-    g -> x += g->vx;
-    g -> y += g->vy;
+
+    g->x += g->vx;
+    g->y += g->vy;
 
     lv_obj_set_pos(g->obj, g->x, g->y);
 

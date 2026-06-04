@@ -12,7 +12,11 @@
 
 #include "ui_menu.h"
 #include "ui_play.h"
+#include "ui_shop.h"
+#include "ui_base.h"
+
 #include "ui_sys_halt.h"
+#include "apr.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,10 +54,14 @@ static game_state_t last_game_state = GS_MAX;
  */
  void ui_init()
 {
+    // APR 外观模板必须在所有 UI 初始化之前加载（Base UI 需要预加载的图片描述符）
+    apr_init(NULL);
 
   //各界面画图
     ui_menu_init();
     ui_play_init();
+    ui_shop_init();
+    ui_base_init();
     ui_sys_halt_init();
     //按键注册
     input_sw_register_press_callback(KEY_EVENT_B, ui_esc_pressed_handler);
@@ -72,6 +80,12 @@ void ui_run()
           break;
         case GS_PLAY  : 
           ui_play_run(); 
+          break;
+        case GS_SHOP  : 
+          ui_shop_run(); 
+          break;
+        case GS_BASE : 
+          ui_base_run(); 
           break;
         case GS_PAUSE : 
           ui_play_run(); 

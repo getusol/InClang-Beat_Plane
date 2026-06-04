@@ -101,7 +101,7 @@ int read_file_to_array(const char *filepath, uint8_t *buffer, uint32_t max_size)
         return -1;
     }
 #ifdef SIMULATOR
-    FILE *file = fopen(filepath, "rb");
+   FILE *file = fopen(filepath, "rb");
     if (file == NULL) {
         console_out("[Warning][read_file_to_array] Cant open: %s\n", filepath);
         log_out("[Warning][read_file_to_array] Cant open: %s", filepath);
@@ -109,29 +109,74 @@ int read_file_to_array(const char *filepath, uint8_t *buffer, uint32_t max_size)
         return -1;
     }
 
-    fseek(file, 0, SEEK_END);
-    uint32_t file_size = ftell(file);
-    rewind(file);
-
-    if (file_size > max_size) {
+    // 1. 检查 fseek 是否成功移动到了文件末尾
+    if (fseek(file, 0, SEEK_END) != 0) {
+        console_out("[Error][read_file_to_array] fseek to SEEK_END failed for path: %s\n", filepath);
+        log_out("[Error][read_file_to_array] fseek to SEEK_END failed for path: %s", filepath);
         fclose(file);
-        console_out("[Warning][read_file_to_array] File too large, need:%ld, given:%ld\n", file_size, max_size);
-        log_out("[Warning][read_file_to_array] File too large, need:%ld, given:%ld", file_size, max_size);
         memset(buffer, 0, max_size);
         return -1;
     }
 
+    // 2. 检查 ftell 是否出错 (出错时返回 -1L)
+    long raw_file_size = ftell(file);
+    if (raw_file_size == -1L) {
+        console_out("[Error][read_file_to_array] ftell failed (returned -1) for path: %s\n", filepath);
+        log_out("[Error][read_file_to_array] ftell failed (returned -1) for path: %s", filepath);
+        fclose(file);
+        memset(buffer, 0, max_size);
+        return -1;
+    }
+
+    // 打印原始获取到的文件大小，排查是否在这里就已经是 0 了
+    console_out("[Debug][read_file_to_array] Raw file size from ftell: %ld bytes\n", raw_file_size);
+
+    uint32_t file_size = (uint32_t)raw_file_size;
+
+    // 3. 放弃 rewind，改用 fseek 回到头部并检查返回值
+    if (fseek(file, 0, SEEK_SET) != 0) {
+        console_out("[Error][read_file_to_array] fseek back to SEEK_SET failed for path: %s\n", filepath);
+        log_out("[Error][read_file_to_array] fseek back to SEEK_SET failed for path: %s", filepath);
+        fclose(file);
+        memset(buffer, 0, max_size);
+        return -1;
+    }
+
+    // 4. 单独拦截 0 字节文件，防止后续 fread 产生不可预知的行为
+    if (file_size == 0) {
+        console_out("[Info][read_file_to_array] File is legitimately empty (0 bytes): %s\n", filepath);
+        log_out("[Info][read_file_to_array] File is legitimately empty (0 bytes): %s", filepath);
+        fclose(file);
+        return 0; // 空文件读取 0 字节，属于正常业务逻辑，不需要清空 buffer 返回 -1
+    }
+
+    if (file_size > max_size) {
+        fclose(file);
+        // 注意：file_size 已经是 uint32_t，格式化字符应使用 %u
+        console_out("[Warning][read_file_to_array] File too large, need:%u, given:%u\n", file_size, max_size);
+        log_out("[Warning][read_file_to_array] File too large, need:%u, given:%u", file_size, max_size);
+        memset(buffer, 0, max_size);
+        return -1;
+    }
+
+    // 5. 核心：诊断 fread 失败的确切原因
     size_t bytes_read = fread(buffer, 1, file_size, file);
     if (bytes_read != file_size) {
+        int err_num = ferror(file); // 检查是否发生 I/O 错误
+        int is_eof = feof(file);    // 检查是否意外提前触碰到了文件末尾 EOF
+        
         fclose(file);
-        console_out("[Warning][read_file_to_array] bytes_read dont suit file_size!,bytes_read:%ld,file_size:%ld\n", bytes_read, file_size);
-        log_out("[Warning][read_file_to_array] bytes_read dont suit file_size!,bytes_read:%ld,file_size:%ld", bytes_read, file_size);
+        // 注意：bytes_read 是 size_t，格式化字符应使用 %zu
+        console_out("[Warning][read_file_to_array] fread mismatch! bytes_read:%zu, expected:%u, ferror:%d, feof:%d\n", 
+                    bytes_read, file_size, err_num, is_eof);
+        log_out("[Warning][read_file_to_array] fread mismatch! bytes_read:%zu, expected:%u, ferror:%d, feof:%d", 
+                bytes_read, file_size, err_num, is_eof);
         memset(buffer, 0, max_size);
         return -1;
     }
 
     fclose(file);
-    console_out("[read_file_to_array] File read successfully, size:%ld ,path:%s\n", bytes_read, filepath);
+    console_out("[read_file_to_array] File read successfully, size:%zu, path:%s\n", bytes_read, filepath);
     return bytes_read;
 
 #else

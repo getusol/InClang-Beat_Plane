@@ -35,7 +35,7 @@
  /**********************
  *   GLOBAL FUNCTIONS
  **********************/
-
+extern int coin_num;
 void ui_play_init();
 void ui_play_run();
 lv_obj_t * ui_play_get_display(void);

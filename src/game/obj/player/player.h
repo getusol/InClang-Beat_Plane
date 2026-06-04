@@ -2,32 +2,37 @@
  * @file player.h
  */
 
-#ifndef __PLAYER_H__
-#define __PLAYER_H__
+#ifndef PLAYER_H
+#define PLAYER_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*********************
- *      INCLUDES
+ * INCLUDES
  *********************/
+#include "lvgl.h"
 #include "game_object.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 /**********************
- *      MACROS
+ * TYPEDEFS
  **********************/
 
 /**********************
- *      TYPEDEFS
+ * GLOBAL PROTOTYPES
  **********************/
-
-/**********************
- *  STATIC PROTOTYPES
- **********************/
-
-/***********************
- *   GLOBAL PROTOTYPES
- ***********************/
 
 void player_init(lv_obj_t * parent);
-game_obj_t * player_get_base();
+game_obj_t * player_get_base(void);
 int16_t player_hp_modify(int16_t delta);
+void player_apply_config(int plane_id);
+int player_get_current_plane(void);
 
-#endif // #ifndef __PLAYER_H__
+#ifdef __cplusplus
+} /*extern "C"*/
+#endif
+
+#endif /*PLAYER_H*/

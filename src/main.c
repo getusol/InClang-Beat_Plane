@@ -10,10 +10,11 @@
 #include "bullet.h"
 #include "config.h"
 #include "game.h"
-#include "event.h"B
+#include "event.h"
 #include "perf_monitor.h"
 #include <stdio.h>
 #include "bgm.h"
+#include "ui_shop.h"
 int main(int argc, char **argv)
 {
     //Inits
@@ -23,6 +24,8 @@ int main(int argc, char **argv)
     input_init();
     fsm_init();
     event_init();
+
+
     ui_init();
     game_init();
     i2s_config();
