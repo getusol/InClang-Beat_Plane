@@ -107,11 +107,6 @@ void ui_menu_init(void)
     lv_obj_t * label_base = lv_label_create(btn_base);
     lv_label_set_text(label_base, "Base");
     lv_obj_center(label_base);
-<<<<<<< HEAD
-
-    cg_play(dp_menu, menu_group);
-=======
->>>>>>> feature-optimizeMerge#3
 }
 
 /**
