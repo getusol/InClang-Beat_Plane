@@ -9,6 +9,7 @@
 #include "bullet_behaviors.h"
 #include <stdint.h>
 #include "tools.h"
+#include "timer.h"
 
 /**********************
  *      MACROS
@@ -21,6 +22,7 @@
  /**********************
   *  STATIC PROTOTYPES
   **********************/
+ static void bullet_track_timeout_cb(game_obj_t *g, void *v);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -67,6 +69,45 @@ void bullet_behave_sine(game_obj_t *g, void *v)
   // whereas g->vy stays the same
   // CONSOLE("[INFO] ax = %f", ax);
   // CONSOLE("[INFO] Bullet speed: (%d, %d)", g->vx, g->vy);
+}
+
+/**
+ * @brief 追踪玩家子弹行为：子弹会追踪玩家一段时间（默认2秒），之后失去追踪能力沿当前方向直线飞行
+ * @param g 子弹对象指针
+ * @param v 玩家对象指针（通过 behave.usr_data 传入，调用时传入 player_get_base() ）
+ * @note 追踪速度为 5，追踪持续时间为 2000ms，可根据需要调整
+ */
+void bullet_behave_track_player(game_obj_t *g, void *v)
+{
+    if (g == NULL || !g->active) return;
+    if (v == NULL) return;
+
+    game_obj_t *player = (game_obj_t *)v;
+
+    // 首次调用时初始化定时器，到时间后停止追踪
+    if (!g->timered) {
+        timer_create(g, 2000, TIMER_MODE_ONCE, bullet_track_timeout_cb, NULL);
+        g->timered = true;
+    }
+
+    // 计算指向玩家的方向，并设置速度
+    int16_t dx = player->x - g->x;
+    int16_t dy = player->y - g->y;
+
+    int16_t vx, vy;
+    direction_to_velocity(dx, dy, 5, &vx, &vy);
+    g->vx = vx;
+    g->vy = vy;
+}
+
+/**
+ * @brief 追踪超时回调，停止子弹追踪行为
+ */
+static void bullet_track_timeout_cb(game_obj_t *g, void *v)
+{
+    (void)v;
+    g->behave = NULL_BEHAVE;
+    g->timered = false;
 }
 
  /**********************

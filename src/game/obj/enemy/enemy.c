@@ -16,18 +16,19 @@
 #include "event.h"
 #include "bullet.h"
 #include "coin.h"
+
 /**********************
  *      MACROS
  **********************/
 
-#define ENEMY_IMG_NAME "enemy.bin"
+#define ENEMY_IMG_NAME "enemy2.bin"
 
 #define ENEMY_MAX_X 980                 // 敌人最大X坐标
 #define ENEMY_MIN_X 0                    // 敌人最小X坐标
 #define ENEMY_MAX_Y 600                  // 敌人最大Y坐标
 #define ENEMY_MIN_Y -64                    // 敌人最小Y坐标
 
-#define ENEMY_WIDTH 19
+#define ENEMY_WIDTH 64
 #define ENEMY_HIGHT 64
 
 /**********************
@@ -100,10 +101,10 @@ void enemy_init(lv_obj_t * parent)
     enemies[i].base.x = 0;
     enemies[i].base.y = 0;
     enemies[i].base.speed = 7.0f;
-    enemies[i].base.hitbox_x = 0;
-    enemies[i].base.hitbox_y = 0;
-    enemies[i].base.hitbox_w = 19;
-    enemies[i].base.hitbox_h = 64;
+    enemies[i].base.hitbox_x = 2;
+    enemies[i].base.hitbox_y = 22;
+    enemies[i].base.hitbox_w = 60;
+    enemies[i].base.hitbox_h = 20;
     enemies[i].base.vx = 0;
     enemies[i].base.vy = 0;
     enemies[i].base.behave = NULL_BEHAVE;

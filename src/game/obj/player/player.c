@@ -131,7 +131,7 @@ void player_init(lv_obj_t * parent)
   player_p->base.show = player_show;
   player_p->base.hide = player_hide;
 
-  player_p->hp_max = 100;
+  player_p->hp_max = 200;
   player_p->hp = player_p->hp_max;
   player_p->shoot_cd = 200; // 200ms射击冷却
 
