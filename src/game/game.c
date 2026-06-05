@@ -83,11 +83,8 @@ void game_init()
     // coin 必须在 ui_play 注册事件之前初始化，确保碰撞时先更新数值再刷新 UI
     ui_play_register_events();
 
-    
-    #if SHOW_HITBOX
-    game_for_each_obj(init_hitbox,NULL);
-    #endif
 
+    game_for_each_obj(init_hitbox, NULL);
 
     CONSOLE_INFO("Game objects initialization complete.");
     return ;
@@ -124,9 +121,7 @@ void game_update()
     if (!game_obj_is_active(game_objs[i])) continue;
     if (game_objs[i]->update) game_objs[i]->update(game_objs[i]);
     if (game_objs[i]->behave.f) game_objs[i]->behave.f(game_objs[i],game_objs[i]->behave.usr_data);
-    #if SHOW_HITBOX
     game_obj_hitbox_update(game_objs[i]);
-    #endif
   }
 
   check_collisions();
@@ -254,10 +249,8 @@ static void check_collisions(void)
 /**
  * @brief 操作函数 初始化每个对象的碰撞箱
  */
-static void init_hitbox(game_obj_t * obj,void * usr_data)
+static void init_hitbox(game_obj_t * obj, void * usr_data)
 {
   LV_UNUSED(usr_data);
-  #if SHOW_HITBOX
   game_obj_hitbox_init(obj);
-  #endif
 }

@@ -216,13 +216,11 @@ void apr_apply(game_obj_t *obj, apr_id_t id)
 
     lv_img_set_src(obj->obj, &apr->img_dsc);
 
-#if SHOW_HITBOX
     // 更新碰撞框调试显示（尺寸和位置随外观变化）
     if (obj->hitbox_obj != NULL) {
         lv_obj_set_pos(obj->hitbox_obj, apr->hitbox_x, apr->hitbox_y);
         lv_obj_set_size(obj->hitbox_obj, apr->hitbox_w, apr->hitbox_h);
     }
-#endif
 }
 
 /**********************

@@ -14,7 +14,6 @@
  * GAME INFO
  *-----------*/
 
-#define SHOW_HITBOX 1  // 是否显示碰撞框
 #define PERF_MONITOR 1 // 1 开启性能检测 0 关闭
 
 /*-------------

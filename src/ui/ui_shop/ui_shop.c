@@ -18,6 +18,7 @@
 #include "lvgl_utils.h"
 #include "ui_templates.h" // 用于 popup_create, popup_show, popup_hide
 #include "coin.h"
+#include "save.h"
 
 /**********************
  * MACROS
@@ -394,6 +395,7 @@ static void shop_back_menu_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     popup_hide(shop_exit_popup);
+    save_write();
     fsm_switch_state(GS_MENU); // 切换状态回主菜单
     console_out("[shop][shop_back_btn] State has been switched to %d\n", fsm_get_state());
 }

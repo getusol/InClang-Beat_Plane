@@ -51,9 +51,7 @@ typedef struct game_obj {
     int16_t vx, vy;         // velocity
     const apr_t *apr;       // 外观指针（共享）
     lv_obj_t *obj;          // LVGL 图像控件（每个对象私有）
-#if SHOW_HITBOX
     lv_obj_t *hitbox_obj;   // LVGL 碰撞框调试控件
-#endif
     bool active;            // is the object active in the game
     game_obj_type_t type;
     behave_t behave;        // AI / 被动行为
@@ -85,9 +83,9 @@ const apr_t * game_obj_get_apr(const game_obj_t * obj);
 // setters
 bool game_obj_set_behave(game_obj_t * obj, behave_func_t f, void * usr_data);
 
-#if SHOW_HITBOX
 lv_obj_t * game_obj_hitbox_init(game_obj_t * obj);
 void game_obj_hitbox_update(game_obj_t * obj);
-#endif
+void game_obj_set_show_hitbox(bool show);
+bool game_obj_get_show_hitbox(void);
 
 #endif //#ifndef __GAME_OBJECT_H__

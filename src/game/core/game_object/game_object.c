@@ -63,7 +63,13 @@ bool game_obj_is_active(const game_obj_t * obj)
     return obj ? obj->active : false;
 }
 
-#if SHOW_HITBOX
+/**
+ * @brief 运行时 hitbox 显示开关
+ */
+static bool g_show_hitbox = true;
+
+void game_obj_set_show_hitbox(bool show) { g_show_hitbox = show; }
+bool game_obj_get_show_hitbox(void) { return g_show_hitbox; }
 
 /**
  * @brief 初始化游戏对象的碰撞框
@@ -119,14 +125,12 @@ void game_obj_hitbox_update(game_obj_t * obj)
     if (obj == NULL || obj->hitbox_obj == NULL) {
         return ;
     }
-    if (obj->active) {
+    if (obj->active && g_show_hitbox) {
         lv_obj_clear_flag(obj->hitbox_obj, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(obj->hitbox_obj, LV_OBJ_FLAG_HIDDEN);
     }
 }
-
-#endif
 
 /**
  * @brief 设置对象行为

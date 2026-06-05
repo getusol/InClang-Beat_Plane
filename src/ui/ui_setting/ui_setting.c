@@ -17,6 +17,8 @@
 #include "ui_key.h"
 #include "config.h"
 #include "save.h"
+#include "apr.h"
+#include "game_object.h"
 #include <stdio.h>
 
 /**********************
@@ -38,6 +40,8 @@ static void amp_slider_event_cb(lv_event_t * e);
 static void amp_preview_cb(lv_event_t * e);
 
 static void update_volume_labels(void);
+static void hitbox_switch_event_cb(lv_event_t * e);
+static void update_hitbox_preview(void);
 
 /**********************
  * STATIC VARIABLES
@@ -51,6 +55,10 @@ static lv_obj_t * bgm_label = NULL;
 static lv_obj_t * sfx_label = NULL;
 static lv_obj_t * amp_label = NULL;
 static lv_obj_t * amp_slider = NULL;
+static lv_obj_t * hitbox_label = NULL;
+static lv_obj_t * hitbox_switch = NULL;
+static lv_obj_t * hitbox_preview_img = NULL;
+static lv_obj_t * hitbox_preview_box = NULL;
 
 #ifdef SIMULATOR
 static lv_img_dsc_t back_arrow_img_struct;
@@ -133,6 +141,42 @@ void ui_setting_init(void)
     lv_obj_add_event_cb(sfx_slider,sfx_preview_cb,LV_EVENT_RELEASED,NULL);
     lv_group_add_obj(setting_group, sfx_slider);
 
+    // ---- Show Hitbox 开关 ----
+    hitbox_label = lv_label_create(container);
+    lv_obj_set_style_text_font(hitbox_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(hitbox_label, lv_color_white(), LV_STATE_DEFAULT);
+    lv_obj_set_pos(hitbox_label, 60, 260);
+
+    hitbox_switch = lv_switch_create(container);
+    lv_obj_set_pos(hitbox_switch, 60, 300);
+    lv_obj_add_event_cb(hitbox_switch, hitbox_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_group_add_obj(setting_group, hitbox_switch);
+
+    // 玩家预览图像（右侧，使用默认飞机外观）
+    apr_t *preview_apr = apr_get(APR_PLAYER_DEFAULT);
+#ifdef SIMULATOR
+    hitbox_preview_img = lv_img_create(container);
+    lv_img_set_src(hitbox_preview_img, &preview_apr->img_dsc);
+#else
+    char preview_path_buf[64];
+    hitbox_preview_img = lv_img_create(container);
+    lv_img_set_src(hitbox_preview_img, img_path(preview_apr->img_name, preview_path_buf, 64));
+#endif
+    lv_obj_set_pos(hitbox_preview_img, 410, 270);
+    lv_obj_set_size(hitbox_preview_img, preview_apr->w, preview_apr->h);
+
+    // 预览碰撞框（红色线框，叠在预览图上）
+    hitbox_preview_box = lv_obj_create(hitbox_preview_img);
+    lv_obj_remove_style_all(hitbox_preview_box);
+    lv_obj_set_style_border_width(hitbox_preview_box, 1, 0);
+    lv_obj_set_style_border_color(hitbox_preview_box, lv_color_make(255, 0, 0), 0);
+    lv_obj_set_style_border_opa(hitbox_preview_box, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_opa(hitbox_preview_box, LV_OPA_0, 0);
+    lv_obj_set_style_radius(hitbox_preview_box, 0, 0);
+    lv_obj_clear_flag(hitbox_preview_box, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_pos(hitbox_preview_box, preview_apr->hitbox_x, preview_apr->hitbox_y);
+    lv_obj_set_size(hitbox_preview_box, preview_apr->hitbox_w, preview_apr->hitbox_h);
+
     // 右上角返回按钮 (64x64 透明 + 箭头图标)
     lv_obj_t * back_btn = lv_btn_create(dp_setting);
     lv_obj_set_size(back_btn, 64, 64);
@@ -166,6 +210,16 @@ void ui_setting_run(void)
     // 刷新滑块到当前音量 (内部 0-255 → 显示 0-100)
     if (bgm_slider) lv_slider_set_value(bgm_slider, (audio_get_vol_bgm() * 100) >> 8, LV_ANIM_OFF);
     if (sfx_slider) lv_slider_set_value(sfx_slider, (audio_get_vol_sfx() * 100) >> 8, LV_ANIM_OFF);
+
+    // 刷新 hitbox 开关状态
+    if (hitbox_switch) {
+        if (game_obj_get_show_hitbox()) {
+            lv_obj_add_state(hitbox_switch, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(hitbox_switch, LV_STATE_CHECKED);
+        }
+        update_hitbox_preview();
+    }
 
     update_volume_labels();
 }
@@ -211,6 +265,28 @@ static void update_volume_labels(void)
                 break; 
         }
     }
+}
+
+static void update_hitbox_preview(void)
+{
+    if (hitbox_label == NULL || hitbox_preview_box == NULL) return;
+
+    bool on = lv_obj_has_state(hitbox_switch, LV_STATE_CHECKED);
+    lv_label_set_text_fmt(hitbox_label, "Show hitbox: %s", on ? "ON" : "OFF");
+
+    if (on) {
+        lv_obj_clear_flag(hitbox_preview_box, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(hitbox_preview_box, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void hitbox_switch_event_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    bool on = lv_obj_has_state(hitbox_switch, LV_STATE_CHECKED);
+    game_obj_set_show_hitbox(on);
+    update_hitbox_preview();
 }
 
 static void back_btn_event_cb(lv_event_t * e)

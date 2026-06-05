@@ -33,8 +33,11 @@ typedef enum {
 
 void ui_base_init(void);
 void ui_base_run(void);
-plane_id_t  ui_base_get_selected_plane_id(void);
+plane_id_t ui_base_get_selected_plane_id(void);
+void ui_base_set_selected_plane_id(plane_id_t id);
 bool ui_base_plane_is_unlocked(plane_id_t plane_id);
 void ui_base_plane_unlock(plane_id_t plane_id);
+int  ui_base_get_unlocked_mask(void);
+void ui_base_set_unlocked_mask(int mask);
 
 #endif // #ifndef __UI_BASE_H__

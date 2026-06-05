@@ -15,6 +15,7 @@
 #include "ui_base.h"
 #include "player.h"
 #include "apr.h"
+#include "save.h"
 /*********************
  * MACROS
  *********************/
@@ -120,6 +121,30 @@ void ui_base_plane_unlock(plane_id_t plane_id)
     if (plane_id < 0 || plane_id >= PLANE_ID_MAX) return;
     g_plane_unlocked[plane_id] = true;
     CONSOLE_INFO("Plane %d unlocked.", plane_id);
+}
+
+void ui_base_set_selected_plane_id(plane_id_t id)
+{
+    if (id < 0 || id >= PLANE_ID_MAX) return;
+    g_selected_plane_id = id;
+}
+
+int ui_base_get_unlocked_mask(void)
+{
+    int mask = 0;
+    for (int i = 0; i < PLANE_ID_MAX; i++) {
+        if (g_plane_unlocked[i]) mask |= (1 << i);
+    }
+    return mask;
+}
+
+void ui_base_set_unlocked_mask(int mask)
+{
+    for (int i = 0; i < PLANE_ID_MAX; i++) {
+        g_plane_unlocked[i] = (mask & (1 << i)) != 0;
+    }
+    // 确保 Default 飞机始终解锁
+    g_plane_unlocked[PLANE_ID_DEFAULT] = true;
 }
 
 /**
@@ -393,6 +418,7 @@ static void base_back_menu_btn_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     popup_hide(base_exit_popup);
-    fsm_switch_state(GS_MENU); 
+    save_write();
+    fsm_switch_state(GS_MENU);
     CONSOLE_INFO("Returning back to main menu.");
 }
