@@ -199,7 +199,7 @@ void level_update(void)
                 // Boss 波次：立即生成 Boss，保存指针用于检测存活
                 if (wave->enemy_spawned == 0) {
                     behave_t boss_behave = { .f = enemy_behave_boss, .usr_data = NULL };
-                    current_boss = enemy_spawn(SCREEN_WIDTH / 2, 50,
+                    current_boss = enemy_spawn(SCREEN_WIDTH / 2, 70,
                                                0, 0,
                                                wave->boss_hp,
                                                200,  // 高伤害 ≈ 触碰秒杀

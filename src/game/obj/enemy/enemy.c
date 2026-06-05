@@ -177,6 +177,7 @@ game_obj_t * enemy_spawn(lv_coord_t x, lv_coord_t y,
   enemy_modify_hp_max(&e->base, health);
   e->hp = e->hp_max;
   lv_obj_set_pos(e->base.obj, x, y);
+  lv_obj_set_size(e->health_bar, e->base.apr->w + 20, 5);
   lv_obj_set_pos(e->health_bar, x - 10, y - 10);
   lv_bar_set_value(e->health_bar, e->hp, LV_ANIM_OFF);
   e->base.show(&e->base);

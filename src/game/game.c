@@ -239,7 +239,7 @@ static void check_collisions(void)
                 }
 
 
-                CONSOLE_INFO("Collision detected between %d and %d", a->type, b->type);
+                //CONSOLE_INFO("Collision detected between %d and %d", a->type, b->type);
             } // 用这个右括号正确闭合 if (rec_overlap(a, b))
         } // 闭合 for j
     } // 闭合 for i

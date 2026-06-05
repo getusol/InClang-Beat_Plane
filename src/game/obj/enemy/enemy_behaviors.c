@@ -151,7 +151,7 @@ static void boss_master_timer_cb(game_obj_t * g, void * v)
     }
 
     if (phase_tick == 0) {
-        CONSOLE_INFO(" Boss entering phase %d", phase);
+        //CONSOLE_INFO(" Boss entering phase %d", phase);
     }
 
     boss_tick++;

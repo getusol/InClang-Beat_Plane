@@ -19,6 +19,7 @@
 #include "bullet.h"
 #include "bullet_behaviors.h"
 #include "enemy.h"
+#include "ui_base.h" // for ui_base_get_selected_plane_id()
 
 /**********************
  *      MACROS
@@ -622,6 +623,8 @@ static void player_skill_hp_reclaim(void)
  */
 static void player_event_game_start_cb(game_obj_t * src, game_obj_t * trg)
 {
+  // 实际应用飞机配置到玩家（外观 + 游戏属性）
+  player_apply_config(ui_base_get_selected_plane_id());
   player_p->base.x = 512;
   player_p->base.y = 500;
   player_p->hp = player_p->hp_max;

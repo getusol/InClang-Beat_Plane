@@ -43,6 +43,7 @@ static void pause_exit_btn_event_cb(lv_event_t * e);
 static void pause_continue_btn_event_cb(lv_event_t * e);
 static void pause_btn_event_cb(lv_event_t * e);
 static void over_exit_btn_event_cb(lv_event_t * e);
+static void over_restart_btn_event_cb(lv_event_t * e);
 
 static void opa_anim_cb(void * obj, int32_t opa);
 static void y_anim_cb(void * obj, int32_t y);
@@ -70,8 +71,10 @@ static lv_obj_t * dp_play;
 
 static lv_obj_t * pause_popup;
 static lv_obj_t * over_popup;
+static lv_obj_t * over_score_label;
 static lv_obj_t * coin_label;
 static lv_obj_t * pause_icon_btn;   // 右上角暂停/设置图标按钮
+static int coin_at_run_start = 0;   // 当局开始时的金币数，用于计算得分
 
 #ifdef SIMULATOR
 static lv_img_dsc_t coin_img_dsc;
@@ -211,13 +214,34 @@ void ui_play_init()
     lv_label_set_text(over_label, "GAME OVER");
     lv_obj_set_style_text_font(over_label, &lv_font_montserrat_44, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(over_label, lv_palette_main(LV_PALETTE_RED), LV_STATE_DEFAULT);
-    
+
+    //score label for over popup
+    over_score_label = lv_label_create(over_popup);
+    lv_obj_set_align(over_score_label, LV_ALIGN_CENTER);
+    lv_obj_set_pos(over_score_label, 0, -70);
+    lv_obj_set_style_text_font(over_score_label, &lv_font_montserrat_24, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(over_score_label, lv_color_hex(0xFFD152), LV_STATE_DEFAULT);
+
+    //restart btn for over popup
+    lv_obj_t * over_restart_btn = lv_btn_create(over_popup);
+    lv_obj_set_size(over_restart_btn, 300,60);
+    lv_obj_set_pos(over_restart_btn, 25, 240);
+    lv_obj_add_event_cb(over_restart_btn, over_restart_btn_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_group_add_obj(over_group, over_restart_btn);
+
+    //label for over_restart_btn
+    lv_obj_t * over_restart_btn_label = lv_label_create(over_restart_btn);
+    lv_obj_set_align(over_restart_btn_label, LV_ALIGN_CENTER);
+    lv_label_set_text(over_restart_btn_label, "Restart");
+    lv_obj_set_style_text_font(over_restart_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+
     //back to menu btn for over popup
     lv_obj_t * over_exit_btn = lv_btn_create(over_popup);
     lv_obj_set_size(over_exit_btn, 300, 60);
-    lv_obj_set_pos(over_exit_btn, 25, 240);
+    lv_obj_set_pos(over_exit_btn, 25, 320);
     lv_obj_add_event_cb(over_exit_btn, over_exit_btn_event_cb, LV_EVENT_CLICKED, NULL);
-    
+    lv_group_add_obj(over_group, over_exit_btn);
+
     //label for over_exit_btn
     lv_obj_t * over_exit_btn_label = lv_label_create(over_exit_btn);
     lv_obj_set_align(over_exit_btn_label, LV_ALIGN_CENTER);
@@ -280,6 +304,10 @@ void ui_play_run()
     // GS_OVER 时隐藏右上角按钮，防止误触暂停
     if (fsm_get_state() == GS_OVER) {
         if (pause_icon_btn) lv_obj_add_flag(pause_icon_btn, LV_OBJ_FLAG_HIDDEN);
+        // 更新得分显示: (当局获得金币数) * 10
+        int score = (coin_get_num() - coin_at_run_start) * 10;
+        if (score < 0) score = 0;
+        lv_label_set_text_fmt(over_score_label, "Score: %d", score);
         popup_show(over_popup);
         set_group(over_group);
     }
@@ -417,11 +445,24 @@ static void pause_setting_btn_event_cb(lv_event_t * e)
 }
 
 /**
+ * @brief 重新开始 — 保留金币，重新初始化关卡
+ */
+static void over_restart_btn_event_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    save_write();
+    fsm_switch_state(GS_PLAY);
+    event_dispatch(EVENT_GAME_START, NULL, NULL);
+    CONSOLE_INFO("Game restarted. State has been switched to %d", fsm_get_state());
+}
+
+/**
  * @brief 返回主菜单
  */
 static void over_exit_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    save_write();
     fsm_switch_state(GS_MENU);
     CONSOLE_INFO("State has been switched to %d", fsm_get_state());
 }
@@ -472,6 +513,7 @@ static void level_anim_finish(lv_anim_t * anim)
 
 static void ui_play_event_game_start_cb(game_obj_t * a, game_obj_t * b)
 {
+    coin_at_run_start = coin_get_num();  // 记录当局开始时的金币数
     CONSOLE_INFO("Level 1 Animation Start.");
     ui_play_level_enter_anim("Level 1");
     lv_label_set_text_fmt(coin_label, "%d", coin_get_num());

@@ -396,9 +396,6 @@ static void choose_btn_cb(lv_event_t * e)
     g_selected_plane_id = current_viewing_idx;
     lv_obj_align_to(choosed_indicator, plane_objs[g_selected_plane_id], LV_ALIGN_OUT_TOP_MID, 0, -8);
 
-    // 实际应用飞机配置到玩家（外观 + 游戏属性）
-    player_apply_config(g_selected_plane_id);
-
     CONSOLE_INFO("Successfully switched to aircraft: %s", plane_templates[g_selected_plane_id].name);
 }
 

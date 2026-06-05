@@ -50,7 +50,7 @@ typedef struct {
 /**********************
  * STATIC VARIABLES
  **********************/
-static lv_obj_t * shop_screen = NULL;
+static lv_obj_t * dp_shop = NULL;
 static lv_obj_t * highlight_cursor = NULL;
 static lv_timer_t * roulette_timer = NULL; 
 
@@ -125,8 +125,8 @@ void ui_shop_init(void)
     shop_group = lv_group_create();
 
     // 创建独立画布
-    shop_screen = lv_obj_create(NULL);
-    lv_obj_clear_flag(shop_screen, LV_OBJ_FLAG_SCROLLABLE);
+    dp_shop = lv_obj_create(NULL);
+    lv_obj_clear_flag(dp_shop, LV_OBJ_FLAG_SCROLLABLE);
     
     static char bg_path_buf[64];
     static char btn_path_buf[64];
@@ -134,9 +134,9 @@ void ui_shop_init(void)
     
     lv_obj_t * bg;
 #ifdef SIMULATOR
-    bg = img_create_from_dsc(shop_screen, img_path(SHOP_BG_IMG, bg_path_buf, 64), 1024, 600, NULL, &shop_bg_dsc, false);
+    bg = img_create_from_dsc(dp_shop, img_path(SHOP_BG_IMG, bg_path_buf, 64), 1024, 600, NULL, &shop_bg_dsc, false);
 #else
-    bg = lv_img_create(shop_screen);
+    bg = lv_img_create(dp_shop);
     lv_img_set_src(bg, img_path(SHOP_BG_IMG, bg_path_buf, 64));
 #endif
     lv_obj_center(bg);
@@ -144,15 +144,15 @@ void ui_shop_init(void)
         //coin_img initialize
     static char img_path_buf[64];
     #ifdef SIMULATOR
-    lv_obj_t * coin_img = img_create_from_dsc(shop_screen,img_path(COIN_IMG_NAME,img_path_buf,64),166,46,NULL,&coin_img_dsc,true);
+    lv_obj_t * coin_img = img_create_from_dsc(dp_shop,img_path(COIN_IMG_NAME,img_path_buf,64),166,46,NULL,&coin_img_dsc,true);
     lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_LEFT);
     #else
-    lv_obj_t * coin_img = lv_img_create(shop_screen);
+    lv_obj_t * coin_img = lv_img_create(dp_shop);
     lv_img_set_src(coin_img,img_path(COIN_IMG_NAME,img_path_buf,64));
     lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_RIGHT);
     #endif
   
-    lv_obj_t * exit_btn = lv_btn_create(shop_screen);
+    lv_obj_t * exit_btn = lv_btn_create(dp_shop);
     lv_obj_set_size(exit_btn, 80, 30);
     lv_obj_set_align(exit_btn, LV_ALIGN_TOP_RIGHT);
     lv_obj_set_pos(exit_btn, -10, 10); // 微调边缘间距
@@ -263,7 +263,7 @@ void ui_shop_init(void)
     update_cursor_position(current_slot);
 
     // 💡 建立并隐藏中奖弹窗面板
-    reward_popup = popup_create(shop_screen);
+    reward_popup = popup_create(dp_shop);
     lv_obj_add_flag(reward_popup, LV_OBJ_FLAG_HIDDEN);
 
     reward_msg = lv_label_create(reward_popup);
@@ -289,7 +289,7 @@ void ui_shop_init(void)
     // ==========================================
     // 新增：向 play 界面看齐的 Exit/Pause 弹窗
     // ==========================================
-    shop_exit_popup = popup_create(shop_screen);
+    shop_exit_popup = popup_create(dp_shop);
     lv_obj_add_flag(shop_exit_popup, LV_OBJ_FLAG_HIDDEN);
 
     // 弹窗主标题
@@ -341,10 +341,10 @@ void ui_shop_init(void)
  */
 void ui_shop_run(void)
 {
-    if (shop_screen == NULL) {
+    if (dp_shop == NULL) {
         ui_shop_init();
     }
-    lv_scr_load(shop_screen);
+    lv_scr_load(dp_shop);
 
     if (coin_label != NULL) {
         lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
