@@ -108,29 +108,28 @@ void ui_play_init()
     lv_obj_set_style_bg_color(dp_play, lv_color_hex(DP_PLAY_FILL_COLOR), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(dp_play, LV_OPA_COVER, LV_PART_MAIN);
 
-    //coin_img initialize
     static char img_path_buf[64];
+    lv_obj_t * hud_img = NULL;
+    lv_obj_t * coin_img = NULL;
+
 #ifdef SIMULATOR
     //CONSOLE_DEBUG("Creating hud_img from dsc...");
-    lv_obj_t * hud_img = img_create_from_dsc(dp_play, img_path(HUD_IMG_NAME, img_path_buf, 64), 200, 52, NULL, &hud_img_dsc, false);
+    hud_img = img_create_from_dsc(dp_play, img_path(HUD_IMG_NAME, img_path_buf, 64), 200, 52, NULL, &hud_img_dsc, false);
     if (hud_img != NULL) lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
+
+    coin_img = img_create_from_dsc(dp_play, img_path(COIN_BAR_IMG_NAME, img_path_buf, 64), 166, 46, NULL, &coin_img_dsc, true);
+    lv_obj_set_align(coin_img, LV_ALIGN_BOTTOM_LEFT);
 #else
     //CONSOLE_DEBUG("Creating standard hud_img...");
-    lv_obj_t * hud_img = lv_img_create(dp_play);
+    hud_img = lv_img_create(dp_play);
     if (hud_img != NULL) {
         lv_img_set_src(hud_img, img_path(HUD_IMG_NAME, img_path_buf, 64));
         lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
     }
+    coin_img = lv_img_create(dp_play);
+    lv_img_set_src(coin_img, img_path(COIN_BAR_IMG_NAME, img_path_buf, 64));
+    lv_obj_set_align(coin_img, LV_ALIGN_BOTTOM_RIGHT);
 #endif
-    //coin_img initialize
-    #ifdef SIMULATOR
-    lv_obj_t * coin_img = img_create_from_dsc(dp_play,img_path(COIN_BAR_IMG_NAME,img_path_buf,64),166,46,NULL,&coin_img_dsc,true);
-    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_LEFT);
-    #else
-    lv_obj_t * coin_img = lv_img_create(dp_play);
-    lv_img_set_src(coin_img,img_path(COIN_BAR_IMG_NAME,img_path_buf,64));
-    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_RIGHT);
-    #endif
 
     if (coin_img == NULL) {
         CONSOLE_WARNING("coin_img is NULL! coin_label might bound to invalid parent.");
@@ -261,6 +260,8 @@ void ui_play_init()
 void ui_play_register_events(void)
 {
     event_register(EVENT_PLAYER_HIT_COIN, ui_play_event_hit_coin_cb);
+    event_register(EVENT_PLAYER_HIT_ENEMY, ui_play_event_player_hurt_cb);
+    event_register(EVENT_BULLET_HIT_PLAYER, ui_play_event_player_hurt_cb);
 }
 
 /**
@@ -475,4 +476,31 @@ static void ui_play_event_game_start_cb(game_obj_t * a, game_obj_t * b)
     CONSOLE_INFO("Level 1 Animation Start.");
     ui_play_level_enter_anim("Level 1");
     lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+}
+
+/**
+ * @brief 受击闪烁定时器回调：隐藏受击遮罩
+ */
+static void hurt_flash_timer_cb(lv_timer_t * timer)
+{
+    LV_UNUSED(timer);
+    if (hurt_img != NULL) {
+        lv_obj_add_flag(hurt_img, LV_OBJ_FLAG_HIDDEN);
+    }
+    hurt_timer = NULL;
+}
+
+/**
+ * @brief 玩家受击事件回调：显示受击红色遮罩并启动闪烁定时器
+ */
+static void ui_play_event_player_hurt_cb(game_obj_t * a, game_obj_t * b)
+{
+    LV_UNUSED(a);
+    LV_UNUSED(b);
+    if (hurt_img == NULL) return;
+    lv_obj_clear_flag(hurt_img, LV_OBJ_FLAG_HIDDEN);
+    if (hurt_timer == NULL) {
+        hurt_timer = lv_timer_create(hurt_flash_timer_cb, 200, NULL);
+        lv_timer_set_repeat_count(hurt_timer, 1);
+    }
 }

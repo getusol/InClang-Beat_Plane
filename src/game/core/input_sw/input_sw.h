@@ -50,4 +50,11 @@ void input_sw_register_press_callback(key_event_t event, key_event_callback_t ca
 void input_sw_register_long_press_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms);
 void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms);
 
+void input_sw_unregister_key_down_callback(key_event_t event, key_event_callback_t callback);
+void input_sw_unregister_long_press_callback(key_event_t event, key_event_callback_t callback);
+void input_sw_unregister_press_callback(key_event_t event, key_event_callback_t callback);
+
+bool input_sw_is_key_down(key_event_t event);
+bool input_sw_is_key_long_press(key_event_t event);
+
 #endif // #ifndef __INPUT_SW_H__

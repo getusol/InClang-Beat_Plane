@@ -66,7 +66,7 @@ static uint8_t * coin_img_buf = NULL;
 static lv_img_dsc_t coin_img_struct;
 
 // 金币总数（模块内部维护）
-static int coin_num = 0;
+int coin_num = 0;
 
 /**********************
  * GLOBAL FUNCTIONS
@@ -190,7 +190,7 @@ int coin_get_num(void)
  */
 void coin_add_num(int delta)
 {
-    coin_num += delta;
+    coin_num += 100*delta;
     if (coin_num < 0) coin_num = 0;
 }
 

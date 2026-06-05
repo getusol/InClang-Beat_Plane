@@ -18,6 +18,7 @@
 #include "bullet.h"
 #include "coin.h"
 #include "player.h"
+#include "timer.h"
 
 /**********************
  *      MACROS
@@ -40,6 +41,12 @@ typedef struct
     int16_t damage;
     uint16_t pool_index; // 对象池索引
     lv_obj_t * health_bar;
+    bool is_boss;       // 是否为 Boss
+    // 状态效果
+    bool burning;                // 是否处于灼烧状态
+    int8_t burn_ticks_left;      // 剩余灼烧次数
+    bool frozen;                 // 是否处于冻结状态
+    lv_obj_t * freeze_overlay;   // 冻结蓝色遮罩
 } enemy_t;
 
  /**********************
@@ -55,7 +62,8 @@ static uint16_t enemy_modify_hp_max(game_obj_t * g,uint16_t trg);
 
 static void enemy_event_hit_by_bullet_cb(game_obj_t * scr,game_obj_t * trg);
 static void enemy_event_hit_player_cb(game_obj_t * src,game_obj_t * trg);
-static void enemy_on_destroyed_cb(game_obj_t * src,game_obj_t * trg);
+static void enemy_burn_timer_cb(game_obj_t *owner, void *usr_data);
+static void enemy_freeze_end_cb(game_obj_t *owner, void *usr_data);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -129,6 +137,19 @@ void enemy_init(lv_obj_t * parent)
     lv_bar_set_value(enemies[i].health_bar, enemies[i].hp, LV_ANIM_OFF);
     lv_obj_set_style_bg_color(enemies[i].health_bar, lv_palette_main(LV_PALETTE_GREEN), LV_PART_INDICATOR);
     lv_obj_set_style_bg_color(enemies[i].health_bar, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
+
+    // 冻结遮罩 - 蓝色半透明
+    enemies[i].freeze_overlay = lv_obj_create(parent);
+    lv_obj_set_size(enemies[i].freeze_overlay, default_apr->w, 20);
+    lv_obj_set_style_bg_color(enemies[i].freeze_overlay, lv_palette_main(LV_PALETTE_BLUE), 0);
+    lv_obj_set_style_bg_opa(enemies[i].freeze_overlay, LV_OPA_50, 0);
+    lv_obj_set_style_border_width(enemies[i].freeze_overlay, 0, 0);
+    lv_obj_add_flag(enemies[i].freeze_overlay, LV_OBJ_FLAG_HIDDEN);
+
+    // 状态效果初始化
+    enemies[i].burning = false;
+    enemies[i].burn_ticks_left = 0;
+    enemies[i].frozen = false;
 
     enemies[i].base.hide(&enemies[i].base);
 
@@ -211,6 +232,16 @@ static void enemy_update(game_obj_t * g)
   if (game_state == GS_PAUSE || game_state == GS_SETTING) return ;
   // 不活跃不更新
   if (g->active == false) return ;
+
+  // 冻结遮罩跟随敌人
+  enemy_t *e = (enemy_t *)g;
+  if (e->frozen) {
+    lv_obj_set_pos(e->freeze_overlay, g->x, g->y);
+    lv_obj_clear_flag(e->freeze_overlay, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(e->freeze_overlay, LV_OBJ_FLAG_HIDDEN);
+  }
+
   enemy_move(g);
 }
 
@@ -226,6 +257,11 @@ static void enemy_hide(game_obj_t * g)
   g->timered = false;
 
   enemy_t * e = (enemy_t *)g;
+  e->burning = false;
+  e->burn_ticks_left = 0;
+  e->frozen = false;
+  lv_obj_add_flag(e->freeze_overlay, LV_OBJ_FLAG_HIDDEN);
+
   if (e->pool_index != POOL_INVALID_ID)
   {
     pool_free(&enemy_pool, e->pool_index);
@@ -259,6 +295,9 @@ static void enemy_move(game_obj_t * g)
   if (g == NULL) return ;
 
   if (g->active == false) return ;
+
+  // 被冻结的敌人不能移动
+  if (((enemy_t *)g)->frozen) return ;
 
   int16_t dx = g->vx;
   int16_t dy = g->vy;
@@ -298,8 +337,24 @@ static int16_t enemy_modify_hp(game_obj_t * g, int16_t delta)
   }
   if (e->hp <= 0) {
     e->hp = 0;
-    CONSOLE_INFO("Enemy %d has been killed.", e->pool_index);
-    event_dispatch(EVENT_ENEMY_DESTROYED, g, NULL);
+    CONSOLE("[INFO] Enemy %d has been killed.", e->pool_index);
+
+    lv_coord_t coin_x = g->x + (g->apr->w - 18) / 2;
+    lv_coord_t coin_y = g->y + (g->apr->h - 18) / 2;
+
+    if (e->is_boss) {
+      // Boss 死亡掉落 8 个金币
+      for (int c = 0; c < 8; c++) {
+        lv_coord_t cx = coin_x + lv_rand(-30, 30);
+        lv_coord_t cy = coin_y + lv_rand(-30, 30);
+        coin_spawn(cx, cy, 10, 5);
+      }
+      CONSOLE("[BOSS] Boss defeated! 8 coins dropped.");
+    } else {
+      coin_spawn(coin_x, coin_y, 1, 5);
+    }
+
+    e->base.hide(g);
     return 0;
   }
 
@@ -328,6 +383,15 @@ static void enemy_event_hit_by_bullet_cb(game_obj_t * scr, game_obj_t * trg)
 {
   uint8_t damage = bullet_get_damage(scr);
   enemy_modify_hp(trg, -damage);
+
+  // 应用子弹特殊效果
+  uint8_t flags = bullet_get_flags(scr);
+  if (flags & BULLET_FLAG_BURN) {
+    enemy_apply_burn(trg);
+  }
+  if (flags & BULLET_FLAG_FREEZE) {
+    enemy_apply_freeze(trg);
+  }
 }
 
 /**
@@ -359,4 +423,79 @@ static void enemy_on_destroyed_cb(game_obj_t * src, game_obj_t * trg)
 
         enemies[i].base.hide(&enemies[i].base);
     }
+}
+
+// ==================== 状态效果函数 ====================
+
+/**
+ * @brief 灼烧定时器回调 — 每1秒造成100伤害
+ */
+static void enemy_burn_timer_cb(game_obj_t *owner, void *usr_data)
+{
+    (void)usr_data;
+    if (owner == NULL || !owner->active) return;
+    enemy_t *e = (enemy_t *)owner;
+    if (!e->burning) return;
+    enemy_modify_hp(owner, -100);
+    e->burn_ticks_left--;
+    if (e->burn_ticks_left <= 0) {
+        e->burning = false;
+    }
+}
+
+/**
+ * @brief 对敌人施加灼烧效果（2秒，每秒100伤害）
+ */
+void enemy_apply_burn(game_obj_t *g)
+{
+    if (g == NULL || !g->active) return;
+    enemy_t *e = (enemy_t *)g;
+    if (e->burning) return; // 不叠加
+    e->burning = true;
+    e->burn_ticks_left = 2;
+    timer_create(g, 1000, TIMER_MODE_REPEAT, enemy_burn_timer_cb, NULL);
+    CONSOLE("[ENEMY] Burn applied to enemy %d", e->pool_index);
+}
+
+/**
+ * @brief 冻结结束回调 — 清除冻结状态
+ */
+static void enemy_freeze_end_cb(game_obj_t *owner, void *usr_data)
+{
+    (void)usr_data;
+    if (owner == NULL || !owner->active) return;
+    enemy_t *e = (enemy_t *)owner;
+    e->frozen = false;
+    CONSOLE("[ENEMY] Freeze ended for enemy %d", e->pool_index);
+}
+
+/**
+ * @brief 对敌人施加冻结效果（2秒）
+ */
+void enemy_apply_freeze(game_obj_t *g)
+{
+    if (g == NULL || !g->active) return;
+    enemy_t *e = (enemy_t *)g;
+    if (e->frozen) return; // 不叠加
+    e->frozen = true;
+    timer_create(g, 2000, TIMER_MODE_ONCE, enemy_freeze_end_cb, NULL);
+    CONSOLE("[ENEMY] Freeze applied to enemy %d", e->pool_index);
+}
+
+/**
+ * @brief 查询敌人是否被冻结
+ */
+bool enemy_is_frozen(game_obj_t *g)
+{
+    if (g == NULL) return false;
+    return ((enemy_t *)g)->frozen;
+}
+
+/**
+ * @brief 外部对敌人造成伤害（火墙等非子弹来源）
+ */
+void enemy_apply_damage(game_obj_t *g, int16_t damage)
+{
+    if (g == NULL || !g->active) return;
+    enemy_modify_hp(g, -damage);
 }

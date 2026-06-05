@@ -15,10 +15,12 @@
 #include "config.h"
 #include "game.h"
 #include "event.h"
+#include "timer.h"
 
 #include "bullet.h"
 #include "bullet_behaviors.h"
 #include "enemy.h"
+#include "flame_wall.h"
 
 /**********************
  *      MACROS
@@ -48,11 +50,9 @@ typedef struct {
     int16_t bullet_damage;
     int16_t bullet_vx, bullet_vy;
     apr_id_t bullet_apr;
-    // X键特殊子弹
-    behave_t skill_x_bullet_behave;
-    int16_t skill_x_damage;
-    int16_t skill_x_vx, skill_x_vy;
-    apr_id_t skill_x_apr;
+    // X键主动技能
+    uint16_t skill_x_cd;
+    void (*skill_x_active)(void);
     // Y键主动技能
     uint16_t skill_y_cd;
     void (*skill_y_active)(void);
@@ -80,14 +80,19 @@ typedef struct {
     int16_t bullet_damage;
     int16_t bullet_vx, bullet_vy;
     apr_id_t bullet_apr;
-    // X键特殊子弹参数
-    behave_t skill_x_behave;
-    int16_t skill_x_damage;
-    int16_t skill_x_vx, skill_x_vy;
-    apr_id_t skill_x_apr;
+    // X键主动技能
+    uint16_t skill_x_cd;
+    void (*skill_x_active)(void);
     // Y键主动技能
     uint16_t skill_y_cd;
     void (*skill_y_active)(void);
+
+    // 护盾
+    lv_obj_t * shield_overlay;
+    bool shield_active;
+
+    // 速度加成 (Verdant)
+    bool speed_boost_active;
 } player_t;
 
  /**********************
@@ -112,11 +117,20 @@ static void player_event_player_die_cb(game_obj_t * src,game_obj_t * trg);
 static void player_event_hit_by_enemy_cb(game_obj_t * src,game_obj_t * trg);
 static void player_event_hit_by_bullet_cb(game_obj_t * src,game_obj_t * trg);
 
+// X键技能函数
+static void player_skill_triple_shot(void);
+static void player_skill_burn_bullet(void);
+static void player_skill_freeze_bullet(void);
+
 // Y键技能函数
-static void player_skill_burst_3way(void);
-static void player_skill_flame_circle(void);
 static void player_skill_shield(void);
+static void player_skill_flame_wall(void);
+static void player_skill_bullet_slow(void);
 static void player_skill_hp_reclaim(void);
+
+// 技能辅助回调
+static void player_shield_end_cb(game_obj_t *owner, void *usr_data);
+static void player_slow_end_cb(game_obj_t *owner, void *usr_data);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -132,61 +146,57 @@ static player_t * player_p = NULL;
  * @brief 4架飞机的配置表
  */
 static const plane_config_t plane_configs[TOTAL_PLANES] = {
-    // Player - 基础飞机
+    // Player - 基础飞机: 护盾(Y) + 三向散射(X)
     {
         .id = 0, .name = "Player",
         .apr_id = APR_PLAYER_DEFAULT,
         .hp_max = 200, .shoot_cd = 200,
         .bullet_damage = 34, .bullet_vx = 0, .bullet_vy = -20,
         .bullet_apr = APR_BULLET_DEFAULT,
-        .skill_x_bullet_behave = { .f = bullet_behave_sine, .usr_data = NULL },
-        .skill_x_damage = 66, .skill_x_vx = 0, .skill_x_vy = -6,
-        .skill_x_apr = APR_BULLET_DEFAULT,
-        .skill_y_cd = 3000,
-        .skill_y_active = player_skill_burst_3way,
-        .skill_desc = "Burst: 3-way shot",
+        .skill_x_cd = 3000,
+        .skill_x_active = player_skill_triple_shot,
+        .skill_y_cd = 5000,
+        .skill_y_active = player_skill_shield,
+        .skill_desc = "Triple: 3-way burst / Shield: 1s invincible",
     },
-    // Ember - 火焰飞机
+    // Ember - 火焰飞机: 火墙(Y) + 灼烧弹(X)
     {
         .id = 1, .name = "Ember",
         .apr_id = APR_PLAYER_EMBER,
         .hp_max = 200, .shoot_cd = 150,
         .bullet_damage = 80, .bullet_vx = 0, .bullet_vy = -25,
         .bullet_apr = APR_BULLET_EMBER,
-        .skill_x_bullet_behave = { .f = bullet_behave_track_player, .usr_data = NULL },
-        .skill_x_damage = 40, .skill_x_vx = 0, .skill_x_vy = -6,
-        .skill_x_apr = APR_BULLET_EMBER,
+        .skill_x_cd = 3000,
+        .skill_x_active = player_skill_burn_bullet,
         .skill_y_cd = 5000,
-        .skill_y_active = player_skill_flame_circle,
-        .skill_desc = "Flame Circle: ring of fire",
+        .skill_y_active = player_skill_flame_wall,
+        .skill_desc = "Burn: DOT bullet / Flame Wall: clearing wave",
     },
-    // Stream - 水流飞机
+    // Stream - 水流飞机: 子弹减速(Y) + 冻结弹(X)
     {
         .id = 2, .name = "Stream",
         .apr_id = APR_PLAYER_STREAM,
         .hp_max = 200, .shoot_cd = 250,
         .bullet_damage = 10, .bullet_vx = 0, .bullet_vy = -20,
         .bullet_apr = APR_BULLET_STREAM,
-        .skill_x_bullet_behave = { .f = bullet_behave_circle, .usr_data = NULL },
-        .skill_x_damage = 30, .skill_x_vx = 0, .skill_x_vy = -6,
-        .skill_x_apr = APR_BULLET_CIRCLE,
-        .skill_y_cd = 8000,
-        .skill_y_active = player_skill_shield,
-        .skill_desc = "Shield: temporary invincible",
+        .skill_x_cd = 3000,
+        .skill_x_active = player_skill_freeze_bullet,
+        .skill_y_cd = 6000,
+        .skill_y_active = player_skill_bullet_slow,
+        .skill_desc = "Freeze: immobilize / Slow: enemy bullets",
     },
-    // Verdant - 自然飞机
+    // Verdant - 自然飞机: 回血(Y) + 速度加成(X长按)
     {
         .id = 3, .name = "Verdant",
         .apr_id = APR_PLAYER_VERDANT,
         .hp_max = 250, .shoot_cd = 220,
         .bullet_damage = 15, .bullet_vx = 0, .bullet_vy = -20,
         .bullet_apr = APR_BULLET_VERDANT,
-        .skill_x_bullet_behave = { .f = bullet_behave_sine, .usr_data = NULL },
-        .skill_x_damage = 50, .skill_x_vx = 0, .skill_x_vy = -8,
-        .skill_x_apr = APR_BULLET_VERDANT,
-        .skill_y_cd = 10000,
+        .skill_x_cd = 0,          // Verdant X 用长按，不用CD
+        .skill_x_active = NULL,   // 在 player_update 中直接处理
+        .skill_y_cd = 6000,
         .skill_y_active = player_skill_hp_reclaim,
-        .skill_desc = "Reclaim: restore 50 HP",
+        .skill_desc = "Speed: double speed / Heal: +50 HP",
     },
 };
 
@@ -238,24 +248,33 @@ void player_init(lv_obj_t * parent)
   player_p->bullet_vx = cfg->bullet_vx;
   player_p->bullet_vy = cfg->bullet_vy;
   player_p->bullet_apr = cfg->bullet_apr;
-  player_p->skill_x_behave = cfg->skill_x_bullet_behave;
-  player_p->skill_x_damage = cfg->skill_x_damage;
-  player_p->skill_x_vx = cfg->skill_x_vx;
-  player_p->skill_x_vy = cfg->skill_x_vy;
-  player_p->skill_x_apr = cfg->skill_x_apr;
+  player_p->skill_x_cd = cfg->skill_x_cd;
+  player_p->skill_x_active = cfg->skill_x_active;
   player_p->skill_y_cd = cfg->skill_y_cd;
   player_p->skill_y_active = cfg->skill_y_active;
+  player_p->shield_active = false;
+  player_p->speed_boost_active = false;
 
   player_p->hp_bar = player_hp_bar_create((game_obj_t *)player_p, parent);
   player_p->base.obj = player_obj_create((game_obj_t *)player_p, parent);
+
+  // 护盾遮罩 - 灰白色半透明矩形
+  player_p->shield_overlay = lv_obj_create(parent);
+  lv_obj_set_size(player_p->shield_overlay, 64, 64);
+  lv_obj_set_style_bg_color(player_p->shield_overlay, lv_color_make(200, 200, 200), 0);
+  lv_obj_set_style_bg_opa(player_p->shield_overlay, LV_OPA_50, 0);
+  lv_obj_set_style_border_width(player_p->shield_overlay, 0, 0);
+  lv_obj_add_flag(player_p->shield_overlay, LV_OBJ_FLAG_HIDDEN);
 
   lv_obj_set_pos(player_p->base.obj, player_p->base.x, player_p->base.y);
 
   game_register_obj((game_obj_t *)player_p);
 
   // 按键行为
-  // X 特殊子弹
-  input_sw_register_key_down_callback(KEY_EVENT_X, player_x_pressed_handler, 5000);
+  // X 主动技能
+  input_sw_register_key_down_callback(KEY_EVENT_X, player_x_pressed_handler, player_p->skill_x_cd);
+  CONSOLE("[DEBUG-INIT] X key registered: cd=%d handler=%p active_func=%p",
+          player_p->skill_x_cd, (void *)player_x_pressed_handler, (void *)player_p->skill_x_active);
   // A 射击
   input_sw_register_key_down_callback(KEY_EVENT_A, player_fire, player_p->shoot_cd);
   // Y 主动技能
@@ -275,6 +294,9 @@ void player_init(lv_obj_t * parent)
   CONSOLE_INFO("    speed: %f",player_p->base.speed);
   CONSOLE_INFO("    HP_max: %d",player_p->hp_max);
   CONSOLE_INFO("    shoot_cd: %dms",player_p->shoot_cd);
+  CONSOLE_INFO("    bullet_damage: %d", player_p->bullet_damage);
+  CONSOLE_INFO("    skill_x_cd: %dms", player_p->skill_x_cd);
+  CONSOLE_INFO("    skill_y_cd: %dms", player_p->skill_y_cd);
   CONSOLE_INFO("");
 
   return;
@@ -340,6 +362,16 @@ void player_apply_config(int plane_id)
     // 切换外观
     apr_apply(&player_p->base, cfg->apr_id);
 
+    // 取消旧的按键回调
+    input_sw_unregister_key_down_callback(KEY_EVENT_X, player_x_pressed_handler);
+    input_sw_unregister_key_down_callback(KEY_EVENT_A, player_fire);
+    input_sw_unregister_key_down_callback(KEY_EVENT_Y, player_skill_y_fire);
+
+    // 重置护盾
+    player_p->shield_active = false;
+    lv_obj_add_flag(player_p->shield_overlay, LV_OBJ_FLAG_HIDDEN);
+    player_p->speed_boost_active = false;
+
     // 更新游戏性参数
     player_p->current_plane_id = plane_id;
     player_p->hp_max = cfg->hp_max;
@@ -349,19 +381,28 @@ void player_apply_config(int plane_id)
     player_p->bullet_vx = cfg->bullet_vx;
     player_p->bullet_vy = cfg->bullet_vy;
     player_p->bullet_apr = cfg->bullet_apr;
-    player_p->skill_x_behave = cfg->skill_x_bullet_behave;
-    player_p->skill_x_damage = cfg->skill_x_damage;
-    player_p->skill_x_vx = cfg->skill_x_vx;
-    player_p->skill_x_vy = cfg->skill_x_vy;
-    player_p->skill_x_apr = cfg->skill_x_apr;
+    player_p->skill_x_cd = cfg->skill_x_cd;
+    player_p->skill_x_active = cfg->skill_x_active;
     player_p->skill_y_cd = cfg->skill_y_cd;
     player_p->skill_y_active = cfg->skill_y_active;
+
+    // 重新注册按键回调 (Verdant X 用长按/状态检测，不注册 key_down)
+    if (cfg->skill_x_cd > 0 && cfg->skill_x_active != NULL) {
+        input_sw_register_key_down_callback(KEY_EVENT_X, player_x_pressed_handler, cfg->skill_x_cd);
+        CONSOLE("[DEBUG-CFG] X key re-registered: cd=%d handler=%p active=%p",
+                cfg->skill_x_cd, (void *)player_x_pressed_handler, (void *)cfg->skill_x_active);
+    } else {
+        CONSOLE("[DEBUG-CFG] X key NOT registered: cd=%d active_func=%p",
+                cfg->skill_x_cd, (void *)cfg->skill_x_active);
+    }
+    input_sw_register_key_down_callback(KEY_EVENT_A, player_fire, player_p->shoot_cd);
+    input_sw_register_key_down_callback(KEY_EVENT_Y, player_skill_y_fire, cfg->skill_y_cd);
 
     // 更新HP显示
     lv_bar_set_range(player_p->hp_bar, 0, player_p->hp_max);
     lv_bar_set_value(player_p->hp_bar, player_p->hp, LV_ANIM_OFF);
 
-    CONSOLE_INFO("Plane changed to: %s (HP=%d, bullet_dmg=%d)", cfg->name, cfg->hp_max, cfg->bullet_damage);
+    CONSOLE_INFO(" Plane changed to: %s (HP=%d, bullet_dmg=%d, x_cd=%d, y_cd=%d)",cfg->name, cfg->hp_max, cfg->bullet_damage, cfg->skill_x_cd, cfg->skill_y_cd);
 }
 
 /**
@@ -389,8 +430,20 @@ static void player_update(game_obj_t * g)
   if (fsm_get_state() != GS_PLAY || !player_p->base.active) {
     return ;
   }
+
+  // Verdant 速度加成: 长按X键
+  if (player_p->current_plane_id == 3) {
+    player_p->speed_boost_active = input_sw_is_key_down(KEY_EVENT_X);
+  }
+
   g->vx = joystick_get_x() / 127.0f * 7;
   g->vy = joystick_get_y() / 127.0f * 7;
+
+  if (player_p->speed_boost_active) {
+    g->vx *= 2;
+    g->vy *= 2;
+  }
+
   player_move(g);
 }
 
@@ -455,6 +508,11 @@ static void player_move(game_obj_t * g)
 
   // CONSOLE_INFO("Player moved by dx: %d, dy: %d. New position - x: %d, y: %d", dx, dy, player_p->base.x, player_p->base.y);
 
+  // 护盾遮罩跟随
+  if (player_p->shield_active) {
+    lv_obj_set_pos(player_p->shield_overlay, player_p->base.x, player_p->base.y);
+  }
+
   return ;
 }
 
@@ -501,21 +559,21 @@ static lv_obj_t * player_obj_create(game_obj_t * g, lv_obj_t * parent)
  */
 static void player_x_pressed_handler()
 {
+    CONSOLE("[DEBUG-X] X handler called, active=%d state=%d skill_x_active=%p",
+            player_p->base.active, fsm_get_state(), (void *)player_p->skill_x_active);
+
     if (!player_p->base.active || fsm_get_state() != GS_PLAY) {
+        CONSOLE("[DEBUG-X] X handler blocked: active=%d state=%d",
+                player_p->base.active, fsm_get_state());
         return ;
     }
-    // 追踪弹需要把玩家指针作为usr_data传给behave
-    behave_t behave = player_p->skill_x_behave;
-    if (behave.f == bullet_behave_track_player) {
-        behave.usr_data = (void *)player_get_base();
+    // 派遣到各飞机的X技能函数
+    if (player_p->skill_x_active) {
+        CONSOLE("[DEBUG-X] Calling skill_x_active (plane=%d)", player_p->current_plane_id);
+        player_p->skill_x_active();
+    } else {
+        CONSOLE("[DEBUG-X] skill_x_active is NULL!");
     }
-    bullet_create((game_obj_t *)player_p,
-                  player_p->base.x + player_p->base.apr->w / 2 - player_p->base.apr->w / 16,
-                  player_p->base.y - player_p->base.apr->h / 4,
-                  player_p->skill_x_vx, player_p->skill_x_vy,
-                  player_p->skill_x_damage,
-                  behave,
-                  player_p->skill_x_apr);
     return ;
 }
 
@@ -550,64 +608,123 @@ static void player_skill_y_fire()
     }
 }
 
-// ==================== Y键技能实现 ====================
+// ==================== 技能实现 ====================
+
+// ---------- X键技能 ----------
 
 /**
- * @brief 三向散射 — 发射3颗子弹
+ * @brief 三向散射 (Player X) — 发射3颗子弹
  */
-static void player_skill_burst_3way(void)
+static void player_skill_triple_shot(void)
 {
     game_obj_t *g = (game_obj_t *)player_p;
     lv_coord_t cx = g->x + g->apr->w / 2 - g->apr->w / 16;
     lv_coord_t cy = g->y - g->apr->h / 4;
 
-    // 中间
     bullet_create(g, cx, cy, 0, player_p->bullet_vy,
                   player_p->bullet_damage, NULL_BEHAVE, player_p->bullet_apr);
-    // 左斜
     bullet_create(g, cx, cy, -3, player_p->bullet_vy,
                   player_p->bullet_damage, NULL_BEHAVE, player_p->bullet_apr);
-    // 右斜
     bullet_create(g, cx, cy, 3, player_p->bullet_vy,
                   player_p->bullet_damage, NULL_BEHAVE, player_p->bullet_apr);
 }
 
 /**
- * @brief 火焰圈 — 发射8颗子弹围成圆圈
+ * @brief 灼烧弹 (Ember X) — 发射带灼烧标志的子弹
  */
-static void player_skill_flame_circle(void)
+static void player_skill_burn_bullet(void)
 {
     game_obj_t *g = (game_obj_t *)player_p;
     lv_coord_t cx = g->x + g->apr->w / 2 - g->apr->w / 16;
-    lv_coord_t cy = g->y + g->apr->h / 2;
+    lv_coord_t cy = g->y - g->apr->h / 4;
 
-    // 8方向预计算速度（避免浮点/math库依赖）
-    static const int16_t circle_vx[8] = { 5,  3,  0, -3, -5, -3,  0,  3};
-    static const int16_t circle_vy[8] = { 0,  3,  5,  3,  0, -3, -5, -3};
-
-    for (int i = 0; i < 8; i++) {
-        bullet_create(g, cx, cy, circle_vx[i], circle_vy[i],
-                      player_p->skill_x_damage / 2,
-                      NULL_BEHAVE, APR_BULLET_EMBER);
+    game_obj_t *bullet = bullet_create(g, cx, cy, 0, -10,
+                                        40, NULL_BEHAVE, APR_BULLET_EMBER);
+    if (bullet) {
+        bullet_set_flags(bullet, BULLET_FLAG_BURN);
     }
 }
 
 /**
- * @brief 护盾 — 临时无敌（通过behave实现持续效果）
+ * @brief 冻结弹 (Stream X) — 发射带冻结标志的子弹
+ */
+static void player_skill_freeze_bullet(void)
+{
+    game_obj_t *g = (game_obj_t *)player_p;
+    lv_coord_t cx = g->x + g->apr->w / 2 - g->apr->w / 16;
+    lv_coord_t cy = g->y - g->apr->h / 4;
+
+    game_obj_t *bullet = bullet_create(g, cx, cy, 0, -10,
+                                        30, NULL_BEHAVE, APR_BULLET_STREAM);
+    if (bullet) {
+        bullet_set_flags(bullet, BULLET_FLAG_FREEZE);
+    }
+}
+
+// ---------- Y键技能 ----------
+
+/**
+ * @brief 护盾 (Player Y) — 1秒无敌 + 反射圆形/三角形子弹
  */
 static void player_skill_shield(void)
 {
-    CONSOLE_INFO("Shield activated! (placeholder)");
-    // 护盾实现思路：设置一个无敌标记+定时器
-    // 这里先做简单的占位实现，后续可扩展
-    // 可以考虑把 shield 实现为 behave（被动持续回盾）
-    if (player_p->hp < player_p->hp_max) {
-        player_hp_modify(20); // 临时: 恢复20HP
-    }
+    if (player_p->shield_active) return; // 已在护盾中
+    player_p->shield_active = true;
+    lv_obj_clear_flag(player_p->shield_overlay, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_pos(player_p->shield_overlay, player_p->base.x, player_p->base.y);
+
+    timer_create((game_obj_t *)player_p, 1000, TIMER_MODE_ONCE,
+                 player_shield_end_cb, NULL);
+    CONSOLE("[PLAYER] Shield activated!");
 }
 
 /**
- * @brief 生命回收 — 立即恢复50HP
+ * @brief 护盾结束回调
+ */
+static void player_shield_end_cb(game_obj_t *owner, void *usr_data)
+{
+    (void)owner; (void)usr_data;
+    if (player_p == NULL) return;
+    player_p->shield_active = false;
+    lv_obj_add_flag(player_p->shield_overlay, LV_OBJ_FLAG_HIDDEN);
+    CONSOLE("[PLAYER] Shield expired");
+}
+
+/**
+ * @brief 火墙 (Ember Y) — 向前发射火墙
+ */
+static void player_skill_flame_wall(void)
+{
+    game_obj_t *g = (game_obj_t *)player_p;
+    lv_coord_t cx = g->x + g->apr->w / 2 - 32;
+    lv_coord_t cy = g->y - g->apr->h / 2;
+    flame_wall_create(cx, cy, -8);
+    CONSOLE("[PLAYER] Flame Wall launched!");
+}
+
+/**
+ * @brief 子弹减速 (Stream Y) — 敌方子弹速度减半2秒
+ */
+static void player_skill_bullet_slow(void)
+{
+    bullet_set_enemy_slow(true);
+    timer_create((game_obj_t *)player_p, 2000, TIMER_MODE_ONCE,
+                 player_slow_end_cb, NULL);
+    CONSOLE("[PLAYER] Bullet Slow activated!");
+}
+
+/**
+ * @brief 减速结束回调
+ */
+static void player_slow_end_cb(game_obj_t *owner, void *usr_data)
+{
+    (void)owner; (void)usr_data;
+    bullet_set_enemy_slow(false);
+    CONSOLE("[PLAYER] Bullet Slow expired");
+}
+
+/**
+ * @brief 生命回收 (Verdant Y) — 立即恢复50HP
  */
 static void player_skill_hp_reclaim(void)
 {
@@ -656,4 +773,12 @@ static void player_event_hit_by_bullet_cb(game_obj_t * src, game_obj_t * trg)
 {
   int16_t damage = bullet_get_damage(src);
   player_hp_modify(-damage);
+}
+
+/**
+ * @brief 查询护盾是否激活（供碰撞检测使用）
+ */
+bool player_is_shield_active(void)
+{
+    return player_p ? player_p->shield_active : false;
 }

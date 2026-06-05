@@ -10,6 +10,7 @@
 
 #include "tools.h"
 #include "lvgl.h"
+#include <string.h>
 
 /**********************
  *      MACROS
@@ -114,8 +115,9 @@ void input_sw_register_long_press_callback(key_event_t event, key_event_callback
             long_press_timers[event][i].func = callback;
             long_press_timers[event][i].tick_get = play_tick_get;
             long_press_timers[event][i].delay_ms = cycle_delay_ms;
-            long_press_timers[event][i].last_tick = 0;
-            CONSOLE_INFO("Long press callback registered for event %d at index %d with cycle delay %d ms", event, i, cycle_delay_ms);
+            // 设置 last_tick 使得首次长按立即触发
+            long_press_timers[event][i].last_tick = play_tick_get() - cycle_delay_ms - 1;
+            console_out("[input_sw_register_long_press_callback] Long press callback registered for event %d at index %d with cycle delay %d ms\n", event, i, cycle_delay_ms);
             return ;
         }
     }
@@ -145,8 +147,9 @@ void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t
             key_down_timers[event][i].func = callback;
             key_down_timers[event][i].tick_get = play_tick_get;
             key_down_timers[event][i].delay_ms = cycle_delay_ms;
-            key_down_timers[event][i].last_tick = 0;
-            CONSOLE_INFO("key down callback registered for event %d at index %d with cycle delay %d ms", event, i, cycle_delay_ms);
+            // 设置 last_tick 使得首次按下立即触发
+            key_down_timers[event][i].last_tick = play_tick_get() - cycle_delay_ms - 1;
+            CONSOLE("[INFO] key down callback registered for event %d at index %d with cycle delay %d ms\n", event, i, cycle_delay_ms);
             return ;
         }
     }
@@ -199,13 +202,85 @@ static void input_sw_dispatch() {
     }
 
     // 处理按下事件
+    // X键诊断
+    static int x_key_check_count = 0;
+    if (x_key_check_count < 5 && key_down(KEY_EVENT_X + 1)) {
+        CONSOLE("[DEBUG-DISP] key_down(KEY_X)=true, callbacks[0]=%p callbacks[1]=%p",
+                (void *)key_down_callbacks[KEY_EVENT_X][0],
+                (void *)key_down_callbacks[KEY_EVENT_X][1]);
+        x_key_check_count++;
+    }
 
     for (int i = 0; i < KEY_EVENT_COUNT; i++) {
     if (!key_down(i + 1)) continue; // 如果当前按键没有被按下，跳过处理
     for (int j = 0; j < KEY_EVENT_MAX; j++) {
         if (key_down_callbacks[i][j] != NULL) {
                 non_blocking_delay(&key_down_timers[i][j]);
+            } else if (i == KEY_EVENT_X) {
+                // 仅X键: 检测到按下但无回调注册
+                static int x_no_cb_log = 0;
+                if (x_no_cb_log < 3) {
+                    CONSOLE("[DEBUG-DISP] KEY_X pressed but no callback at slot %d!", j);
+                    x_no_cb_log++;
+                }
             }
         }
     }
+}
+
+/**
+ * @brief 注销按键按下回调函数
+ */
+void input_sw_unregister_key_down_callback(key_event_t event, key_event_callback_t callback)
+{
+    if (event >= KEY_EVENT_COUNT) return;
+    for (int i = 0; i < KEY_EVENT_MAX; i++) {
+        if (key_down_callbacks[event][i] == callback) {
+            key_down_callbacks[event][i] = NULL;
+            memset(&key_down_timers[event][i], 0, sizeof(non_blocking_timer_t));
+        }
+    }
+}
+
+/**
+ * @brief 注销按键长按回调函数
+ */
+void input_sw_unregister_long_press_callback(key_event_t event, key_event_callback_t callback)
+{
+    if (event >= KEY_EVENT_COUNT) return;
+    for (int i = 0; i < KEY_EVENT_MAX; i++) {
+        if (long_press_callbacks[event][i] == callback) {
+            long_press_callbacks[event][i] = NULL;
+            memset(&long_press_timers[event][i], 0, sizeof(non_blocking_timer_t));
+        }
+    }
+}
+
+/**
+ * @brief 注销按键短按回调函数
+ */
+void input_sw_unregister_press_callback(key_event_t event, key_event_callback_t callback)
+{
+    if (event >= KEY_EVENT_COUNT) return;
+    for (int i = 0; i < KEY_EVENT_MAX; i++) {
+        if (press_callbacks[event][i] == callback) {
+            press_callbacks[event][i] = NULL;
+        }
+    }
+}
+
+/**
+ * @brief 查询按键是否处于按下状态
+ */
+bool input_sw_is_key_down(key_event_t event)
+{
+    return key_down((key_code_t)(event + 1));
+}
+
+/**
+ * @brief 查询按键是否处于长按状态
+ */
+bool input_sw_is_key_long_press(key_event_t event)
+{
+    return key_long_press((key_code_t)(event + 1));
 }

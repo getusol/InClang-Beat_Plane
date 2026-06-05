@@ -7,6 +7,7 @@
  *********************/
 
 #include "enemy_behaviors.h"
+#include "enemy.h"
 #include "bullet.h"
 #include "bullet_behaviors.h"
 #include "tools.h"
@@ -56,6 +57,7 @@ void enemy_behave_normal(game_obj_t * g, void * v)
        return;
    }
    if (g == NULL || g->active == false) return ;
+   if (enemy_is_frozen(g)) return; // 冻结时不能行动
    if (!g->timered) {
     timer_create(g, 500, TIMER_MODE_REPEAT, enemy_move_rand_timer, NULL);
     timer_create(g, 1500, TIMER_MODE_REPEAT, enemy_normal_shoot_timer, NULL);
@@ -80,6 +82,7 @@ void enemy_behave_boss(game_obj_t * g, void * v)
         return;
     }
     if (g == NULL || !g->active) return;
+    if (enemy_is_frozen(g)) return; // 冻结时不能行动
 
     if (!g->timered) {
         g->vx = 0;
@@ -104,6 +107,7 @@ void enemy_behave_boss(game_obj_t * g, void * v)
 static void enemy_move_rand_timer(game_obj_t * g, void * v)
 {
     (void) v;
+    if (enemy_is_frozen(g)) return; // 冻结时不能行动
 
     if (g->y < 40) {
         g->vx = 0;
@@ -121,6 +125,7 @@ static void enemy_move_rand_timer(game_obj_t * g, void * v)
 static void enemy_normal_shoot_timer(game_obj_t * g, void * v)
 {
     if (g == NULL || g->active == false) return ;
+    if (enemy_is_frozen(g)) return; // 冻结时不能射击
     int8_t speed = lv_rand(10, 33);
     bullet_create(g, g->x + g->apr->w / 2 - 6, g->y + g->apr->h, 0, speed, 5, NULL_BEHAVE, APR_BULLET_CIRCLE);
 }
@@ -130,6 +135,7 @@ static void enemy_normal_shoot_timer(game_obj_t * g, void * v)
 static void boss_master_timer_cb(game_obj_t * g, void * v)
 {
     if (g == NULL || !g->active) return;
+    if (enemy_is_frozen(g)) return; // 冻结时不能攻击
 
     int phase = (boss_tick / BOSS_TICKS_PER_PHASE) % 2;
     int phase_tick = boss_tick % BOSS_TICKS_PER_PHASE;

@@ -38,6 +38,7 @@ typedef struct bullet_t
     int16_t damage;     // 子弹伤害
     game_obj_t *source; // 子弹发射源
     uint16_t pool_index; // 对象池索引
+    uint8_t flags;       // 特殊效果标志 BULLET_FLAG_*
 } bullet_t;
 
  /**********************
@@ -63,6 +64,7 @@ static void bullet_event_hit_player_cb(game_obj_t * scr,game_obj_t * trg);
 static bullet_t bullets[MAX_BULLET_COUNT];                      // 子弹对象池
 static pool_t bullet_pool;                                      // 子弹对象池管理器
 static uint16_t bullet_free_indices[MAX_BULLET_COUNT];          // 子弹对象池空闲索引栈
+static bool enemy_slow_active = false;                          // 敌方子弹减速开关
 
  /**********************
  *   GLOBAL FUNCTIONS
@@ -153,6 +155,7 @@ game_obj_t * bullet_create(game_obj_t *source,
     bullets[index].pool_index = index;
     bullets[index].source = source;
     bullets[index].damage = damage;
+    bullets[index].flags = 0;
     bullets[index].base.vx = vx;
     bullets[index].base.vy = vy;
     bullets[index].base.x = x;
@@ -251,10 +254,23 @@ void bullet_move(game_obj_t * g)
 {
     if (g == NULL) return ;
     if (g->active == false) return ;
-    if (g->vx == 0 && g->vy == 0) return ;
 
-    g -> x += g->vx;
-    g -> y += g->vy;
+    int16_t effective_vx = g->vx;
+    int16_t effective_vy = g->vy;
+
+    // 敌方子弹减速: 减速时敌方子弹速度减半
+    if (enemy_slow_active) {
+        game_obj_t *src = bullet_get_source(g);
+        if (src != NULL && src->type == GAME_OBJ_TYPE_ENEMY) {
+            effective_vx /= 2;
+            effective_vy /= 2;
+        }
+    }
+
+    if (effective_vx == 0 && effective_vy == 0) return ;
+
+    g->x += effective_vx;
+    g->y += effective_vy;
 
     lv_obj_set_pos(g->obj, g->x, g->y);
 
@@ -283,4 +299,47 @@ static void bullet_event_hit_enemy_cb(game_obj_t * scr,game_obj_t * trg)
 static void bullet_event_hit_player_cb(game_obj_t * scr,game_obj_t * trg)
 {
     scr->hide(scr);
+}
+
+/**
+ * @brief 设置子弹特殊效果标志
+ */
+void bullet_set_flags(game_obj_t *bullet, uint8_t flags)
+{
+    if (bullet == NULL) return;
+    ((bullet_t *)bullet)->flags = flags;
+}
+
+/**
+ * @brief 获取子弹特殊效果标志
+ */
+uint8_t bullet_get_flags(game_obj_t *bullet)
+{
+    if (bullet == NULL) return 0;
+    return ((bullet_t *)bullet)->flags;
+}
+
+/**
+ * @brief 设置子弹发射源（反射弹用）
+ */
+void bullet_set_source(game_obj_t *bullet, game_obj_t *source)
+{
+    if (bullet == NULL) return;
+    ((bullet_t *)bullet)->source = source;
+}
+
+/**
+ * @brief 设置敌方子弹减速开关
+ */
+void bullet_set_enemy_slow(bool enabled)
+{
+    enemy_slow_active = enabled;
+}
+
+/**
+ * @brief 获取敌方子弹减速开关状态
+ */
+bool bullet_get_enemy_slow(void)
+{
+    return enemy_slow_active;
 }
