@@ -21,6 +21,7 @@
 #include "apr.h"
 #include "ui_comm.h"
 #include "ui_setting.h"
+#include "multiplayer.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,6 +91,7 @@ void ui_run()
           break;
         case GS_MENU  :
         //CONSOLE_INFO("Come to menu");
+          mp_exit_game(); //临时修复
           audio_stop(AUDIO_CHAN_BGM);
           ui_menu_run();
           break;

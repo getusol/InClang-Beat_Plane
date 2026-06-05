@@ -26,8 +26,8 @@ typedef enum {
     MP_STATE_INVITING,       /**< 已发送邀请，等待对方响应 */
     MP_STATE_WAITING,        /**< 收到邀请，等待本地用户响应 */
     MP_STATE_CONNECTED,      /**< 双方已建立联机连接 */
-    MP_STATE_GAME_STARTED,   /**< 联机游戏进行中 */
-    MP_STATE_DISCONNECTED,    /**< 连接已断开 */
+    MP_STATE_GAME_PLAY,      /**< 联机游戏进行中 */
+    MP_STATE_DISCONNECTED,   /**< 连接已断开 */
 
     MP_STATE_MAX,            /**< 最大状态值，用于数组索引和状态机状态_STATE_MAX */
 } mp_state_t;

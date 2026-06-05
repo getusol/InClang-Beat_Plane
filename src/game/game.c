@@ -31,7 +31,11 @@
  *      MACROS
  **********************/
 
+#ifdef SIMULATOR
+#define MAX_GAME_OBJ_COUNT (MAX_BULLET_COUNT + 2 + MAX_ENEMY_COUNT + MAX_COIN_COUNT + MAX_FLAME_WALL_COUNT)
+#else
 #define MAX_GAME_OBJ_COUNT (MAX_BULLET_COUNT + 1 + MAX_ENEMY_COUNT + MAX_COIN_COUNT + MAX_FLAME_WALL_COUNT)
+#endif
 
 
 /**********************
@@ -210,12 +214,22 @@ static void check_collisions(void)
 
                 // 1. 子弹 vs 敌人
                 if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) {
-                    if (bullet_get_source(a) == player_get_base()) {
+                    game_obj_t *src = bullet_get_source(a);
+                    if (src == player_get_base()
+#ifdef SIMULATOR
+                        || src == player_get_p2_base()
+#endif
+                    ) {
                         event_dispatch(EVENT_BULLET_HIT_ENEMY, a, b);
                     }
                 }
                 else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) {
-                    if (bullet_get_source(b) == player_get_base()) {
+                    game_obj_t *src = bullet_get_source(b);
+                    if (src == player_get_base()
+#ifdef SIMULATOR
+                        || src == player_get_p2_base()
+#endif
+                    ) {
                         event_dispatch(EVENT_BULLET_HIT_ENEMY, b, a);
                     }
                 }
@@ -240,8 +254,7 @@ static void check_collisions(void)
                 // 4.子弹 vs 玩家 (护盾反射)
                 else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET) {
                     if (bullet_get_source(b) != a) {
-                        if (player_is_shield_active()) {
-                            // 护盾反射圆形和三角形子弹
+                        if (player_is_shield_active_for(a)) {
                             const apr_t *bullet_apr = b->apr;
                             if (bullet_apr == apr_get(APR_BULLET_CIRCLE) ||
                                 bullet_apr == apr_get(APR_BULLET_TRIANGLE)) {
@@ -249,14 +262,13 @@ static void check_collisions(void)
                                 bullet_set_source(b, a);
                                 bullet_set_flags(b, bullet_get_flags(b) | BULLET_FLAG_REFLECTED);
                             }
-                            // 其他子弹: 无伤害通过
                         } else {
                             event_dispatch(EVENT_BULLET_HIT_PLAYER, b, a);
                         }
                     }
                 } else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER) {
                     if (bullet_get_source(a) != b) {
-                        if (player_is_shield_active()) {
+                        if (player_is_shield_active_for(b)) {
                             const apr_t *bullet_apr = a->apr;
                             if (bullet_apr == apr_get(APR_BULLET_CIRCLE) ||
                                 bullet_apr == apr_get(APR_BULLET_TRIANGLE)) {
@@ -278,16 +290,22 @@ static void check_collisions(void)
                     enemy_apply_damage(a, 20);
                     b->hide(b);
                 }
-                // 6. 火墙 vs 子弹 (清除敌方子弹)
+                // 6. 火墙 vs 子弹 (清除敌方子弹，保留 P1/P2 的子弹)
                 else if (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_BULLET) {
-                    if (bullet_get_source(b) != player_get_base()) {
-                        b->hide(b);
-                    }
+                    game_obj_t *bs = bullet_get_source(b);
+                    if (bs != player_get_base()
+#ifdef SIMULATOR
+                        && bs != player_get_p2_base()
+#endif
+                    ) { b->hide(b); }
                 }
                 else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_FLAME_WALL) {
-                    if (bullet_get_source(a) != player_get_base()) {
-                        a->hide(a);
-                    }
+                    game_obj_t *bs = bullet_get_source(a);
+                    if (bs != player_get_base()
+#ifdef SIMULATOR
+                        && bs != player_get_p2_base()
+#endif
+                    ) { a->hide(a); }
                 }
 
 

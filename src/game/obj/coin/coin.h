@@ -33,5 +33,10 @@ game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
 int coin_get_num(void);
 void coin_add_num(int delta);
 void coin_set_num(int value);
+int coin_get_p2_num(void);
+void coin_set_p2_num(int value);
+#ifdef SIMULATOR
+void coin_add_p2_num(int delta);
+#endif
 
 #endif // #ifndef __COIN_H__

@@ -27,6 +27,9 @@
   **********************/
 
 static void input_sw_dispatch();
+#ifdef SIMULATOR
+static key_code_t event_to_key_code(key_event_t event);
+#endif
 
 /**********************
  *  STATIC VARIABLES
@@ -162,6 +165,18 @@ void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t
  **********************/
 
 /**
+ * @brief 将 key_event_t 映射为 key_code_t
+ * @note RKEY 值从 0x80 开始，需要特殊处理
+ */
+static key_code_t event_to_key_code(key_event_t event) {
+#ifdef SIMULATOR
+    if (event >= KEY_EVENT_RKEY_A)
+        return (key_code_t)(RKEY_A + (event - KEY_EVENT_RKEY_A));
+#endif
+    return (key_code_t)(event + 1);
+}
+
+/**
  * @brief 按键分发函数，负责将扫描到的按键事件分发给相应的处理函数
  */
 static void input_sw_dispatch() {
@@ -182,7 +197,7 @@ static void input_sw_dispatch() {
     // 处理短按事件
 
     for (int i = 0; i < KEY_EVENT_COUNT; i++) {
-        if (!key_pressed(i + 1)) continue; // 如果当前按键没有被按下，跳过处理
+        if (!key_pressed(event_to_key_code(i))) continue;
         for (int j = 0; j < KEY_EVENT_MAX; j++) {
             if (press_callbacks[i][j] != NULL) {
                 press_callbacks[i][j]();
@@ -193,7 +208,7 @@ static void input_sw_dispatch() {
     // 处理长按事件
 
     for (int i = 0; i < KEY_EVENT_COUNT; i++) {
-        if (!key_long_press(i + 1)) continue; // 如果当前按键没有被按下，跳过处理
+        if (!key_long_press(event_to_key_code(i))) continue;
         for (int j = 0; j < KEY_EVENT_MAX; j++) {
             if (long_press_callbacks[i][j] != NULL) {
                 non_blocking_delay(&long_press_timers[i][j]);
@@ -204,7 +219,7 @@ static void input_sw_dispatch() {
     // 处理按下事件
     // X键诊断
     static int x_key_check_count = 0;
-    if (x_key_check_count < 5 && key_down(KEY_EVENT_X + 1)) {
+    if (x_key_check_count < 5 && key_down(event_to_key_code(KEY_EVENT_X))) {
         CONSOLE_INFO("key_down(KEY_X)=true, callbacks[0]=%p callbacks[1]=%p",
                 (void *)key_down_callbacks[KEY_EVENT_X][0],
                 (void *)key_down_callbacks[KEY_EVENT_X][1]);
@@ -212,7 +227,7 @@ static void input_sw_dispatch() {
     }
 
     for (int i = 0; i < KEY_EVENT_COUNT; i++) {
-    if (!key_down(i + 1)) continue; // 如果当前按键没有被按下，跳过处理
+    if (!key_down(event_to_key_code(i))) continue;
     for (int j = 0; j < KEY_EVENT_MAX; j++) {
         if (key_down_callbacks[i][j] != NULL) {
                 non_blocking_delay(&key_down_timers[i][j]);
@@ -274,13 +289,10 @@ void input_sw_unregister_press_callback(key_event_t event, key_event_callback_t 
  */
 bool input_sw_is_key_down(key_event_t event)
 {
-    return key_down((key_code_t)(event + 1));
+    return key_down(event_to_key_code(event));
 }
 
-/**
- * @brief 查询按键是否处于长按状态
- */
 bool input_sw_is_key_long_press(key_event_t event)
 {
-    return key_long_press((key_code_t)(event + 1));
+    return key_long_press(event_to_key_code(event));
 }

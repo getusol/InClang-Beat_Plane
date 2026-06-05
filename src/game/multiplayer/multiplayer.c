@@ -106,7 +106,7 @@ void mp_update(void)
     case MP_STATE_INVITING:     handle_state_inviting();     break;
     case MP_STATE_WAITING:      handle_state_waiting();      break;
     case MP_STATE_CONNECTED:    handle_state_connected();    break;
-    case MP_STATE_GAME_STARTED: handle_state_game_started(); break;
+    case MP_STATE_GAME_PLAY: handle_state_game_started(); break;
     case MP_STATE_DISCONNECTED: handle_state_disconnected(); break;
     default:
         CONSOLE_WARNING("mp_update: unknown state %d, resetting to IDLE.", current_state);
@@ -208,12 +208,12 @@ void mp_cancel_invite(void)
 
 /**
  * @brief 主动断开联机会话
- * @note 在 MP_STATE_CONNECTED 或 MP_STATE_GAME_STARTED 时有效
+ * @note 在 MP_STATE_CONNECTED 或 MP_STATE_GAME_PLAY 时有效
  *       成功后状态切换为 MP_STATE_DISCONNECTED
  */
 void mp_disconnect(void)
 {
-    if (current_state != MP_STATE_CONNECTED && current_state != MP_STATE_GAME_STARTED) {
+    if (current_state != MP_STATE_CONNECTED && current_state != MP_STATE_GAME_PLAY) {
         CONSOLE_WARNING("mp_disconnect: not connected (current=%d)", current_state);
         return;
     }
@@ -228,7 +228,7 @@ void mp_disconnect(void)
  * @brief 标记联机游戏开始
  * @return true=操作成功
  * @note 仅在 MP_STATE_CONNECTED 时有效
- *       成功后状态切换为 MP_STATE_GAME_STARTED
+ *       成功后状态切换为 MP_STATE_GAME_PLAY
  */
 bool mp_start_game(void)
 {
@@ -237,7 +237,7 @@ bool mp_start_game(void)
         return false;
     }
 
-    change_state(MP_STATE_GAME_STARTED);
+    change_state(MP_STATE_GAME_PLAY);
     CONSOLE_INFO("Multiplayer game started.");
     return true;
 }
@@ -308,6 +308,16 @@ bool mp_event_unregister(mp_event_t event, mp_event_cb_t callback)
     return false;
 }
 
+/**
+ * @brief 退出游戏 将GAME_PLAY变为CONNECTED
+ */
+void mp_exit_game(void)
+{
+    if (current_state == MP_STATE_GAME_PLAY) {
+        change_state(MP_STATE_CONNECTED);
+    }
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -352,7 +362,7 @@ static bool can_accept_invite(void)
 static void change_state(mp_state_t new_state)
 {
     static const char *state_names[] = {
-        "IDLE", "INVITING", "WAITING", "CONNECTED", "GAME_STARTED", "DISCONNECTED"
+        "IDLE", "INVITING", "WAITING", "CONNECTED", "GAME_PLAY", "DISCONNECTED"
     };
     CONSOLE_INFO("mp_state: %s -> %s", state_names[current_state], state_names[new_state]);
     current_state = new_state;

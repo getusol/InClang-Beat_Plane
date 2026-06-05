@@ -35,6 +35,9 @@ typedef enum audio_id_t
     AUDIO_BOSSDIE,
     AUDIO_MOUSEOPEN,
     AUDIO_MOUSECLOSE,
+    AUDIO_BOSSATTACK,
+    AUDIO_PLAYERFIRE,
+    AUDIO_ENEMYATTACK,
 
     AUDIO_MAX,
 } audio_id_t;

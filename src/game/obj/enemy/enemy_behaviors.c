@@ -8,6 +8,7 @@
 
 #include "enemy_behaviors.h"
 #include "enemy.h"
+#include <stdlib.h>
 #include "bullet.h"
 #include "bullet_behaviors.h"
 #include "tools.h"
@@ -137,6 +138,7 @@ static void enemy_normal_shoot_timer(game_obj_t * g, void * v)
     if (g == NULL || g->active == false) return ;
     if (enemy_is_frozen(g)) return; // 冻结时不能射击
     int8_t speed = lv_rand(10, 33);
+    audio_load(AUDIO_ENEMYATTACK,AUDIO_CHAN_AUTO,false);
     bullet_create(g, g->x + g->apr->w / 2 - 6, g->y + g->apr->h, 0, speed, 5, NULL_BEHAVE, APR_BULLET_CIRCLE);
 }
 
@@ -155,6 +157,7 @@ static void boss_master_timer_cb(game_obj_t * g, void * v)
             // 270° 对称弹幕 —— 每 2 tick (600ms)
             if (phase_tick % 2 == 0) {
                 boss_fire_barrage(g);
+                audio_load(AUDIO_BOSSATTACK,AUDIO_CHAN_AUTO,false);
             }
             break;
 
@@ -206,7 +209,22 @@ static void boss_fire_barrage(game_obj_t * g)
  */
 static void boss_fire_tracking(game_obj_t * g)
 {
-    game_obj_t *player = player_get_base();
+    game_obj_t *p1 = player_get_base();
+#ifdef SIMULATOR
+    game_obj_t *p2 = player_get_p2_base();
+    // 选择最近的活跃玩家作为追踪目标
+    game_obj_t *player = p1;
+    if (p2 && p2->active) {
+        if (!p1 || !p1->active) player = p2;
+        else {
+            int d1 = abs(g->x - p1->x) + abs(g->y - p1->y);
+            int d2 = abs(g->x - p2->x) + abs(g->y - p2->y);
+            player = (d2 < d1) ? p2 : p1;
+        }
+    }
+#else
+    game_obj_t *player = p1;
+#endif
     if (player == NULL || !player->active) return;
 
     lv_coord_t cx = g->x + g->apr->w / 2;

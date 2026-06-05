@@ -26,7 +26,7 @@ typedef enum {
     EVENT_NONE = 0,         // 无事件
 
     EVENT_GAME_START,       // 游戏开始事件
-    EVENT_GAME_OVER,        // 游戏结束事件(胜利)
+    EVENT_GAME_OVER,        // 游戏结束事件
 
     EVENT_BULLET_HIT_ENEMY, // 子弹击中敌人
     EVENT_PLAYER_HIT_ENEMY, // 玩家击中敌人

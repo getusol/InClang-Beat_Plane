@@ -133,6 +133,7 @@ void save_write(void)
     }
     char line[MAX_LINE_LEN];
     snprintf(line, sizeof(line), "coin_num=%d\n", coin_get_num()); f_puts(line, &fp);
+    snprintf(line, sizeof(line), "coin_p2_num=%d\n", coin_get_p2_num()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "vol_bgm=%d\n", audio_get_vol_bgm()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "vol_sfx=%d\n", audio_get_vol_sfx()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "vol_amp=%d\n", audio_get_vol_amp()); f_puts(line, &fp);
@@ -179,7 +180,7 @@ static int try_parse_file(const char * path)
     if (!fp) return -1;
 
     char line[MAX_LINE_LEN];
-    int coin_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, show_hitbox = -1;
+    int coin_num = -1, coin_p2_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, show_hitbox = -1;
     int selected_plane = -1, unlocked_mask = -1, draw_count = -1;
 
     while (fgets(line, sizeof(line), fp)) {
@@ -187,6 +188,7 @@ static int try_parse_file(const char * path)
         int val;
         if (sscanf(line, "%31[^=]=%d", key, &val) == 2) {
             if (strcmp(key, "coin_num") == 0) coin_num = val;
+            else if (strcmp(key, "coin_p2_num") == 0) coin_p2_num = val;
             else if (strcmp(key, "vol_bgm") == 0) vol_bgm = val;
             else if (strcmp(key, "vol_sfx") == 0) vol_sfx = val;
             else if (strcmp(key, "vol_amp") == 0) vol_amp = val;
@@ -201,6 +203,7 @@ static int try_parse_file(const char * path)
     if (coin_num < 0 || vol_bgm < 0 || vol_sfx < 0 || vol_amp < 0) return -1;
 
     coin_set_num(coin_num);
+    if (coin_p2_num >= 0) coin_set_p2_num(coin_p2_num);
     audio_set_vol_bgm((uint8_t)vol_bgm);
     audio_set_vol_sfx((uint8_t)vol_sfx);
     audio_set_vol_amp((uint8_t)vol_amp);
@@ -219,7 +222,7 @@ static int try_parse_file(const char * path)
     buf[bytes_read] = '\0';
     f_close(&fp);
 
-    int coin_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, show_hitbox = -1;
+    int coin_num = -1, coin_p2_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, show_hitbox = -1;
     int selected_plane = -1, unlocked_mask = -1, draw_count = -1;
     char * line = strtok(buf, "\n");
     while (line) {
@@ -227,6 +230,7 @@ static int try_parse_file(const char * path)
         int val;
         if (sscanf(line, "%31[^=]=%d", key, &val) == 2) {
             if (strcmp(key, "coin_num") == 0) coin_num = val;
+            else if (strcmp(key, "coin_p2_num") == 0) coin_p2_num = val;
             else if (strcmp(key, "vol_bgm") == 0) vol_bgm = val;
             else if (strcmp(key, "vol_sfx") == 0) vol_sfx = val;
             else if (strcmp(key, "vol_amp") == 0) vol_amp = val;
@@ -241,6 +245,7 @@ static int try_parse_file(const char * path)
     if (coin_num < 0 || vol_bgm < 0 || vol_sfx < 0 || vol_amp < 0) return -1;
 
     coin_set_num(coin_num);
+    if (coin_p2_num >= 0) coin_set_p2_num(coin_p2_num);
     audio_set_vol_bgm((uint8_t)vol_bgm);
     audio_set_vol_sfx((uint8_t)vol_sfx);
     audio_set_vol_amp((uint8_t)vol_amp);

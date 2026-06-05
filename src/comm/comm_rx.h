@@ -58,6 +58,8 @@ bool comm_has_invite_ack(void);
 bool comm_get_invite_ack(void);
 bool comm_has_invite_cancel(void);
 bool comm_has_disconnect(void);
+bool comm_has_coin_sync(void);
+int32_t comm_get_coin_sync(void);
 
 /**********************
  *   STATIC FUNCTIONS

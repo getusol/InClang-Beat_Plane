@@ -26,7 +26,12 @@ typedef enum {
     KEY_EVENT_B,
     KEY_EVENT_X,
     KEY_EVENT_Y,
-    // 可以根据需要添加更多按键事件
+#ifdef SIMULATOR
+    KEY_EVENT_RKEY_A,
+    KEY_EVENT_RKEY_B,
+    KEY_EVENT_RKEY_X,
+    KEY_EVENT_RKEY_Y,
+#endif
     KEY_EVENT_COUNT        //最大按键个数
 } key_event_t;
 

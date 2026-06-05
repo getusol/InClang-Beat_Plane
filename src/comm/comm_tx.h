@@ -36,5 +36,6 @@ void comm_send_invite();
 void comm_send_invite_ack(bool accept);
 void comm_send_invite_cancel();
 void comm_send_disconnect();
+void comm_send_coin_sync(int32_t coin_num);
 
 #endif // #ifndef __COMM_TX_H__

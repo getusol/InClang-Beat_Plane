@@ -33,6 +33,7 @@ bool mp_accept_invite(void);
 bool mp_reject_invite(void);
 void mp_cancel_invite(void);
 void mp_disconnect(void);
+void mp_exit_game(void);
 bool mp_start_game(void);
 bool mp_event_register(mp_event_t event, mp_event_cb_t callback);
 bool mp_event_unregister(mp_event_t event, mp_event_cb_t callback);

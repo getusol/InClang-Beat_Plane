@@ -106,6 +106,9 @@ static const audio_asset_t audio_assets[AUDIO_MAX] = {
     [AUDIO_ENEMYDIE] = {.path = AUDIO_PATH("boss_killed.pcm"), .size = 83968},
     [AUDIO_MOUSEOPEN] = {.path = AUDIO_PATH("Menu_Open.pcm"), .size = 13762},
     [AUDIO_MOUSECLOSE] = {.path = AUDIO_PATH("Menu_Close.pcm"), .size = 12042},
+    [AUDIO_BOSSATTACK] = {.path = AUDIO_PATH("boss_attack.pcm"), .size = 39136},
+    [AUDIO_PLAYERFIRE] = {.path = AUDIO_PATH("player_normal_fire.pcm"), .size = 20228},
+    [AUDIO_ENEMYATTACK] = {.path = AUDIO_PATH("enemy_attack.pcm"), .size = 18752 },
 };
 
 // 音频频道实例

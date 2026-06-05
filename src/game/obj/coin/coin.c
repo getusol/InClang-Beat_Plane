@@ -15,6 +15,8 @@
 #include "fsm.h"
 #include "player.h"
 #include "event.h"
+#include "multiplayer.h"
+#include "comm_tx.h"
 #include "apr.h"
 #include "timer.h"
 #include <string.h>
@@ -44,6 +46,8 @@ static void coin_hide(game_obj_t * g);
 static void coin_show(game_obj_t * g);
 static void coin_event_hit_player_cb(game_obj_t * src, game_obj_t * trg);
 static void coin_disappear_timer_cb(game_obj_t * owner, void * usr_data);
+static void coin_on_mp_connected(mp_event_t event, void *data);
+static void coin_on_mp_disconnected(mp_event_t event, void *data);
 
 // 金币消失闪烁动画
 
@@ -61,6 +65,9 @@ static coin_t coins[MAX_COIN_COUNT];
 
 // 金币总数（模块内部维护）
 static int coin_num = 0;
+#ifdef SIMULATOR
+static int coin_p2_num = 0;
+#endif
 
 /**********************
  * GLOBAL FUNCTIONS
@@ -108,6 +115,10 @@ void coin_init(lv_obj_t * parent)
 
     // 注册事件回调
     event_register(EVENT_PLAYER_HIT_COIN, coin_event_hit_player_cb);
+
+    // 多人联机金币同步
+    mp_event_register(MP_EVENT_CONNECTED, coin_on_mp_connected);
+    mp_event_register(MP_EVENT_DISCONNECTED, coin_on_mp_disconnected);
 
     CONSOLE_INFO("Coin system initialized with max count: %d.", MAX_COIN_COUNT);
 }
@@ -189,6 +200,26 @@ void coin_set_num(int value)
     coin_num = (value < 0) ? 0 : value;
 }
 
+int coin_get_p2_num(void)
+{
+#ifdef SIMULATOR
+    return coin_p2_num;
+#else
+    return 0;
+#endif
+}
+void coin_set_p2_num(int value)
+{
+#ifdef SIMULATOR
+    coin_p2_num = (value < 0) ? 0 : value;
+#else
+    (void)value;
+#endif
+}
+#ifdef SIMULATOR
+void coin_add_p2_num(int delta) { coin_p2_num += delta; if (coin_p2_num < 0) coin_p2_num = 0; }
+#endif
+
 /**********************
  * STATIC FUNCTIONS
  **********************/
@@ -218,8 +249,12 @@ static void coin_event_hit_player_cb(game_obj_t * src, game_obj_t * trg)
     if (trg->active == false) return;
 
     coin_t * c = (coin_t *)trg;
-    coin_add_num(c->value);
-    CONSOLE_INFO("Coin collected! value=%d total=%d", c->value, coin_num);
+#ifdef SIMULATOR
+    if (src == player_get_p2_base())
+        coin_add_p2_num(c->value);
+    else
+#endif
+        coin_add_num(c->value);
 
     trg->hide(trg);
 }
@@ -304,4 +339,28 @@ static void coin_show(game_obj_t * g)
     if (c->pool_index == POOL_INVALID_ID) return;
     g->active = true;
     lv_obj_clear_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
+}
+
+/**
+ * @brief MP_CONNECTED: MCU 发送自己金币给 PC → PC 设为 P2 余额
+ */
+static void coin_on_mp_connected(mp_event_t event, void *data)
+{
+    (void)event; (void)data;
+#ifndef SIMULATOR
+    comm_send_coin_sync(coin_get_num());  // MCU → PC
+    CONSOLE_INFO("Coin sync: MCU sent %d to PC", coin_get_num());
+#endif
+}
+
+/**
+ * @brief MP_DISCONNECTED: PC 发送 P2 金币给 MCU → MCU 保存
+ */
+static void coin_on_mp_disconnected(mp_event_t event, void *data)
+{
+    (void)event; (void)data;
+#ifdef SIMULATOR
+    comm_send_coin_sync(coin_get_p2_num());  // PC → MCU
+    CONSOLE_INFO("Coin sync: PC sent P2=%d to MCU", coin_get_p2_num());
+#endif
 }

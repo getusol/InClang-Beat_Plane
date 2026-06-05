@@ -23,6 +23,8 @@
 #include "ui_base.h" // for ui_base_get_selected_plane_id()
 #include "flame_wall.h"
 #include "ui_play.h"
+#include "multiplayer.h"
+#include "audio.h"
 
 /**********************
  *      MACROS
@@ -138,6 +140,20 @@ static void player_skill_hp_reclaim(void);
 static void player_shield_end_cb(game_obj_t *owner, void *usr_data);
 static void player_slow_end_cb(game_obj_t *owner, void *usr_data);
 
+#ifdef SIMULATOR
+static void p2_player_init(lv_obj_t *parent);
+static void p2_player_update(game_obj_t *g);
+static void p2_player_show(game_obj_t *g);
+static void p2_player_hide(game_obj_t *g);
+static void p2_player_fire(void);
+static void p2_player_x_handler(void);
+static void p2_player_skill_y_fire(void);
+static void p2_player_die_cb(game_obj_t *src, game_obj_t *trg);
+static void p2_player_hit_enemy_cb(game_obj_t *src, game_obj_t *trg);
+static void p2_player_hit_bullet_cb(game_obj_t *src, game_obj_t *trg);
+static int16_t player_hp_modify_p2(int16_t delta);
+#endif
+
 /***********************
  *   GLOBAL PROTOTYPES
  ***********************/
@@ -205,6 +221,16 @@ static const plane_config_t plane_configs[TOTAL_PLANES] = {
         .skill_desc = "Speed: double speed / Heal: +50 HP",
     },
 };
+
+#ifdef SIMULATOR
+static player_t *player_p2 = NULL;
+static uint32_t p2_last_skill_x_tick = 0;
+static uint32_t p2_last_skill_y_tick = 0;
+static player_t *active_skill_player = NULL;
+#define SKP (active_skill_player ? active_skill_player : player_p)
+#else
+#define SKP player_p
+#endif
 
  /**********************
  *   GLOBAL FUNCTIONS
@@ -306,6 +332,11 @@ void player_init(lv_obj_t * parent)
   CONSOLE_INFO("    skill_x_cd: %dms", player_p->skill_x_cd);
   CONSOLE_INFO("    skill_y_cd: %dms", player_p->skill_y_cd);
   CONSOLE_INFO("");
+
+#ifdef SIMULATOR
+  /* 预分配 P2 玩家（隐藏，联机时显示） */
+  p2_player_init(parent);
+#endif
 
   return;
 }
@@ -427,6 +458,8 @@ int player_get_current_plane(void)
  *   STATIC FUNCTIONS
  **********************/
 
+/* ======================== P1 STATIC FUNCTIONS ======================== */
+
 /**
  * @brief 玩家更新函数
  */
@@ -497,30 +530,31 @@ static void player_move(game_obj_t * g)
     return ;
   }
 
-  player_p->base.x += g->vx;
-  player_p->base.y += g->vy;
+  g->x += g->vx;
+  g->y += g->vy;
 
   // 边界检查
-  if (player_p->base.x < PLAYER_MIN_X) {
-    player_p->base.x = PLAYER_MIN_X;
+  if (g->x < PLAYER_MIN_X) {
+    g->x = PLAYER_MIN_X;
   }
-  if (player_p->base.x > PLAYER_MAX_X) {
-    player_p->base.x = PLAYER_MAX_X;
+  if (g->x > PLAYER_MAX_X) {
+    g->x = PLAYER_MAX_X;
   }
-  if (player_p->base.y < PLAYER_MIN_Y) {
-    player_p->base.y = PLAYER_MIN_Y;
+  if (g->y < PLAYER_MIN_Y) {
+    g->y = PLAYER_MIN_Y;
   }
-  if (player_p->base.y > PLAYER_MAX_Y) {
-    player_p->base.y = PLAYER_MAX_Y;
+  if (g->y > PLAYER_MAX_Y) {
+    g->y = PLAYER_MAX_Y;
   }
 
-  lv_obj_set_pos(player_p->base.obj,player_p->base.x,player_p->base.y);
+  lv_obj_set_pos(g->obj,g->x,g->y);
 
-  // CONSOLE_INFO("Player moved by dx: %d, dy: %d. New position - x: %d, y: %d", dx, dy, player_p->base.x, player_p->base.y);
+  // CONSOLE_INFO("Player moved by dx: %d, dy: %d. New position - x: %d, y: %d", dx, dy, g->x, g->y);
 
+  player_t * p = (player_t *)g;
   // 护盾遮罩跟随
-  if (player_p->shield_active) {
-    lv_obj_set_pos(player_p->shield_overlay, player_p->base.x, player_p->base.y);
+  if (p->shield_active) {
+    lv_obj_set_pos(p->shield_overlay, g->x,g->y);
   }
 
   return ;
@@ -599,6 +633,7 @@ static void player_fire()
   if (fsm_get_state() != GS_PLAY || !game_obj_is_active(g)) {
       return ;
   }
+  audio_load(AUDIO_PLAYERFIRE,AUDIO_CHAN_AUTO,false);
   bullet_create(g,
                 g->x + g->apr->w / 2 - g->apr->w / 16,
                 g->y - g->apr->h / 4,
@@ -632,16 +667,16 @@ static void player_skill_y_fire()
  */
 static void player_skill_triple_shot(void)
 {
-    game_obj_t *g = (game_obj_t *)player_p;
+    game_obj_t *g = (game_obj_t *)SKP;
     lv_coord_t cx = g->x + g->apr->w / 2 - g->apr->w / 16;
     lv_coord_t cy = g->y - g->apr->h / 4;
 
-    bullet_create(g, cx, cy, 0, player_p->bullet_vy,
-                  player_p->bullet_damage, NULL_BEHAVE, player_p->bullet_apr);
-    bullet_create(g, cx, cy, -3, player_p->bullet_vy,
-                  player_p->bullet_damage, NULL_BEHAVE, player_p->bullet_apr);
-    bullet_create(g, cx, cy, 3, player_p->bullet_vy,
-                  player_p->bullet_damage, NULL_BEHAVE, player_p->bullet_apr);
+    bullet_create(g, cx, cy, 0, SKP->bullet_vy,
+                  SKP->bullet_damage, NULL_BEHAVE, SKP->bullet_apr);
+    bullet_create(g, cx, cy, -3, SKP->bullet_vy,
+                  SKP->bullet_damage, NULL_BEHAVE, SKP->bullet_apr);
+    bullet_create(g, cx, cy, 3, SKP->bullet_vy,
+                  SKP->bullet_damage, NULL_BEHAVE, SKP->bullet_apr);
 }
 
 /**
@@ -649,7 +684,7 @@ static void player_skill_triple_shot(void)
  */
 static void player_skill_burn_bullet(void)
 {
-    game_obj_t *g = (game_obj_t *)player_p;
+    game_obj_t *g = (game_obj_t *)SKP;
     lv_coord_t cx = g->x + g->apr->w / 2 - g->apr->w / 16;
     lv_coord_t cy = g->y - g->apr->h / 4;
 
@@ -665,88 +700,58 @@ static void player_skill_burn_bullet(void)
  */
 static void player_skill_freeze_bullet(void)
 {
-    game_obj_t *g = (game_obj_t *)player_p;
+    game_obj_t *g = (game_obj_t *)SKP;
     lv_coord_t cx = g->x + g->apr->w / 2 - g->apr->w / 16;
     lv_coord_t cy = g->y - g->apr->h / 4;
 
     game_obj_t *bullet = bullet_create(g, cx, cy, 0, -10,
                                         30, NULL_BEHAVE, APR_BULLET_STREAM);
-    if (bullet) {
-        bullet_set_flags(bullet, BULLET_FLAG_FREEZE);
-    }
+    if (bullet) bullet_set_flags(bullet, BULLET_FLAG_FREEZE);
 }
 
-// ---------- Y键技能 ----------
-
-/**
- * @brief 护盾 (Player Y) — 1秒无敌 + 反射圆形/三角形子弹
- */
 static void player_skill_shield(void)
 {
-    if (player_p->shield_active) return; // 已在护盾中
-    player_p->shield_active = true;
-    lv_obj_clear_flag(player_p->shield_overlay, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_pos(player_p->shield_overlay, player_p->base.x, player_p->base.y);
-
-    timer_create((game_obj_t *)player_p, 1000, TIMER_MODE_ONCE,
-                 player_shield_end_cb, NULL);
-    CONSOLE_INFO("[PLAYER] Shield activated!");
+    if (SKP->shield_active) return;
+    SKP->shield_active = true;
+    lv_obj_clear_flag(SKP->shield_overlay, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_pos(SKP->shield_overlay, SKP->base.x, SKP->base.y);
+    timer_create((game_obj_t *)SKP, 1000, TIMER_MODE_ONCE, player_shield_end_cb, NULL);
 }
 
-/**
- * @brief 护盾结束回调
- */
 static void player_shield_end_cb(game_obj_t *owner, void *usr_data)
 {
     (void)owner; (void)usr_data;
-    if (player_p == NULL) return;
-    player_p->shield_active = false;
-    lv_obj_add_flag(player_p->shield_overlay, LV_OBJ_FLAG_HIDDEN);
-    CONSOLE_INFO("[PLAYER] Shield expired");
+    if (SKP == NULL) return;
+    SKP->shield_active = false;
+    lv_obj_add_flag(SKP->shield_overlay, LV_OBJ_FLAG_HIDDEN);
 }
 
-/**
- * @brief 火墙 (Ember Y) — 向前发射火墙
- */
 static void player_skill_flame_wall(void)
 {
-    game_obj_t *g = (game_obj_t *)player_p;
+    game_obj_t *g = (game_obj_t *)SKP;
     lv_coord_t cx = g->x + g->apr->w / 2 - 32;
     lv_coord_t cy = g->y - g->apr->h / 2;
     flame_wall_create(cx, cy, -8);
-    CONSOLE_INFO("[PLAYER] Flame Wall launched!");
 }
 
-/**
- * @brief 子弹减速 (Stream Y) — 敌方子弹速度减半2秒
- */
 static void player_skill_bullet_slow(void)
 {
     bullet_set_enemy_slow(true);
     ui_play_set_freeze_overlay(true);
-    timer_create((game_obj_t *)player_p, 2000, TIMER_MODE_ONCE,
-                 player_slow_end_cb, NULL);
-    CONSOLE_INFO("[PLAYER] Bullet Slow activated!");
+    timer_create((game_obj_t *)SKP, 2000, TIMER_MODE_ONCE, player_slow_end_cb, NULL);
 }
 
-/**
- * @brief 减速结束回调
- */
 static void player_slow_end_cb(game_obj_t *owner, void *usr_data)
 {
     (void)owner; (void)usr_data;
     bullet_set_enemy_slow(false);
     ui_play_set_freeze_overlay(false);
-    CONSOLE_INFO("[PLAYER] Bullet Slow expired");
 }
 
-/**
- * @brief 生命回收 (Verdant Y) — 立即恢复50HP
- */
 static void player_skill_hp_reclaim(void)
 {
     player_hp_modify(50);
-    CONSOLE_INFO("HP Reclaimed: +50 HP. Current HP: %d", player_p->hp);
+    CONSOLE_INFO("HP Reclaimed: +50 HP. Current HP: %d", SKP->hp);
 }
 
 // ==================== 事件回调 ====================
@@ -756,7 +761,30 @@ static void player_skill_hp_reclaim(void)
  */
 static void player_event_game_start_cb(game_obj_t * src, game_obj_t * trg)
 {
-  // 实际应用飞机配置到玩家（外观 + 游戏属性）
+#ifdef SIMULATOR
+  if (mp_get_state() == MP_STATE_CONNECTED) {
+    /* 联机模式：两架飞机 */
+    player_apply_config(ui_base_get_p1_selected_plane_id());
+    player_p->base.x = 400; player_p->base.y = 500;
+    player_p->hp = player_p->hp_max;
+    lv_bar_set_value(player_p->hp_bar, player_p->hp, LV_ANIM_OFF);
+    player_p->base.show((game_obj_t *)player_p);
+    lv_obj_set_pos(player_p->base.obj, player_p->base.x, player_p->base.y);
+
+    player_apply_p2_config(ui_base_get_p2_selected_plane_id());
+    player_p2->base.x = 624; player_p2->base.y = 500;
+    player_p2->hp = player_p2->hp_max;
+    lv_bar_set_value(player_p2->hp_bar, player_p2->hp, LV_ANIM_OFF);
+    player_p2->base.show((game_obj_t *)player_p2);
+    lv_obj_set_pos(player_p2->base.obj, player_p2->base.x, player_p2->base.y);
+
+    mp_start_game();
+    CONSOLE_INFO("Dual-player game started. P1=%d P2=%d",
+                 player_p->current_plane_id, player_p2->current_plane_id);
+    return;
+  }
+#endif
+  // 单人模式（不变）
   player_apply_config(ui_base_get_selected_plane_id());
   player_p->base.x = 512;
   player_p->base.y = 500;
@@ -781,18 +809,95 @@ static void player_event_player_die_cb(game_obj_t * src, game_obj_t * trg)
  */
 static void player_event_hit_by_enemy_cb(game_obj_t * src, game_obj_t * trg)
 {
+  if (trg != (game_obj_t *)player_p) return;
   int16_t damage = enemy_get_damage(trg);
   player_hp_modify(-damage);
 }
 
-/**
- * @brief 被子弹击中
- */
 static void player_event_hit_by_bullet_cb(game_obj_t * src, game_obj_t * trg)
 {
+  if (trg != (game_obj_t *)player_p) return;
   int16_t damage = bullet_get_damage(src);
   player_hp_modify(-damage);
 }
+
+#ifdef SIMULATOR
+/**
+ * @brief P2 玩家初始化（远程操作）
+ */
+static void p2_player_init(lv_obj_t * parent)
+{
+    player_p2 = ram_malloc(sizeof(player_t));
+    memset(player_p2, 0, sizeof(player_t));
+    if (player_p2 == NULL) { CONSOLE_ERROR("P2 malloc failed"); return; }
+
+    game_obj_t *g = &player_p2->base;
+    g->x = 600; g->y = 500;
+    g->type = GAME_OBJ_TYPE_PLAYER;
+    g->active = false;
+    g->behave.f = NULL;
+    g->update = p2_player_update;
+    g->show = p2_player_show;
+    g->hide = p2_player_hide;
+
+    apr_t *apr = apr_get(APR_PLAYER_DEFAULT);
+    g->apr = apr;
+
+    /* 使用与 P1 相同的默认配置 */
+    const plane_config_t *cfg = &plane_configs[0];
+    player_p2->hp_max = cfg->hp_max;
+    player_p2->hp = cfg->hp_max;
+    player_p2->shoot_cd = cfg->shoot_cd;
+    player_p2->bullet_damage = cfg->bullet_damage;
+    player_p2->bullet_vx = cfg->bullet_vx;
+    player_p2->bullet_vy = cfg->bullet_vy;
+    player_p2->bullet_apr = cfg->bullet_apr;
+    player_p2->skill_x_cd = cfg->skill_x_cd;
+    player_p2->skill_x_active = cfg->skill_x_active;
+    player_p2->skill_y_cd = cfg->skill_y_cd;
+    player_p2->skill_y_active = cfg->skill_y_active;
+    player_p2->current_plane_id = 0;
+    player_p2->shield_active = false;
+    player_p2->speed_boost_active = false;
+
+    /* LVGL 对象 */
+    player_p2->hp_bar = player_hp_bar_create(g, parent);
+    lv_obj_set_align(player_p2->hp_bar, LV_ALIGN_TOP_LEFT);
+    lv_obj_set_pos(player_p2->hp_bar, 21, 96);
+    lv_obj_add_flag(player_p2->hp_bar, LV_OBJ_FLAG_HIDDEN);
+    player_p2->shield_overlay = lv_obj_create(parent);
+    lv_obj_set_size(player_p2->shield_overlay, 64, 64);
+    lv_obj_set_style_bg_color(player_p2->shield_overlay, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_bg_opa(player_p2->shield_overlay, LV_OPA_30, 0);
+    lv_obj_set_style_border_width(player_p2->shield_overlay, 0, 0);
+    lv_obj_add_flag(player_p2->shield_overlay, LV_OBJ_FLAG_HIDDEN);
+
+    g->obj = lv_img_create(parent);
+#ifdef SIMULATOR
+    lv_img_set_src(g->obj, &apr->img_dsc);
+#else
+    lv_img_set_src(g->obj, apr->img_name);
+#endif
+    lv_obj_set_pos(g->obj, g->x, g->y);
+    lv_obj_add_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
+
+    /* 注册到游戏对象列表 */
+    game_register_obj(g);
+
+    /* 注册远程按键回调 */
+    input_sw_register_key_down_callback(KEY_EVENT_RKEY_A, p2_player_fire, player_p2->shoot_cd);
+    if (player_p2->skill_x_cd > 0 && player_p2->skill_x_active != NULL)
+        input_sw_register_key_down_callback(KEY_EVENT_RKEY_X, p2_player_x_handler, player_p2->skill_x_cd);
+    input_sw_register_key_down_callback(KEY_EVENT_RKEY_Y, p2_player_skill_y_fire, player_p2->skill_y_cd);
+
+    /* 注册事件处理器（与 P1 共用 EVENT_GAME_START） */
+    event_register(EVENT_PLAYER_DIE, p2_player_die_cb);
+    event_register(EVENT_PLAYER_HIT_ENEMY, p2_player_hit_enemy_cb);
+    event_register(EVENT_BULLET_HIT_PLAYER, p2_player_hit_bullet_cb);
+
+    CONSOLE_INFO("P2 player initialized at (%d,%d)", g->x, g->y);
+}
+#endif
 
 /**
  * @brief 查询护盾是否激活（供碰撞检测使用）
@@ -800,6 +905,14 @@ static void player_event_hit_by_bullet_cb(game_obj_t * src, game_obj_t * trg)
 bool player_is_shield_active(void)
 {
     return player_p ? player_p->shield_active : false;
+}
+
+bool player_is_shield_active_for(game_obj_t *obj)
+{
+#ifdef SIMULATOR
+    if (obj == (game_obj_t *)player_p2) return player_p2 && player_p2->shield_active;
+#endif
+    return player_is_shield_active();
 }
 
 uint32_t player_get_skill_x_cd(void)
@@ -822,6 +935,172 @@ uint32_t player_get_skill_x_elapsed(void)
 uint32_t player_get_skill_y_elapsed(void)
 {
     if (!player_p) return 0;
-    if (player_p->skill_y_last_use == 0) return 0xFFFFFFFF; // 从未使用，始终就绪
+    if (player_p->skill_y_last_use == 0) return 0xFFFFFFFF;
     return play_tick_get() - player_p->skill_y_last_use;
 }
+
+/* ======================== P2 公共 API (全局函数) ======================== */
+#ifdef SIMULATOR
+
+game_obj_t * player_get_p2_base(void) { return (game_obj_t *)player_p2; }
+
+void player_apply_p2_config(int plane_id)
+{
+    if (!player_p2 || plane_id < 0 || plane_id >= TOTAL_PLANES) return;
+    const plane_config_t *cfg = &plane_configs[plane_id];
+
+    /* 切换外观 */
+    apr_apply(&player_p2->base, cfg->apr_id);
+
+    /* 注销旧按键 */
+    input_sw_unregister_key_down_callback(KEY_EVENT_RKEY_X, p2_player_x_handler);
+    input_sw_unregister_key_down_callback(KEY_EVENT_RKEY_A, p2_player_fire);
+    input_sw_unregister_key_down_callback(KEY_EVENT_RKEY_Y, p2_player_skill_y_fire);
+
+    /* 重置状态 */
+    player_p2->shield_active = false;
+    lv_obj_add_flag(player_p2->shield_overlay, LV_OBJ_FLAG_HIDDEN);
+    player_p2->speed_boost_active = false;
+
+    /* 应用参数 */
+    player_p2->current_plane_id = cfg->id;
+    player_p2->hp_max = cfg->hp_max;
+    player_p2->hp = cfg->hp_max;
+    player_p2->shoot_cd = cfg->shoot_cd;
+    player_p2->bullet_damage = cfg->bullet_damage;
+    player_p2->bullet_vx = cfg->bullet_vx;
+    player_p2->bullet_vy = cfg->bullet_vy;
+    player_p2->bullet_apr = cfg->bullet_apr;
+    player_p2->skill_x_cd = cfg->skill_x_cd;
+    player_p2->skill_x_active = cfg->skill_x_active;
+    player_p2->skill_y_cd = cfg->skill_y_cd;
+    player_p2->skill_y_active = cfg->skill_y_active;
+    player_p2->skill_x_last_use = 0;
+    player_p2->skill_y_last_use = 0;
+
+    /* 注册远程按键 */
+    input_sw_register_key_down_callback(KEY_EVENT_RKEY_A, p2_player_fire, player_p2->shoot_cd);
+    if (player_p2->skill_x_cd > 0 && player_p2->skill_x_active != NULL)
+        input_sw_register_key_down_callback(KEY_EVENT_RKEY_X, p2_player_x_handler, player_p2->skill_x_cd);
+    input_sw_register_key_down_callback(KEY_EVENT_RKEY_Y, p2_player_skill_y_fire, player_p2->skill_y_cd);
+
+    lv_bar_set_range(player_p2->hp_bar, 0, player_p2->hp_max);
+    lv_bar_set_value(player_p2->hp_bar, player_p2->hp, LV_ANIM_OFF);
+}
+
+uint32_t player_get_p2_skill_x_cd(void)  { return player_p2 ? player_p2->skill_x_cd : 0; }
+uint32_t player_get_p2_skill_y_cd(void)  { return player_p2 ? player_p2->skill_y_cd : 0; }
+uint32_t player_get_p2_skill_x_elapsed(void) {
+    if (!player_p2) return 0;
+    if (player_p2->skill_x_last_use == 0) return 0xFFFFFFFF;
+    return play_tick_get() - player_p2->skill_x_last_use;
+}
+uint32_t player_get_p2_skill_y_elapsed(void) {
+    if (!player_p2) return 0;
+    if (player_p2->skill_y_last_use == 0) return 0xFFFFFFFF;
+    return play_tick_get() - player_p2->skill_y_last_use;
+}
+
+/* ======================== P2 STATIC FUNCTIONS ======================== */
+
+static void p2_player_update(game_obj_t *g)
+{
+    if (!player_p2) return;
+    game_state_t gs = fsm_get_state();
+    if (gs != GS_PLAY && gs != GS_PAUSE && gs != GS_SETTING) { g->hide(g); return; }
+    g->show(g);
+    if (gs != GS_PLAY || !player_p2->base.active) return;
+    if (mp_get_state() != MP_STATE_GAME_PLAY) { g->hide(g); return; }
+
+    g->vx = rjoystick_get_x() / 127.0f * 7;
+    g->vy = rjoystick_get_y() / 127.0f * 7;
+
+    if (player_p2->speed_boost_active) { g->vx *= 2; g->vy *= 2; }
+    player_move(g);
+}
+
+static void p2_player_show(game_obj_t *g) {
+    player_p2->base.active = true;
+    lv_obj_clear_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(player_p2->hp_bar, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void p2_player_hide(game_obj_t *g) {
+    player_p2->base.active = false;
+    lv_obj_add_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(player_p2->hp_bar, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void p2_player_fire(void)
+{
+    if (!player_p2 || fsm_get_state() != GS_PLAY || !player_p2->base.active) return;
+    game_obj_t *g = &player_p2->base;
+    bullet_create(g,
+        g->x + g->apr->w / 2 - g->apr->w / 16,
+        g->y - g->apr->h / 4,
+        player_p2->bullet_vx, player_p2->bullet_vy,
+        player_p2->bullet_damage, NULL_BEHAVE, player_p2->bullet_apr);
+}
+
+static void p2_player_x_handler(void)
+{
+    if (!player_p2 || fsm_get_state() != GS_PLAY || !player_p2->base.active) return;
+    if (player_p2->skill_x_active) {
+        player_p2->skill_x_last_use = play_tick_get();
+        active_skill_player = player_p2;
+        player_p2->skill_x_active();
+        active_skill_player = NULL;
+    }
+}
+
+static void p2_player_skill_y_fire(void)
+{
+    if (!player_p2 || fsm_get_state() != GS_PLAY || !player_p2->base.active) return;
+    if (player_p2->skill_y_active) {
+        player_p2->skill_y_last_use = play_tick_get();
+        active_skill_player = player_p2;
+        player_p2->skill_y_active();
+        active_skill_player = NULL;
+    }
+}
+
+static void p2_player_die_cb(game_obj_t *src, game_obj_t *trg)
+{
+    if (!player_p2) return;
+    player_p2->base.hide(&player_p2->base);
+}
+
+static void p2_player_hit_enemy_cb(game_obj_t *src, game_obj_t *trg)
+{
+    if (!player_p2 || !trg) return;
+    if (trg != (game_obj_t *)player_p2) return;
+    int dmg = enemy_get_damage(trg);
+    player_hp_modify_p2(-dmg);
+    if (player_p2->hp <= 0)
+        event_dispatch(EVENT_PLAYER_DIE, &player_p2->base, NULL);
+}
+
+static void p2_player_hit_bullet_cb(game_obj_t *src, game_obj_t *trg)
+{
+    if (!player_p2 || !src) return;
+    if (trg != (game_obj_t *)player_p2) return;
+    int dmg = bullet_get_damage(src);
+    player_hp_modify_p2(-dmg);
+    if (player_p2->hp <= 0)
+        event_dispatch(EVENT_PLAYER_DIE, &player_p2->base, NULL);
+}
+
+static int16_t player_hp_modify_p2(int16_t delta)
+{
+    if (!player_p2) return 0;
+    if (!player_p2->base.active) return player_p2->hp;
+    player_p2->hp += delta;
+    if (player_p2->hp > player_p2->hp_max) player_p2->hp = player_p2->hp_max;
+    if (player_p2->hp <= 0) {
+        player_p2->hp = 0;
+        event_dispatch(EVENT_PLAYER_DIE, &player_p2->base, NULL);
+    }
+    lv_bar_set_value(player_p2->hp_bar, player_p2->hp, LV_ANIM_OFF);
+    return player_p2->hp;
+}
+#endif

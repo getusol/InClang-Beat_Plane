@@ -202,6 +202,27 @@ void comm_send_disconnect()
 }
 
 /**
+ * @brief PC→MCU 发送 P2 金币同步帧
+ * @param coin_num 当前 P2 金币数量
+ */
+void comm_send_coin_sync(int32_t coin_num)
+{
+    uint8_t data[4];
+    data[0] = (uint8_t)(coin_num & 0xFF);
+    data[1] = (uint8_t)((coin_num >> 8) & 0xFF);
+    data[2] = (uint8_t)((coin_num >> 16) & 0xFF);
+    data[3] = (uint8_t)((coin_num >> 24) & 0xFF);
+
+    uart_send_byte(COMM_SOF);
+    send_escaped_byte(COMM_FRAME_COIN_SYNC);
+    send_escaped_byte(0x00);
+    send_escaped_byte(0x04);
+    for (int i = 0; i < 4; i++) send_escaped_byte(data[i]);
+    send_escaped_byte(calculate_checksum(data, 4));
+    uart_send_byte(COMM_EOF);
+}
+
+/**
  * @brief PC->MCU 发送心跳请求
  */
 void comm_pc_send_heart_beat()

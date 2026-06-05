@@ -69,6 +69,9 @@ static bool if_accept_invite = false;
 static bool if_receive_invite_cancel = false;
 static bool if_receive_disconnect = false;
 
+static bool has_coin_sync = false;
+static int32_t received_coin_count = 0;
+
 #ifdef SIMULATOR // PC
 static uint8_t stored_key_mask = 0;
 static int16_t stored_joystick_x = 0;
@@ -398,6 +401,17 @@ bool comm_has_disconnect(void)
     return res;
 }
 
+bool comm_has_coin_sync(void)
+{
+    return has_coin_sync;
+}
+
+int32_t comm_get_coin_sync(void)
+{
+    has_coin_sync = false;
+    return received_coin_count;
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -511,6 +525,15 @@ static bool data_process()
             break;
         case COMM_FRAME_DISCONNECT:
             if_receive_disconnect = true;
+            break;
+        case COMM_FRAME_COIN_SYNC:
+            if (frame_length >= 4) {
+                received_coin_count = (int32_t)frame_data[0]
+                    | ((int32_t)frame_data[1] << 8)
+                    | ((int32_t)frame_data[2] << 16)
+                    | ((int32_t)frame_data[3] << 24);
+                has_coin_sync = true;
+            }
             break;
 
         default:

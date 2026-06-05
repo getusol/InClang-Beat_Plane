@@ -16,6 +16,8 @@
 #include "audio.h"
 #include "comm.h"
 #include "multiplayer.h"
+#include "coin.h"
+#include "comm_rx.h"
 
 int main(int argc, char **argv)
 {
@@ -73,6 +75,17 @@ int main(int argc, char **argv)
         non_blocking_delay(&ui_timer);
         non_blocking_delay(&comm_timer);
         non_blocking_delay(&mp_timer);
+
+        /* 金币同步处理（双方） */
+        if (comm_has_coin_sync()) {
+            int32_t val = comm_get_coin_sync();
+#ifdef SIMULATOR
+            coin_set_p2_num(val);  // PC: 收到 MCU 金币 → 设为 P2 余额
+#else
+            coin_set_num(val);     // MCU: 收到 PC 的 P2 金币 → 保存
+            save_write();
+#endif
+        }
 
         uint32_t t_start = lv_tick_get();
         lv_timer_handler();
