@@ -20,5 +20,6 @@
 
 void save_load(void);
 void save_write(void);
+void save_clear(void);
 
 #endif // #ifndef __SAVE_H__

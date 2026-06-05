@@ -20,6 +20,7 @@
  * MACROS
  *********************/
 #define BASE_BG_IMG     "base_bg.bin"
+#define BASE_BACK_ICON "back_arrow.bin"
 
 #define PLANE_WIDTH     160
 #define PLANE_HEIGHT    160
@@ -44,8 +45,7 @@ typedef struct {
 static bool g_plane_unlocked[PLANE_ID_MAX] = {true, false, false, false};
 static plane_id_t g_selected_plane_id = PLANE_ID_DEFAULT;
 
-static lv_obj_t * base_screen = NULL;
-static lv_group_t * base_group = NULL;
+static lv_obj_t * dp_base = NULL;
 
 static lv_obj_t * plane_objs[PLANE_ID_MAX] = {NULL};
 static lv_obj_t * lock_masks[PLANE_ID_MAX] = {NULL};
@@ -76,6 +76,7 @@ static char plane_path_buf[PLANE_ID_MAX][64];
 static lv_img_dsc_t base_bg_dsc;
 static lv_img_dsc_t plane_base_dsc;
 static lv_img_dsc_t plane_dscs[PLANE_ID_MAX];
+static lv_img_dsc_t back_arrow_dsc;
 #endif
 
 /**********************
@@ -152,14 +153,14 @@ void ui_base_set_unlocked_mask(int mask)
  */
 void ui_base_init(void)
 {
-    base_group = lv_group_create();
-    base_screen = lv_obj_create(NULL);
-    lv_obj_clear_flag(base_screen, LV_OBJ_FLAG_SCROLLABLE);
+    dp_base = lv_obj_create(NULL);
+    lv_obj_clear_flag(dp_base, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(dp_base, lv_color_hex(0x546373), 0);
 
     char bg_path_buf[64];
     lv_obj_t * bg;
 #ifdef SIMULATOR
-    bg = img_create_from_dsc(base_screen, img_path(BASE_BG_IMG, bg_path_buf, 64), 1024, 600, NULL, &base_bg_dsc, false);
+    bg = img_create_from_dsc(dp_base, img_path(BASE_BG_IMG, bg_path_buf, 64), 1024, 600, NULL, &base_bg_dsc, false);
 #else  
     bg = lv_img_create(base_screen);
     lv_img_set_src(bg, img_path(BASE_BG_IMG, bg_path_buf, 64));
@@ -169,12 +170,22 @@ void ui_base_init(void)
    
 
     // 1. 右上角返回按钮
-    lv_obj_t * exit_btn = lv_btn_create(base_screen);
-    lv_obj_set_size(exit_btn, 80, 30);
-    lv_obj_set_pos(exit_btn, -10, 10);
+    lv_obj_t * exit_btn = lv_btn_create(dp_base);
+    lv_obj_set_size(exit_btn, 64, 64);
+    lv_obj_set_pos(exit_btn, 0, 0);
     lv_obj_set_align(exit_btn, LV_ALIGN_TOP_RIGHT);
     lv_obj_add_event_cb(exit_btn, base_exit_btn_cb, LV_EVENT_CLICKED, NULL);
-    lv_group_add_obj(base_group, exit_btn);
+    lv_obj_set_style_opa(exit_btn, LV_OPA_0, 0);
+    
+    lv_obj_t * back_icon;
+#ifdef SIMULATOR
+    back_icon = img_create_from_dsc(dp_base, img_path(BASE_BACK_ICON, bg_path_buf, 64), 64, 64, NULL, &back_arrow_dsc, true);
+    lv_obj_align(back_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
+#else  
+    back_icon = lv_img_create(dp_base);
+    lv_img_set_src(back_icon, img_path(BASE_BACK_ICON, bg_path_buf, 64));
+    lv_obj_align(back_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
+#endif
     
     lv_obj_t * exit_btn_label = lv_label_create(exit_btn);
     lv_obj_center(exit_btn_label);
@@ -182,7 +193,7 @@ void ui_base_init(void)
     lv_obj_set_style_text_font(exit_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
 
     // 2. 头顶选中态变换标签 "CHOOSED"
-    choosed_indicator = lv_label_create(base_screen);
+    choosed_indicator = lv_label_create(dp_base);
     lv_label_set_text(choosed_indicator, "SELECTED");
     lv_obj_set_style_text_color(choosed_indicator, lv_color_hex(0x00FF00), 0); // 鲜艳绿
     lv_obj_set_style_text_font(choosed_indicator, &lv_font_montserrat_16, 0);
@@ -190,7 +201,7 @@ void ui_base_init(void)
     // 3. 循环创建横向排列的四个飞机组件
     for (int i = 0; i < PLANE_ID_MAX; i++) {
         // 飞机触控底座容器
-        plane_objs[i] = lv_obj_create(base_screen);
+        plane_objs[i] = lv_obj_create(dp_base);
         lv_obj_set_size(plane_objs[i], PLANE_WIDTH, PLANE_HEIGHT);
         int x_pos = START_X + i * (PLANE_WIDTH + PLANE_GAP);
         lv_obj_set_pos(plane_objs[i], x_pos, 160);
@@ -239,11 +250,10 @@ void ui_base_init(void)
 
         // 绑定飞机点击事件
         lv_obj_add_event_cb(plane_objs[i], plane_click_cb, LV_EVENT_CLICKED, (void*)(uintptr_t)i);
-        lv_group_add_obj(base_group, plane_objs[i]);
     }
 
     // 4. 创建可跟随移动的飞机详情面板
-    detail_panel = lv_obj_create(base_screen);
+    detail_panel = lv_obj_create(dp_base);
     lv_obj_set_size(detail_panel, PLANE_WIDTH, 200);
     lv_obj_clear_flag(detail_panel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(detail_panel, LV_OPA_TRANSP, 0); 
@@ -255,7 +265,6 @@ void ui_base_init(void)
     lv_obj_set_size(choose_btn, LV_PCT(100), 40);
     lv_obj_align(choose_btn, LV_ALIGN_TOP_MID, 0, 0);
     lv_obj_add_event_cb(choose_btn, choose_btn_cb, LV_EVENT_CLICKED, NULL);
-    lv_group_add_obj(base_group, choose_btn);
 
     choose_lbl = lv_label_create(choose_btn);
     lv_label_set_text(choose_lbl, "CHOOSE");
@@ -286,7 +295,7 @@ void ui_base_init(void)
     lv_obj_set_style_text_font(skill_label, &lv_font_montserrat_14, 0); 
 
     // 5. 退出确认弹窗声明
-    base_exit_popup = popup_create(base_screen);
+    base_exit_popup = popup_create(dp_base);
     lv_obj_add_flag(base_exit_popup, LV_OBJ_FLAG_HIDDEN);
 
     lv_obj_t * pause_label = lv_label_create(base_exit_popup);
@@ -299,7 +308,6 @@ void ui_base_init(void)
     lv_obj_set_size(continue_btn, 300, 60);
     lv_obj_set_pos(continue_btn, 25, 240);
     lv_obj_add_event_cb(continue_btn, base_continue_btn_cb, LV_EVENT_CLICKED, NULL);
-    lv_group_add_obj(base_group, continue_btn);
 
     lv_obj_t * continue_lbl = lv_label_create(continue_btn);
     lv_obj_center(continue_lbl);
@@ -310,7 +318,6 @@ void ui_base_init(void)
     lv_obj_set_size(back_menu_btn, 300, 60);
     lv_obj_set_pos(back_menu_btn, 25, 320);
     lv_obj_add_event_cb(back_menu_btn, base_back_menu_btn_cb, LV_EVENT_CLICKED, NULL);
-    lv_group_add_obj(base_group, back_menu_btn);
 
     lv_obj_t * back_menu_lbl = lv_label_create(back_menu_btn);
     lv_obj_center(back_menu_lbl);
@@ -323,10 +330,10 @@ void ui_base_init(void)
  */
 void ui_base_run(void)
 {
-    if (base_screen == NULL) {
+    if (dp_base == NULL) {
         ui_base_init();
     }
-    lv_scr_load(base_screen);
+    lv_scr_load(dp_base);
     
     popup_hide(base_exit_popup);
 
@@ -346,7 +353,6 @@ void ui_base_run(void)
     // 对齐 SELECTED 头顶变换标识
     lv_obj_align_to(choosed_indicator, plane_objs[g_selected_plane_id], LV_ALIGN_OUT_TOP_MID, 0, -8);
 
-    set_group(base_group);
 }
 
 /**********************

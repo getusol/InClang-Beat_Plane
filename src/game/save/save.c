@@ -11,6 +11,7 @@
 #include "coin.h"
 #include "game_object.h"
 #include "ui_base.h"
+#include "ui_shop.h"
 #include "tools.h"
 #include <stdio.h>
 #include <string.h>
@@ -102,6 +103,7 @@ void save_write(void)
     fprintf(fp, "show_hitbox=%d\n", game_obj_get_show_hitbox() ? 1 : 0);
     fprintf(fp, "selected_plane=%d\n", (int)ui_base_get_selected_plane_id());
     fprintf(fp, "unlocked_mask=%d\n", ui_base_get_unlocked_mask());
+    fprintf(fp, "draw_count=%d\n", ui_shop_get_draw_cnt());
     fclose(fp);
 #else
     // MCU: FatFS
@@ -131,9 +133,29 @@ void save_write(void)
     snprintf(line, sizeof(line), "show_hitbox=%d\n", game_obj_get_show_hitbox() ? 1 : 0); f_puts(line, &fp);
     snprintf(line, sizeof(line), "selected_plane=%d\n", (int)ui_base_get_selected_plane_id()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "unlocked_mask=%d\n", ui_base_get_unlocked_mask()); f_puts(line, &fp);
+    snprintf(line, sizeof(line), "draw_count=%d\n", ui_shop_get_draw_cnt()); f_puts(line, &fp);
     f_close(&fp);
 #endif
     CONSOLE_INFO("Save written to %s", SAVE_PATH);
+}
+
+/**
+ * @brief 清空存档：删除存档文件并重置所有数据为默认值
+ */
+void save_clear(void)
+{
+    // 删除主存档和备份
+#ifdef SIMULATOR
+    remove(SAVE_PATH);
+    remove(BACKUP_PATH);
+#else
+    f_unlink(SAVE_PATH);
+    f_unlink(BACKUP_PATH);
+#endif
+    // 重置内存状态为默认值，并写入新的默认存档
+    apply_defaults();
+    save_write();
+    CONSOLE_INFO("Save data cleared and reset to defaults.");
 }
 
 /**********************
@@ -152,7 +174,7 @@ static int try_parse_file(const char * path)
 
     char line[MAX_LINE_LEN];
     int coin_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, show_hitbox = -1;
-    int selected_plane = -1, unlocked_mask = -1;
+    int selected_plane = -1, unlocked_mask = -1, draw_count = -1;
 
     while (fgets(line, sizeof(line), fp)) {
         char key[32];
@@ -165,6 +187,7 @@ static int try_parse_file(const char * path)
             else if (strcmp(key, "show_hitbox") == 0) show_hitbox = val;
             else if (strcmp(key, "selected_plane") == 0) selected_plane = val;
             else if (strcmp(key, "unlocked_mask") == 0) unlocked_mask = val;
+            else if (strcmp(key, "draw_count") == 0) draw_count = val;
         }
     }
     fclose(fp);
@@ -178,19 +201,20 @@ static int try_parse_file(const char * path)
     if (show_hitbox >= 0) game_obj_set_show_hitbox(show_hitbox != 0);
     if (selected_plane >= 0) ui_base_set_selected_plane_id((plane_id_t)selected_plane);
     if (unlocked_mask >= 0) ui_base_set_unlocked_mask(unlocked_mask);
+    if (draw_count >= 0) ui_shop_set_draw_cnt(draw_count);
     return 0;
 #else
     FIL fp;
     if (f_open(&fp, path, FA_READ) != FR_OK) return -1;
 
-    char buf[MAX_LINE_LEN * 4 + 4]; // 4 lines max
+    char buf[MAX_LINE_LEN * 8 + 8]; // 8 lines max
     UINT bytes_read;
     f_read(&fp, buf, sizeof(buf) - 1, &bytes_read);
     buf[bytes_read] = '\0';
     f_close(&fp);
 
     int coin_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, show_hitbox = -1;
-    int selected_plane = -1, unlocked_mask = -1;
+    int selected_plane = -1, unlocked_mask = -1, draw_count = -1;
     char * line = strtok(buf, "\n");
     while (line) {
         char key[32];
@@ -203,6 +227,7 @@ static int try_parse_file(const char * path)
             else if (strcmp(key, "show_hitbox") == 0) show_hitbox = val;
             else if (strcmp(key, "selected_plane") == 0) selected_plane = val;
             else if (strcmp(key, "unlocked_mask") == 0) unlocked_mask = val;
+            else if (strcmp(key, "draw_count") == 0) draw_count = val;
         }
         line = strtok(NULL, "\n");
     }
@@ -216,6 +241,7 @@ static int try_parse_file(const char * path)
     if (show_hitbox >= 0) game_obj_set_show_hitbox(show_hitbox != 0);
     if (selected_plane >= 0) ui_base_set_selected_plane_id((plane_id_t)selected_plane);
     if (unlocked_mask >= 0) ui_base_set_unlocked_mask(unlocked_mask);
+    if (draw_count >= 0) ui_shop_set_draw_cnt(draw_count);
     return 0;
 #endif
 }
@@ -226,4 +252,8 @@ static void apply_defaults(void)
     audio_set_vol_bgm(255);
     audio_set_vol_sfx(255);
     audio_set_vol_amp(1);
+    ui_shop_set_draw_cnt(0);
+    ui_base_set_unlocked_mask(1);                  // 仅默认飞机解锁
+    ui_base_set_selected_plane_id(PLANE_ID_DEFAULT);
+    game_obj_set_show_hitbox(false);
 }

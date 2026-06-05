@@ -42,12 +42,16 @@ static void amp_preview_cb(lv_event_t * e);
 static void update_volume_labels(void);
 static void hitbox_switch_event_cb(lv_event_t * e);
 static void update_hitbox_preview(void);
+static void clear_save_btn_event_cb(lv_event_t * e);
+static void clear_confirm_btn_cb(lv_event_t * e);
+static void clear_cancel_btn_cb(lv_event_t * e);
 
 /**********************
  * STATIC VARIABLES
  **********************/
 
 static lv_obj_t * dp_setting = NULL;
+static lv_obj_t * container = NULL;
 static lv_group_t * setting_group = NULL;
 static lv_obj_t * bgm_slider = NULL;
 static lv_obj_t * sfx_slider = NULL;
@@ -59,6 +63,9 @@ static lv_obj_t * hitbox_label = NULL;
 static lv_obj_t * hitbox_switch = NULL;
 static lv_obj_t * hitbox_preview_img = NULL;
 static lv_obj_t * hitbox_preview_box = NULL;
+static lv_obj_t * clear_save_label = NULL;
+static lv_obj_t * clear_save_btn = NULL;
+static lv_obj_t * clear_confirm_popup = NULL;
 
 #ifdef SIMULATOR
 static lv_img_dsc_t back_arrow_img_struct;
@@ -90,8 +97,8 @@ void ui_setting_init(void)
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 30);
 
     // popup 容器
-    lv_obj_t * container = popup_create(dp_setting);
-    lv_obj_set_size(container,600,470);
+    container = popup_create(dp_setting);
+    lv_obj_set_size(container,600,500);
     lv_obj_set_align(container,LV_ALIGN_CENTER);
     lv_obj_set_pos(container,0,40);
     lv_obj_add_flag(container,LV_OBJ_FLAG_SCROLLABLE);
@@ -176,6 +183,58 @@ void ui_setting_init(void)
     lv_obj_clear_flag(hitbox_preview_box, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_pos(hitbox_preview_box, preview_apr->hitbox_x, preview_apr->hitbox_y);
     lv_obj_set_size(hitbox_preview_box, preview_apr->hitbox_w, preview_apr->hitbox_h);
+
+    // ---- 清空存档 ----
+    clear_save_label = lv_label_create(container);
+    lv_obj_set_style_text_font(clear_save_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(clear_save_label, lv_color_make(255, 0, 0), LV_STATE_DEFAULT);
+    lv_label_set_text(clear_save_label, "CLEAR SAVE DATA");
+    lv_obj_set_pos(clear_save_label, 60, 370);
+
+    clear_save_btn = lv_btn_create(container);
+    lv_obj_set_size(clear_save_btn, 200, 50);
+    lv_obj_set_pos(clear_save_btn, 60, 410);
+    lv_obj_set_style_bg_color(clear_save_btn, lv_color_hex(0xD32F2F), LV_STATE_DEFAULT);
+    lv_obj_add_event_cb(clear_save_btn, clear_save_btn_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_group_add_obj(setting_group, clear_save_btn);
+
+    lv_obj_t * clear_btn_lbl = lv_label_create(clear_save_btn);
+    lv_obj_center(clear_btn_lbl);
+    lv_label_set_text(clear_btn_lbl, "Clear");
+    lv_obj_set_style_text_font(clear_btn_lbl, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+
+    // 清空确认弹窗
+    clear_confirm_popup = popup_create(dp_setting);
+    lv_obj_add_flag(clear_confirm_popup, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_pos(clear_confirm_popup,0,40);
+    lv_obj_set_size(clear_confirm_popup, 400,450);
+
+    lv_obj_t * clear_confirm_label = lv_label_create(clear_confirm_popup);
+    lv_obj_set_pos(clear_confirm_label, 30, 50);
+    lv_label_set_text(clear_confirm_label, "CLEAR\nALL SAVE DATA?\n\nThis cannot be undone!");
+    lv_obj_set_style_text_font(clear_confirm_label, &lv_font_montserrat_24, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(clear_confirm_label, lv_color_make(255, 80, 80), LV_STATE_DEFAULT);
+
+    lv_obj_t * confirm_btn = lv_btn_create(clear_confirm_popup);
+    lv_obj_set_size(confirm_btn, 260, 55);
+    lv_obj_set_pos(confirm_btn, 50, 240);
+    lv_obj_set_style_bg_color(confirm_btn, lv_color_hex(0xD32F2F), LV_STATE_DEFAULT);
+    lv_obj_add_event_cb(confirm_btn, clear_confirm_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * confirm_lbl = lv_label_create(confirm_btn);
+    lv_obj_center(confirm_lbl);
+    lv_label_set_text(confirm_lbl, "Confirm Clear");
+    lv_obj_set_style_text_font(confirm_lbl, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+
+    lv_obj_t * cancel_btn = lv_btn_create(clear_confirm_popup);
+    lv_obj_set_size(cancel_btn, 260, 55);
+    lv_obj_set_pos(cancel_btn, 50, 310);
+    lv_obj_add_event_cb(cancel_btn, clear_cancel_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * cancel_lbl = lv_label_create(cancel_btn);
+    lv_obj_center(cancel_lbl);
+    lv_label_set_text(cancel_lbl, "Cancel");
+    lv_obj_set_style_text_font(cancel_lbl, &lv_font_montserrat_22, LV_STATE_DEFAULT);
 
     // 右上角返回按钮 (64x64 透明 + 箭头图标)
     lv_obj_t * back_btn = lv_btn_create(dp_setting);
@@ -334,4 +393,28 @@ static void amp_slider_event_cb(lv_event_t * e)
 static void amp_preview_cb(lv_event_t * e)
 {
     audio_load(AUDIO_BASKETBALLMUSIC,AUDIO_CHAN_BGM,false);
+}
+
+static void clear_save_btn_event_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    popup_show(clear_confirm_popup);
+    popup_hide(container);
+}
+
+static void clear_confirm_btn_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    popup_hide(clear_confirm_popup);
+    popup_show(container);
+    save_clear();
+    save_load();
+    CONSOLE_INFO("Save data cleared from settings.");
+}
+
+static void clear_cancel_btn_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    popup_hide(clear_confirm_popup);
+    popup_show(container);
 }

@@ -28,8 +28,9 @@
 #define PLAYER_STREAM_IMG   "player_stream.bin"
 #define PLAYER_VERDANT_IMG  "player_verdant.bin"
 #define COIN_LEAVE_IMG      "coin.bin"
-#define COIN_IMG_NAME       "coin.bin"
-#define DRAW_COST           10
+#define COIN_IMG_NAME       "coin_bar.bin"
+#define BASE_BACK_ICON      "back_arrow.bin"
+#define DRAW_COST           160
 #define TOTAL_SLOTS         8
 
 // 网格单元大小
@@ -71,6 +72,7 @@ static int current_slot = 0;
 static int target_slot = 0;
 static int steps_remaining = 0;
 static int current_speed_ms = 40;
+static int draw_count = 0;
 // 奖池定义（按顺时针排列 0~7）
 static reward_info_t rewards[TOTAL_SLOTS] = {
     {0, "Ember Plane",   PLAYER_EMBER_IMG,   150},  // 0-左上
@@ -92,7 +94,7 @@ static const int slot_coords[TOTAL_SLOTS][2] = {
 };
 
 #ifdef SIMULATOR
-static lv_img_dsc_t shop_bg_dsc, ember_dsc, stream_dsc, verdant_dsc, coin_dsc, popup_reward_dsc,coin_img_dsc;
+static lv_img_dsc_t shop_bg_dsc, ember_dsc, stream_dsc, verdant_dsc, coin_dsc, popup_reward_dsc,coin_img_dsc,back_arrow_dsc;
 #endif
 
 /**********************
@@ -141,27 +143,34 @@ void ui_shop_init(void)
 #endif
     lv_obj_center(bg);
 
-        //coin_img initialize
+    //coin_img initialize
     static char img_path_buf[64];
-    #ifdef SIMULATOR
+#ifdef SIMULATOR
     lv_obj_t * coin_img = img_create_from_dsc(dp_shop,img_path(COIN_IMG_NAME,img_path_buf,64),166,46,NULL,&coin_img_dsc,true);
     lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_LEFT);
-    #else
+#else
     lv_obj_t * coin_img = lv_img_create(dp_shop);
     lv_img_set_src(coin_img,img_path(COIN_IMG_NAME,img_path_buf,64));
-    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_RIGHT);
-    #endif
+    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_LEFT);
+#endif
   
     lv_obj_t * exit_btn = lv_btn_create(dp_shop);
-    lv_obj_set_size(exit_btn, 80, 30);
+    lv_obj_set_size(exit_btn, 64, 64);
     lv_obj_set_align(exit_btn, LV_ALIGN_TOP_RIGHT);
-    lv_obj_set_pos(exit_btn, -10, 10); // 微调边缘间距
+    lv_obj_set_pos(exit_btn, 0, 0); // 微调边缘间距
     lv_obj_add_event_cb(exit_btn, shop_exit_btn_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_style_opa(exit_btn,0,0);
+
+    lv_obj_t * back_icon;
+#ifdef SIMULATOR
+    back_icon = img_create_from_dsc(dp_shop, img_path(BASE_BACK_ICON, bg_path_buf, 64), 64, 64, NULL, &back_arrow_dsc, true);
+    lv_obj_align(back_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
+#else  
+    back_icon = lv_img_create(dp_shop);
+    lv_img_set_src(back_icon, img_path(BASE_BACK_ICON, bg_path_buf, 64));
+    lv_obj_align(back_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
+#endif
     
-    lv_obj_t * exit_btn_label = lv_label_create(exit_btn);
-    lv_obj_set_align(exit_btn_label, LV_ALIGN_CENTER);
-    lv_label_set_text(exit_btn_label, "Back");
-    lv_obj_set_style_text_font(exit_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
 
     // 九宫格区域容器
     lv_obj_t * grid_cont = lv_obj_create(bg);
@@ -369,6 +378,23 @@ void ui_shop_esc_behave(void)
     }
 }
 
+/**
+ * @brief 获取当前抽奖次数
+ */
+int ui_shop_get_draw_cnt(void)
+{
+    return draw_count;
+}
+
+/**
+ * @brief 安全设置抽奖次数
+ */
+void ui_shop_set_draw_cnt(int cnt)
+{
+    if (cnt < 0) return;
+    draw_count = cnt;
+}
+
 /**********************
  * STATIC FUNCTIONS
  **********************/
@@ -519,15 +545,15 @@ static void update_cursor_position(int slot)
 
 /**
  * @brief 控制抽奖核心概率算法
- * @note 第 3/6 抽固定出 Ember/Verdant/Stream，其余随机
+ * @note 第 1/3/6 抽固定出 Ember/Verdant/Stream，其余随机
  */
 static int get_random_reward_slot(void)
 {
-    static int draw_count = 0;
     draw_count++;
 
     // 固定抽奖结果
     switch (draw_count) {
+        case 1: return 0;  // Ember
         case 3: return 4;  // Verdant
         case 6: return 2;  // Stream
         default: break;

@@ -2,12 +2,8 @@
  * @file player.h
  */
 
-#ifndef PLAYER_H
-#define PLAYER_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef __PLAYER_H__
+#define __PLAYER_H__
 
 /*********************
  * INCLUDES
@@ -32,8 +28,4 @@ void player_apply_config(int plane_id);
 int player_get_current_plane(void);
 bool player_is_shield_active(void);
 
-#ifdef __cplusplus
-} /*extern "C"*/
-#endif
-
-#endif /*PLAYER_H*/
+#endif // #ifndef __PLAYER_H__
