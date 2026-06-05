@@ -53,6 +53,12 @@ uint16_t comm_get_log(char *buffer, uint16_t buf_size);
 bool comm_has_heartbeat(void);
 void comm_handle_heartbeat(void);
 
+bool comm_has_invite(void);
+bool comm_has_invite_ack(void);
+bool comm_get_invite_ack(void);
+bool comm_has_invite_cancel(void);
+bool comm_has_disconnect(void);
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/

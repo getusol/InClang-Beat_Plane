@@ -143,7 +143,7 @@ void ui_cg_init()
 }
 
 /**
- * @brief 播放音乐 + lvgl动画
+ * @brief 播放lvgl动画
  */
 void ui_cg_run()
 {
@@ -210,34 +210,34 @@ void ui_cg_run()
     lv_anim_start(&a);
 
 
-    // ---- 【16秒点】：图片2隐去 (用时500ms) ----
+    // ---- 【18秒点】：图片2隐去 (用时500ms) ----
     lv_anim_init(&a);
     lv_anim_set_var(&a, img2);
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 500);
-    lv_anim_set_delay(&a, 16000);
+    lv_anim_set_delay(&a, 18000);
     lv_anim_set_exec_cb(&a, anim_fade_out_cb);
     lv_anim_set_early_apply(&a, false);
     lv_anim_start(&a);
 
 
-    // ---- 【16秒点】：文字2隐去 (用时500ms) ----
+    // ---- 【18秒点】：文字2隐去 (用时500ms) ----
     lv_anim_init(&a);
     lv_anim_set_var(&a, label2);
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 500);
-    lv_anim_set_delay(&a, 16000);
+    lv_anim_set_delay(&a, 18000);
     lv_anim_set_exec_cb(&a, anim_fade_out_cb);
     lv_anim_set_early_apply(&a, false);
     lv_anim_start(&a);
 
 
-    // ---- 【16.5秒点】：全黑背景淡出，露出黑色的常驻屏幕 dp_cg （彻底杜绝白屏闪烁） ----
+    // ---- 【18.5秒点】：全黑背景淡出，露出黑色的常驻屏幕 dp_cg （彻底杜绝白屏闪烁） ----
     lv_anim_init(&a);
     lv_anim_set_var(&a, cg_layer);
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
     lv_anim_set_time(&a, 1500);
-    lv_anim_set_delay(&a, 16500);
+    lv_anim_set_delay(&a, 18500);
     lv_anim_set_exec_cb(&a, anim_fade_out_cb);
     lv_anim_set_ready_cb(&a, cg_anim_ready_cb);
     lv_anim_set_early_apply(&a, false);

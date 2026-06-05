@@ -15,6 +15,7 @@
 #include "perf_monitor.h"
 #include "audio.h"
 #include "comm.h"
+#include "multiplayer.h"
 
 int main(int argc, char **argv)
 {
@@ -23,12 +24,11 @@ int main(int argc, char **argv)
     lv_port_init();
     uart_enable();
     comm_init();
+    mp_init();  //  Must be ahead of any where mp_event register happens
     input_init();
     audio_init();
     fsm_init();
-    event_init();
-
-
+    event_init(); //  Must be ahead of any where game_event register happens
     ui_init();
     game_init();
     save_load();
@@ -57,6 +57,12 @@ int main(int argc, char **argv)
         .delay_ms = 2,
         .last_tick = 0,
     };
+    non_blocking_timer_t mp_timer = {
+        .func = mp_update,
+        .tick_get = lv_tick_get,
+        .delay_ms = 100,
+        .last_tick = 0,
+    };
 
     CONSOLE_INFO("Initialization done!");
     LOG_INFO("Initialization done!");
@@ -66,6 +72,7 @@ int main(int argc, char **argv)
         non_blocking_delay(&logic_timer);
         non_blocking_delay(&ui_timer);
         non_blocking_delay(&comm_timer);
+        non_blocking_delay(&mp_timer);
 
         uint32_t t_start = lv_tick_get();
         lv_timer_handler();

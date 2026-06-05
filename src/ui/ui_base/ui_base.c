@@ -16,11 +16,14 @@
 #include "player.h"
 #include "apr.h"
 #include "save.h"
+#include "multiplayer.h"
+
 /*********************
  * MACROS
  *********************/
 #define BASE_BG_IMG     "base_bg.bin"
 #define BASE_BACK_ICON "back_arrow.bin"
+#define MULTI_INVITE_ICON "2DMultiIcon.bin"
 
 #define PLANE_WIDTH     160
 #define PLANE_HEIGHT    160
@@ -58,6 +61,14 @@ static lv_obj_t * hp_label = NULL;
 static lv_obj_t * dmg_label = NULL;
 static lv_obj_t * skill_label = NULL;
 
+// 多人联机相关组件
+static lv_obj_t * multi_invite_popup = NULL;
+static lv_obj_t * multi_invite_popup_label = NULL;
+static lv_obj_t * multi_invite_yes_btn = NULL;
+static lv_obj_t * multi_invite_no_btn = NULL;
+static lv_obj_t * multi_invite_cancel_btn = NULL;
+static lv_obj_t * multi_invite_ok_btn = NULL;
+
 static lv_obj_t * base_exit_popup = NULL;   // 退出确认弹窗
 static int current_viewing_idx = 0;         // 当前正在点击浏览的飞机索引
 
@@ -76,7 +87,7 @@ static char plane_path_buf[PLANE_ID_MAX][64];
 static lv_img_dsc_t base_bg_dsc;
 static lv_img_dsc_t plane_base_dsc;
 static lv_img_dsc_t plane_dscs[PLANE_ID_MAX];
-static lv_img_dsc_t back_arrow_dsc;
+static lv_img_dsc_t back_arrow_dsc,multi_icon_dsc;
 #endif
 
 /**********************
@@ -88,6 +99,12 @@ static void base_exit_btn_cb(lv_event_t * e);
 static void base_continue_btn_cb(lv_event_t * e);
 static void base_back_menu_btn_cb(lv_event_t * e);
 static void update_detail_panel(int idx);
+static void base_invite_btn_cb(lv_event_t * e);
+static void base_invite_yes_btn_cb(lv_event_t * e);
+static void base_invite_no_btn_cb(lv_event_t * e);
+static void base_invite_cancel_btn_cb(lv_event_t * e);
+static void base_invite_ok_btn_cb(lv_event_t * e);
+static void base_mp_event_cb(mp_event_t event,void * data);
 
 /**********************
  * GLOBAL FUNCTIONS
@@ -192,6 +209,82 @@ void ui_base_init(void)
     lv_label_set_text(exit_btn_label, "Back");
     lv_obj_set_style_text_font(exit_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
 
+    // 左上角多人联机Icon按钮
+    lv_obj_t * multi_invite_btn = lv_btn_create(dp_base);
+    lv_obj_set_size(multi_invite_btn, 96, 82);
+    lv_obj_set_pos(multi_invite_btn, 20, 20);
+    lv_obj_set_align(multi_invite_btn, LV_ALIGN_TOP_LEFT);
+    lv_obj_add_event_cb(multi_invite_btn, base_invite_btn_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_style_opa(multi_invite_btn, LV_OPA_0, 0);
+
+    // 联机Icon图片
+#ifdef SIMULATOR
+    lv_obj_t * multi_invite_img = img_create_from_dsc(dp_base,img_path(MULTI_INVITE_ICON,bg_path_buf,64),96,82,NULL,&multi_icon_dsc,true);
+#else
+    lv_obj_t * multi_invite_img = lv_img_create(dp_base);
+    lv_img_set_src(multi_invite_img, img_path(MULTI_INVITE_ICON,bg_path_buf,64));
+#endif
+    lv_obj_set_size(multi_invite_img, 96, 82);
+    lv_obj_align(multi_invite_img, LV_ALIGN_TOP_LEFT, 20, 20);
+
+    // 联机弹窗和标签 按钮
+    multi_invite_popup = popup_create(lv_layer_top());
+    lv_obj_add_flag(multi_invite_popup,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_opa(multi_invite_popup,LV_OPA_COVER,0);
+    lv_obj_set_size(multi_invite_popup,400,200);
+
+    multi_invite_popup_label = lv_label_create(multi_invite_popup);
+    lv_obj_set_align(multi_invite_popup_label,LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_popup_label,0,-40);
+    lv_obj_set_style_text_font(multi_invite_popup_label,&lv_font_montserrat_14,0);
+    lv_obj_set_style_text_color(multi_invite_popup_label,lv_color_white(),0);
+
+    multi_invite_yes_btn = lv_btn_create(multi_invite_popup);
+    lv_obj_set_align(multi_invite_yes_btn,LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_yes_btn,-90,40);
+    lv_obj_set_size(multi_invite_yes_btn,150,45);
+    lv_obj_add_event_cb(multi_invite_yes_btn, base_invite_yes_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * multi_invite_yes_btn_label = lv_label_create(multi_invite_yes_btn);
+    lv_obj_center(multi_invite_yes_btn_label);
+    lv_label_set_text(multi_invite_yes_btn_label, "Yes");
+    lv_obj_set_style_text_font(multi_invite_yes_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+
+    multi_invite_ok_btn = lv_btn_create(multi_invite_popup);
+    lv_obj_set_align(multi_invite_ok_btn,LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_ok_btn,-90,40);
+    lv_obj_set_size(multi_invite_ok_btn,150,45);
+    lv_obj_add_event_cb(multi_invite_ok_btn, base_invite_ok_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * multi_invite_ok_btn_label = lv_label_create(multi_invite_ok_btn);
+    lv_obj_center(multi_invite_ok_btn_label);
+    lv_label_set_text(multi_invite_ok_btn_label, "OK");
+    lv_obj_set_style_text_font(multi_invite_ok_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+    
+
+    multi_invite_no_btn = lv_btn_create(multi_invite_popup);
+    lv_obj_set_align(multi_invite_no_btn,LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_no_btn,90,40);
+    lv_obj_set_size(multi_invite_no_btn,150,45);
+    lv_obj_add_event_cb(multi_invite_no_btn, base_invite_no_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * multi_invite_no_btn_label = lv_label_create(multi_invite_no_btn);
+    lv_obj_center(multi_invite_no_btn_label);
+    lv_label_set_text(multi_invite_no_btn_label, "No");
+    lv_obj_set_style_text_font(multi_invite_no_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+
+    multi_invite_cancel_btn = lv_btn_create(multi_invite_popup);
+    lv_obj_set_align(multi_invite_cancel_btn,LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_cancel_btn,90,40);
+    lv_obj_set_size(multi_invite_cancel_btn,150,45);
+    lv_obj_add_event_cb(multi_invite_cancel_btn, base_invite_cancel_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * multi_invite_cancel_btn_label = lv_label_create(multi_invite_cancel_btn);
+    lv_obj_center(multi_invite_cancel_btn_label);
+    lv_label_set_text(multi_invite_cancel_btn_label, "Cancel");
+    lv_obj_set_style_text_font(multi_invite_cancel_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+
+
     // 2. 头顶选中态变换标签 "CHOOSED"
     choosed_indicator = lv_label_create(dp_base);
     lv_label_set_text(choosed_indicator, "SELECTED");
@@ -244,7 +337,7 @@ void ui_base_init(void)
         lv_obj_set_style_text_color(lock_lbl, lv_color_hex(0x999999), 0);
         lv_obj_center(lock_lbl);
 
-        // 💡 注意：为了让未解锁的飞机也能响应点击事件来查看属性，我们需要关闭锁遮罩层的冒泡或允许点击穿透
+        // 为了让未解锁的飞机也能响应点击事件来查看属性，我们需要关闭锁遮罩层的冒泡或允许点击穿透
         // 这里直接让 lock_masks 不接收点击事件，点击就会穿透到下层的 plane_objs
         lv_obj_clear_flag(lock_masks[i], LV_OBJ_FLAG_CLICKABLE);
 
@@ -284,7 +377,6 @@ void ui_base_init(void)
     dmg_label = lv_label_create(info_cont);
     skill_label = lv_label_create(info_cont);
     
-    // 💡 修正：显式将全黑背景下的文字颜色全部指定为白色，使其清晰可见
     lv_obj_set_style_text_color(hp_label, lv_color_white(), 0);
     lv_obj_set_style_text_color(dmg_label, lv_color_white(), 0);
     lv_obj_set_style_text_color(skill_label, lv_color_white(), 0);
@@ -323,6 +415,16 @@ void ui_base_init(void)
     lv_obj_center(back_menu_lbl);
     lv_label_set_text(back_menu_lbl, "Leave");
     lv_obj_set_style_text_font(back_menu_lbl, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+
+
+    // mp 事件注册
+    mp_event_register(MP_EVENT_DISCONNECTED, base_mp_event_cb);
+    mp_event_register(MP_EVENT_INVITE_RECEIVED, base_mp_event_cb);
+    mp_event_register(MP_EVENT_INVITE_ACCEPTED, base_mp_event_cb);
+    mp_event_register(MP_EVENT_INVITE_REJECTED, base_mp_event_cb);
+    mp_event_register(MP_EVENT_INVITE_TIMEOUT, base_mp_event_cb);
+    mp_event_register(MP_EVENT_CONNECTED, base_mp_event_cb);
+    mp_event_register(MP_EVENT_WAITING_TIMEOUT, base_mp_event_cb);
 }
 
 /**
@@ -363,8 +465,6 @@ static void plane_click_cb(lv_event_t * e)
 {
     int idx = (int)(uintptr_t)lv_event_get_user_data(e);
     
-    // 💡 修改：删除了 "!g_plane_unlocked[idx]" 的拦截返回。
-    // 无论飞机是否解锁，现在都会更新当前浏览的 ID 并刷新面板。
     current_viewing_idx = idx;
     update_detail_panel(current_viewing_idx);
 }
@@ -379,7 +479,6 @@ static void update_detail_panel(int idx)
     lv_label_set_text_fmt(dmg_label, "DMG: %d", plane_templates[idx].damage);
     lv_label_set_text_fmt(skill_label, "SKILL:\n%s", plane_templates[idx].skill_desc);
 
-    // 💡 视觉优化：如果当前看的是未解锁的飞机，让 Choose 按钮显示为 "LOCKED" 并变灰
     if (!g_plane_unlocked[idx]) {
         lv_label_set_text(choose_lbl, "LOCKED");
         lv_obj_set_style_bg_color(choose_btn, lv_color_hex(0x555555), 0);
@@ -393,7 +492,6 @@ static void choose_btn_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
 
-    // 💡 修改：在这里进行解锁校验，未解锁则拒绝选择
     if (!g_plane_unlocked[current_viewing_idx]) {
         CONSOLE_INFO("Cannot choose: Plane %s is locked. Spin the shop roulette to unlock!", plane_templates[current_viewing_idx].name);
         return;
@@ -408,6 +506,11 @@ static void choose_btn_cb(lv_event_t * e)
 static void base_exit_btn_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    // 不能执行退出操作，因为当前正在处理邀请，需要先取消邀请
+    if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN)) {
+        CONSOLE_INFO("Cannot exit: Invite is in progress. Please cancel it first.");
+        return;
+    }
     popup_show(base_exit_popup);
 }
 
@@ -424,4 +527,181 @@ static void base_back_menu_btn_cb(lv_event_t * e)
     save_write();
     fsm_switch_state(GS_MENU);
     CONSOLE_INFO("Returning back to main menu.");
+}
+
+static void base_invite_btn_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+
+    if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN)) return ;
+
+    popup_show(multi_invite_popup);
+    lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(multi_invite_popup_label,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+    
+    mp_state_t mp_state = mp_get_state();
+    switch (mp_state) {
+        case MP_STATE_IDLE:
+            if (mp_send_invite()) {
+                lv_label_set_text_fmt(multi_invite_popup_label,"Invite sent,waiting...");
+                lv_obj_clear_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_label_set_text(multi_invite_popup_label, "Invite failed, please check your connection.");
+                lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+            }
+            break;
+        case MP_STATE_CONNECTED:
+            lv_label_set_text(multi_invite_popup_label, "Connected, disconnect?");
+            lv_obj_clear_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
+            break;
+
+        default:
+            lv_label_set_text(multi_invite_popup_label, "Unexpected state,please report to the developer.");
+            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+            CONSOLE_WARNING("Unexpected state: %d on invite button click.", mp_state);
+            LOG_WARNING("Unexpected state: %d on invite button click.", mp_state);
+            break;
+    }
+}
+
+static void base_invite_yes_btn_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+
+    switch (mp_get_state()) {
+        case MP_STATE_CONNECTED:
+            mp_disconnect();
+            break;
+        case MP_STATE_WAITING:
+            popup_hide(multi_invite_popup);
+            mp_accept_invite();
+            break;
+        default:
+            break;
+    }
+}
+
+static void base_invite_no_btn_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    switch (mp_get_state()) {
+        case MP_STATE_CONNECTED:
+            popup_hide(multi_invite_popup);
+            break;
+        case MP_STATE_WAITING:
+            popup_hide(multi_invite_popup);
+            mp_reject_invite();
+            break;
+        default:
+            break;
+    }
+}
+
+static void base_invite_cancel_btn_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    if(mp_get_state() == MP_STATE_INVITING) {
+        mp_cancel_invite();
+    }
+    popup_hide(multi_invite_popup);
+}
+
+/**
+ * @brief 确认邀请按钮点击事件处理函数
+ */
+static void base_invite_ok_btn_cb(lv_event_t * e)
+{
+    // simply hide the popup
+    LV_UNUSED(e);
+    popup_hide(multi_invite_popup);
+}
+
+static void base_mp_event_cb(mp_event_t event,void * data)
+{
+    switch (event) {
+        case MP_EVENT_DISCONNECTED:
+            CONSOLE_INFO("MP_EVENT_DISCONNECTED");
+            // 防止ui 重叠
+            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+
+            popup_show(multi_invite_popup);
+
+            lv_label_set_text(multi_invite_popup_label, "Disconnected.");
+            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+            break;
+        case MP_EVENT_INVITE_RECEIVED:
+            popup_show(multi_invite_popup);
+            lv_label_set_text(multi_invite_popup_label, "Received invite! Accept?");
+            lv_obj_clear_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+            CONSOLE_INFO("MP_EVENT_INVITE_RECEIVED");
+            break;
+        case MP_EVENT_INVITE_ACCEPTED:
+            popup_show(multi_invite_popup);
+            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN); 
+
+            lv_label_set_text(multi_invite_popup_label, "Invite accepted.Connected.");
+            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+            CONSOLE_INFO("MP_EVENT_INVITE_ACCEPTED");
+            break;
+        case MP_EVENT_INVITE_REJECTED:
+            popup_show(multi_invite_popup);
+            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN); 
+
+            lv_label_set_text(multi_invite_popup_label, "Invite rejected.");
+            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+            CONSOLE_INFO("MP_EVENT_INVITE_REJECTED");
+            break;
+        case MP_EVENT_INVITE_TIMEOUT:
+            popup_show(multi_invite_popup);
+            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN); 
+
+            lv_label_set_text(multi_invite_popup_label, "Invite timeout.");
+            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+            CONSOLE_INFO("MP_EVENT_INVITE_TIMEOUT");
+            break;
+        case MP_EVENT_CONNECTED:
+            if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN)) {
+                break ;
+            }
+            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+            popup_show(multi_invite_popup);
+            lv_label_set_text(multi_invite_popup_label, "Connected.");
+            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+            break;
+        case MP_EVENT_WAITING_TIMEOUT:
+            popup_show(multi_invite_popup);
+            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN); 
+
+            lv_label_set_text(multi_invite_popup_label, "Waiting timeout.");
+            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+            CONSOLE_INFO("MP_EVENT_WAITING_TIMEOUT");
+            break;
+        default:
+            break;
+    }
 }

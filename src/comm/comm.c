@@ -173,3 +173,4 @@ static void print_mcu_log(void)
 #endif
 #endif
 }
+

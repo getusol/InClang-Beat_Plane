@@ -62,6 +62,13 @@ static uint8_t expected_checksum = 0;
 
 static bool new_heartbeat = false;
 
+static bool if_receive_invite = false;
+static bool has_invite_ack = false;
+static bool if_accept_invite = false;
+
+static bool if_receive_invite_cancel = false;
+static bool if_receive_disconnect = false;
+
 #ifdef SIMULATOR // PC
 static uint8_t stored_key_mask = 0;
 static int16_t stored_joystick_x = 0;
@@ -103,6 +110,8 @@ void comm_rx_init()
 #endif
 
     CONSOLE_INFO("Communication receiver initialized.");
+    if_receive_invite_cancel = false;
+    if_receive_disconnect = false;
 }
 
 /**
@@ -331,6 +340,64 @@ uint16_t comm_get_log(char *buffer, uint16_t buf_size)
 
 #endif
 
+/**
+ * @brief 检查是否有邀请数据
+ * @return true=有邀请数据，false=无邀请数据
+ * @note 调用后会清除邀请标志
+ */
+bool comm_has_invite(void)
+{
+    bool res = if_receive_invite;
+    if_receive_invite = false;
+    return res;
+}
+
+/**
+ * @brief 检查是否有邀请确认数据
+ * @return true=有邀请确认数据，false=无邀请确认数据
+ */
+bool comm_has_invite_ack(void)
+{
+    return has_invite_ack;
+}
+
+/**
+ * @brief 获取邀请确认数据
+ * @return true=接受邀请，false=拒绝邀请
+ * @note 调用后会清除邀请确认标志
+ */
+bool comm_get_invite_ack(void)
+{
+    bool res = if_accept_invite;
+    if_accept_invite = false;
+    has_invite_ack = false;
+    return res;
+}
+
+/**
+ * @brief 检查是否收到邀请取消帧
+ * @return true=收到取消，false=未收到
+ * @note 调用后会清除标志
+ */
+bool comm_has_invite_cancel(void)
+{
+    bool res = if_receive_invite_cancel;
+    if_receive_invite_cancel = false;
+    return res;
+}
+
+/**
+ * @brief 检查是否收到断开联机帧
+ * @return true=收到断开，false=未收到
+ * @note 调用后会清除标志
+ */
+bool comm_has_disconnect(void)
+{
+    bool res = if_receive_disconnect;
+    if_receive_disconnect = false;
+    return res;
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -428,6 +495,22 @@ static bool data_process()
             LOG_WARNING("Heartbeat ACK frame received in non-simulator mode!");
             return false;
 #endif
+            break;
+
+        case COMM_FRAME_INVITE:
+            if_receive_invite = true;
+            break;
+        case COMM_FRAME_INVITE_ACK:
+            if (frame_length >= 1) {
+                has_invite_ack = true;
+                if_accept_invite = (frame_data[0] == 0x01);
+            }
+            break;
+        case COMM_FRAME_INVITE_CANCEL:
+            if_receive_invite_cancel = true;
+            break;
+        case COMM_FRAME_DISCONNECT:
+            if_receive_disconnect = true;
             break;
 
         default:

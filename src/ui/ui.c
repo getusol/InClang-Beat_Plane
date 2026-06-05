@@ -90,7 +90,7 @@ void ui_run()
           break;
         case GS_MENU  :
         //CONSOLE_INFO("Come to menu");
-          //audio_stop_all();
+          audio_stop(AUDIO_CHAN_BGM);
           ui_menu_run();
           break;
         case GS_SETTING :

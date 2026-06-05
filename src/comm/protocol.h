@@ -37,7 +37,11 @@ typedef enum
     COMM_FRAME_KEY_STATE = 0x02,     // 按键状态帧
     COMM_FRAME_JOYSTICK = 0x03,      // 手柄数据帧
     COMM_FRAME_HEART_BEAT = 0x04,    // 心跳帧 PC->MCU
-    COMM_FRAME_HEART_BEAT_ACK = 0x05 // 心跳确认帧 MCU->PC
+    COMM_FRAME_HEART_BEAT_ACK = 0x05, // 心跳确认帧 MCU->PC
+    COMM_FRAME_INVITE = 0x06,        // 邀请帧 PC<->MCU
+    COMM_FRAME_INVITE_ACK = 0x07,     // 邀请确认帧 MCU<->PC
+    COMM_FRAME_INVITE_CANCEL = 0x08,  // 邀请取消帧（双向）
+    COMM_FRAME_DISCONNECT = 0x09,     // 断开联机帧（双向）
 } comm_frame_type_t;
 
 /***********************

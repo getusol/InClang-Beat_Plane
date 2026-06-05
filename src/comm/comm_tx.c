@@ -125,6 +125,83 @@ void comm_mcu_send_log(const char *log_txt)
 }
 
 /**
+ * @brief 发送邀请帧
+ */
+void comm_send_invite()
+{
+    // 发送帧头
+    uart_send_byte(COMM_SOF);
+    
+    // 发送帧类型
+    send_escaped_byte(COMM_FRAME_INVITE);
+    
+    // 发送长度（无数据）
+    send_escaped_byte(0x00);  // 高字节
+    send_escaped_byte(0x00);  // 低字节
+    
+    // 发送校验和（无数据时为0）
+    send_escaped_byte(0x00);
+    
+    // 发送帧尾
+    uart_send_byte(COMM_EOF);
+}
+
+/**
+ * @brief 发送邀请确认帧
+ * @param accept 是否接受邀请
+ * @note 仅在收到邀请帧后调用
+ */
+void comm_send_invite_ack(bool accept)
+{
+    // 发送帧头
+    uart_send_byte(COMM_SOF);
+    send_escaped_byte(COMM_FRAME_INVITE_ACK);
+
+    // 发送长度（1字节）
+    send_escaped_byte(0x00);  // 高字节
+    send_escaped_byte(0x01);  // 低字节
+    
+    uint8_t accept_byte = accept ? 0x01 : 0x00;
+    // 发送是否接受邀请
+    send_escaped_byte(accept_byte);
+    
+    // 发送校验和（1字节）
+    uint8_t checksum = calculate_checksum((uint8_t *)&accept_byte, 1);
+    send_escaped_byte(checksum);
+    
+    // 发送帧尾
+    uart_send_byte(COMM_EOF);
+}
+
+/**
+ * @brief 发送邀请取消帧
+ * @note 当邀请方超时或主动取消时发送，通知接受方停止等待
+ */
+void comm_send_invite_cancel()
+{
+    uart_send_byte(COMM_SOF);
+    send_escaped_byte(COMM_FRAME_INVITE_CANCEL);
+    send_escaped_byte(0x00);  // 长度高字节
+    send_escaped_byte(0x00);  // 长度低字节
+    send_escaped_byte(0x00);  // 校验和（无数据时为0）
+    uart_send_byte(COMM_EOF);
+}
+
+/**
+ * @brief 发送断开联机帧
+ * @note 当一方主动断开联机会话时发送，通知对方也退出联机状态
+ */
+void comm_send_disconnect()
+{
+    uart_send_byte(COMM_SOF);
+    send_escaped_byte(COMM_FRAME_DISCONNECT);
+    send_escaped_byte(0x00);  // 长度高字节
+    send_escaped_byte(0x00);  // 长度低字节
+    send_escaped_byte(0x00);  // 校验和（无数据时为0）
+    uart_send_byte(COMM_EOF);
+}
+
+/**
  * @brief PC->MCU 发送心跳请求
  */
 void comm_pc_send_heart_beat()
