@@ -15,6 +15,7 @@
 #include "fsm.h"
 #include "save.h"
 #include "lvgl_utils.h"
+#include "ui_templates.h"
 
 /**********************
  *      MACROS
@@ -34,6 +35,8 @@ static void comm_label_update(lv_timer_t * t);
 static void on_label_click(lv_event_t * e);
 static void on_mp_event_cb(mp_event_t event,void * v);
 static void on_mp_btm_click(lv_event_t * e);
+static void on_mp_popup_yes_btn_click(lv_event_t * e);
+static void on_mp_popup_no_btn_click(lv_event_t * e);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -73,7 +76,7 @@ void ui_comm_init(void)
     lv_obj_add_event_cb(comm_status_label, on_label_click, LV_EVENT_CLICKED, NULL);
 
     // UI_COMM 界面
-    dp_comm = lv_img_create(NULL);
+    dp_comm = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(dp_comm,lv_color_hex(0x252532),0);
 
     // 文字提示
@@ -81,7 +84,7 @@ void ui_comm_init(void)
     lv_label_set_text(mp_label, "MCU now on multiplaying mode");
     lv_obj_set_style_text_color(mp_label,lv_color_hex(0x16C559),0);
     lv_obj_set_style_text_font(mp_label, &lv_font_montserrat_24, LV_PART_MAIN);
-    lv_obj_align(mp_label, LV_ALIGN_CENTER, 0, -30);
+    lv_obj_align(mp_label, LV_ALIGN_CENTER, 0, -60);
     
     char img_path_buf[128];
 
@@ -97,8 +100,41 @@ void ui_comm_init(void)
     lv_obj_add_event_cb(mp_btm, on_mp_btm_click, LV_EVENT_CLICKED, NULL);
 
     // 弹窗
-    
+    mp_popup = popup_create(dp_comm);
+    lv_obj_align(mp_popup, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_size(mp_popup, 400, 200);
+    lv_obj_add_flag(mp_popup, LV_OBJ_FLAG_HIDDEN);
 
+    // 弹窗标签
+    lv_obj_t * mp_popup_label = lv_label_create(mp_popup);
+    lv_obj_align(mp_popup_label, LV_ALIGN_CENTER, 0, -30);
+    lv_label_set_text(mp_popup_label, "Disconnect from multiplayer mode?");
+    lv_obj_set_style_text_font(mp_popup_label, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_obj_set_style_text_color(mp_popup_label,lv_color_white(),0);
+
+    // 弹窗按钮
+    lv_obj_t * mp_popup_yes_btn = lv_btn_create(mp_popup);
+    lv_obj_align(mp_popup_yes_btn, LV_ALIGN_CENTER, -90, 40);
+    lv_obj_set_size(mp_popup_yes_btn,150,40);
+    lv_obj_add_event_cb(mp_popup_yes_btn, on_mp_popup_yes_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * mp_popup_no_btn = lv_btn_create(mp_popup);
+    lv_obj_align(mp_popup_no_btn, LV_ALIGN_CENTER, 90, 40);
+    lv_obj_set_size(mp_popup_no_btn,150,40);
+    lv_obj_add_event_cb(mp_popup_no_btn, on_mp_popup_no_btn_click, LV_EVENT_CLICKED, NULL);
+
+    // 弹窗按钮标签
+    lv_obj_t * mp_popup_yes_btn_label = lv_label_create(mp_popup_yes_btn);
+    lv_obj_align(mp_popup_yes_btn_label, LV_ALIGN_CENTER, 0, 0);
+    lv_label_set_text(mp_popup_yes_btn_label, "Yes");
+    lv_obj_set_style_text_font(mp_popup_yes_btn_label, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_obj_set_style_text_color(mp_popup_yes_btn_label,lv_color_white(),0);
+
+    lv_obj_t * mp_popup_no_btn_label = lv_label_create(mp_popup_no_btn);
+    lv_obj_align(mp_popup_no_btn_label, LV_ALIGN_CENTER, 0, 0);
+    lv_label_set_text(mp_popup_no_btn_label, "No");
+    lv_obj_set_style_text_font(mp_popup_no_btn_label, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_obj_set_style_text_color(mp_popup_no_btn_label,lv_color_white(),0);
 
 
     // 事件注册
@@ -114,6 +150,7 @@ void ui_comm_init(void)
 void ui_comm_run()
 {
     lv_scr_load(dp_comm);
+    set_group(NULL);
 }
 
 /**********************
@@ -205,10 +242,27 @@ static void on_mp_event_cb(mp_event_t event,void * v)
 }
 
 /**
- * @brief 多人图标按钮点击回调（TODO）
+ * @brief 多人图标按钮点击回调
  */
 static void on_mp_btm_click(lv_event_t * e)
 {
     LV_UNUSED(e);
-    /* TODO: 点击多人图标后跳转到 base 界面 */
+    popup_show(mp_popup);
+}
+
+/**
+ * @brief 多人弹窗确认按钮点击回调
+ */
+static void on_mp_popup_yes_btn_click(lv_event_t * e)
+{
+    popup_hide(mp_popup);
+    mp_disconnect();
+}
+
+/**
+ * @brief 多人弹窗取消按钮点击回调
+ */
+static void on_mp_popup_no_btn_click(lv_event_t * e)
+{
+    popup_hide(mp_popup);
 }
