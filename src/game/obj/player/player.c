@@ -22,6 +22,7 @@
 #include "enemy.h"
 #include "ui_base.h" // for ui_base_get_selected_plane_id()
 #include "flame_wall.h"
+#include "ui_play.h"
 
 /**********************
  *      MACROS
@@ -94,6 +95,10 @@ typedef struct {
 
     // 速度加成 (Verdant)
     bool speed_boost_active;
+
+    // 技能CD可视化用 — 上次使用时刻(play_tick)
+    uint32_t skill_x_last_use;
+    uint32_t skill_y_last_use;
 } player_t;
 
  /**********************
@@ -255,6 +260,8 @@ void player_init(lv_obj_t * parent)
   player_p->skill_y_active = cfg->skill_y_active;
   player_p->shield_active = false;
   player_p->speed_boost_active = false;
+  player_p->skill_x_last_use = 0;
+  player_p->skill_y_last_use = 0;
 
   player_p->hp_bar = player_hp_bar_create((game_obj_t *)player_p, parent);
   player_p->base.obj = player_obj_create((game_obj_t *)player_p, parent);
@@ -372,6 +379,8 @@ void player_apply_config(int plane_id)
     player_p->shield_active = false;
     lv_obj_add_flag(player_p->shield_overlay, LV_OBJ_FLAG_HIDDEN);
     player_p->speed_boost_active = false;
+    player_p->skill_x_last_use = 0;
+    player_p->skill_y_last_use = 0;
 
     // 更新游戏性参数
     player_p->current_plane_id = plane_id;
@@ -568,6 +577,9 @@ static void player_x_pressed_handler()
                 player_p->base.active, fsm_get_state());
         return ;
     }
+    // 记录X技能使用时刻（用于CD可视化）
+    player_p->skill_x_last_use = play_tick_get();
+
     // 派遣到各飞机的X技能函数
     if (player_p->skill_x_active) {
         CONSOLE_DEBUG("Calling skill_x_active (plane=%d)", player_p->current_plane_id);
@@ -604,6 +616,8 @@ static void player_skill_y_fire()
     if (!player_p->base.active || fsm_get_state() != GS_PLAY) {
         return ;
     }
+    // 记录Y技能使用时刻（用于CD可视化）
+    player_p->skill_y_last_use = play_tick_get();
     if (player_p->skill_y_active) {
         player_p->skill_y_active();
     }
@@ -709,6 +723,7 @@ static void player_skill_flame_wall(void)
 static void player_skill_bullet_slow(void)
 {
     bullet_set_enemy_slow(true);
+    ui_play_set_freeze_overlay(true);
     timer_create((game_obj_t *)player_p, 2000, TIMER_MODE_ONCE,
                  player_slow_end_cb, NULL);
     CONSOLE_INFO("[PLAYER] Bullet Slow activated!");
@@ -721,6 +736,7 @@ static void player_slow_end_cb(game_obj_t *owner, void *usr_data)
 {
     (void)owner; (void)usr_data;
     bullet_set_enemy_slow(false);
+    ui_play_set_freeze_overlay(false);
     CONSOLE_INFO("[PLAYER] Bullet Slow expired");
 }
 
@@ -784,4 +800,28 @@ static void player_event_hit_by_bullet_cb(game_obj_t * src, game_obj_t * trg)
 bool player_is_shield_active(void)
 {
     return player_p ? player_p->shield_active : false;
+}
+
+uint32_t player_get_skill_x_cd(void)
+{
+    return player_p ? player_p->skill_x_cd : 0;
+}
+
+uint32_t player_get_skill_y_cd(void)
+{
+    return player_p ? player_p->skill_y_cd : 0;
+}
+
+uint32_t player_get_skill_x_elapsed(void)
+{
+    if (!player_p) return 0;
+    if (player_p->skill_x_last_use == 0) return 0xFFFFFFFF; // 从未使用，始终就绪
+    return play_tick_get() - player_p->skill_x_last_use;
+}
+
+uint32_t player_get_skill_y_elapsed(void)
+{
+    if (!player_p) return 0;
+    if (player_p->skill_y_last_use == 0) return 0xFFFFFFFF; // 从未使用，始终就绪
+    return play_tick_get() - player_p->skill_y_last_use;
 }

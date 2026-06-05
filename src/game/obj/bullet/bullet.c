@@ -166,7 +166,17 @@ game_obj_t * bullet_create(game_obj_t *source,
     apr_apply(&bullets[index].base, bullet_apr);
 
     lv_obj_set_pos(bullets[index].base.obj, x, y);
+
+    // 重置透明度（防止上次使用时残留的冰冻效果）
+    lv_obj_set_style_opa(bullets[index].base.obj, LV_OPA_COVER, 0);
+
     bullets[index].base.show((game_obj_t *)&bullets[index]);
+
+    // 如果减速激活中且来源是敌人，应用冰冻视觉效果
+    if (enemy_slow_active && source != NULL && source->type == GAME_OBJ_TYPE_ENEMY) {
+        lv_obj_set_style_opa(bullets[index].base.obj, LV_OPA_60, 0);
+    }
+
     // CONSOLE_INFO("Bullet created at index: %d, position: (%d, %d), speed: %.2f, damage: %d", index, x, y, speed, damage);
     return (game_obj_t *)&bullets[index];
 }
@@ -329,11 +339,35 @@ void bullet_set_source(game_obj_t *bullet, game_obj_t *source)
 }
 
 /**
+ * @brief 对单个子弹应用/移除减速冰冻视觉效果
+ * @param b 子弹指针
+ * @param apply true=应用冰冻效果, false=移除
+ */
+static void bullet_apply_slow_visual(bullet_t *b, bool apply)
+{
+    if (!b->base.active) return;
+    game_obj_t *src = b->source;
+    if (src == NULL || src->type != GAME_OBJ_TYPE_ENEMY) return;
+
+    if (apply) {
+        lv_obj_set_style_opa(b->base.obj, LV_OPA_60, 0);
+    } else {
+        lv_obj_set_style_opa(b->base.obj, LV_OPA_COVER, 0);
+    }
+}
+
+/**
  * @brief 设置敌方子弹减速开关
  */
 void bullet_set_enemy_slow(bool enabled)
 {
+    if (enemy_slow_active == enabled) return;
     enemy_slow_active = enabled;
+
+    // 批量应用/移除冰冻视觉效果到所有活跃敌方子弹
+    for (int i = 0; i < MAX_BULLET_COUNT; i++) {
+        bullet_apply_slow_visual(&bullets[i], enabled);
+    }
 }
 
 /**
