@@ -27,7 +27,6 @@
 #include "flame_wall.h"
 #include "ui_shop.h"
 #include "apr.h"
-#include "player.h"
 /**********************
  *      MACROS
  **********************/
@@ -82,6 +81,9 @@ void game_init()
     enemy_init(play_display);
     coin_init(play_display);
     flame_wall_init(play_display);
+
+    // 在数据源初始化之后注册 UI 事件（coin 更新、受击反馈等）
+    ui_play_register_events();
 
     #if SHOW_HITBOX
     game_for_each_obj(init_hitbox,NULL);

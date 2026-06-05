@@ -194,7 +194,9 @@ void apr_init()
                      apr_list[i].is_alpha);
         CONSOLE_INFO("APR %d loaded: %s (%dx%d)", i, apr_list[i].img_name, apr_list[i].w, apr_list[i].h);
     }
+#endif
 }
+
 
 /**
  * @brief 根据枚举值获取外观模板指针

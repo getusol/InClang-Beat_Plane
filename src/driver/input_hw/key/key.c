@@ -355,12 +355,7 @@ bool key_long_press(key_code_t key)
  */
 static bool kb_key_read(const uint8_t * sdl_key,const bind_scancodes bind_codes)
 {
-    if (bind_codes[0] > 8) {    // 非远程按键
-        bool res = false;
-        for (int i = 0;i < MAX_BINDING_KEYS_COUNT;i++)
-            res = res || sdl_key[bind_codes[i]];
-        return res;
-    } else {                      // 远程按键
+    if (bind_codes[0] >= 0x80) {    // 远程按键 (RKEY_* 从 0x80 开始)
         uint8_t key_mask = comm_get_key_mask();
         uint8_t key_who = bind_codes[0];
         switch (key_who) {
@@ -375,6 +370,11 @@ static bool kb_key_read(const uint8_t * sdl_key,const bind_scancodes bind_codes)
             default:
                 return false;
         }
+    } else {                      // 本地键盘 (SDL scancode < 0x80)
+        bool res = false;
+        for (int i = 0;i < MAX_BINDING_KEYS_COUNT;i++)
+            res = res || sdl_key[bind_codes[i]];
+        return res;
     }
 }
 

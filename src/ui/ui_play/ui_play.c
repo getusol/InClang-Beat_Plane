@@ -116,9 +116,6 @@ void ui_play_init()
     //CONSOLE_DEBUG("Creating hud_img from dsc...");
     hud_img = img_create_from_dsc(dp_play, img_path(HUD_IMG_NAME, img_path_buf, 64), 200, 52, NULL, &hud_img_dsc, false);
     if (hud_img != NULL) lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
-
-    coin_img = img_create_from_dsc(dp_play, img_path(COIN_BAR_IMG_NAME, img_path_buf, 64), 166, 46, NULL, &coin_img_dsc, true);
-    lv_obj_set_align(coin_img, LV_ALIGN_BOTTOM_LEFT);
 #else
     //CONSOLE_DEBUG("Creating standard hud_img...");
     hud_img = lv_img_create(dp_play);
@@ -126,9 +123,15 @@ void ui_play_init()
         lv_img_set_src(hud_img, img_path(HUD_IMG_NAME, img_path_buf, 64));
         lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
     }
+#endif
+    //coin_img initialize
+    #ifdef SIMULATOR
+    coin_img = img_create_from_dsc(dp_play,img_path(COIN_BAR_IMG_NAME,img_path_buf,64),166,46,NULL,&coin_img_dsc,true);
+    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_LEFT);
+    #else
     coin_img = lv_img_create(dp_play);
-    lv_img_set_src(coin_img, img_path(COIN_BAR_IMG_NAME, img_path_buf, 64));
-    lv_obj_set_align(coin_img, LV_ALIGN_BOTTOM_RIGHT);
+    lv_img_set_src(coin_img,img_path(COIN_BAR_IMG_NAME,img_path_buf,64));
+    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_RIGHT);
 #endif
 
     if (coin_img == NULL) {

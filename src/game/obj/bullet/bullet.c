@@ -250,7 +250,7 @@ static void bullet_show(game_obj_t * g)
 /**
  * @brief 子弹移动函数 包括超出边界的处理
  */
-void bullet_move(game_obj_t * g)
+static void bullet_move(game_obj_t * g)
 {
     if (g == NULL) return ;
     if (g->active == false) return ;

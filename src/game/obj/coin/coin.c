@@ -16,10 +16,8 @@
 #include "player.h"
 #include "event.h"
 #include "apr.h"
-#include "event.h"
 #include "timer.h"
 #include <string.h>
-#include "apr.h"
 
 /**********************
  * MACROS

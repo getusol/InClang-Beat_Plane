@@ -62,6 +62,7 @@ static uint16_t enemy_modify_hp_max(game_obj_t * g,uint16_t trg);
 
 static void enemy_event_hit_by_bullet_cb(game_obj_t * scr,game_obj_t * trg);
 static void enemy_event_hit_player_cb(game_obj_t * src,game_obj_t * trg);
+static void enemy_on_destroyed_cb(game_obj_t * src, game_obj_t * trg);
 static void enemy_burn_timer_cb(game_obj_t *owner, void *usr_data);
 static void enemy_freeze_end_cb(game_obj_t *owner, void *usr_data);
 
@@ -337,7 +338,7 @@ static int16_t enemy_modify_hp(game_obj_t * g, int16_t delta)
   }
   if (e->hp <= 0) {
     e->hp = 0;
-    CONSOLE("[INFO] Enemy %d has been killed.", e->pool_index);
+    CONSOLE_INFO("Enemy %d has been killed.", e->pool_index);
 
     lv_coord_t coin_x = g->x + (g->apr->w - 18) / 2;
     lv_coord_t coin_y = g->y + (g->apr->h - 18) / 2;
@@ -347,11 +348,11 @@ static int16_t enemy_modify_hp(game_obj_t * g, int16_t delta)
       for (int c = 0; c < 8; c++) {
         lv_coord_t cx = coin_x + lv_rand(-30, 30);
         lv_coord_t cy = coin_y + lv_rand(-30, 30);
-        coin_spawn(cx, cy, 10, 5);
+        coin_spawn(cx, cy, 10, 5, APR_COIN_DEFAULT);
       }
-      CONSOLE("[BOSS] Boss defeated! 8 coins dropped.");
+      CONSOLE_INFO("Boss defeated! 8 coins dropped.");
     } else {
-      coin_spawn(coin_x, coin_y, 1, 5);
+      coin_spawn(coin_x, coin_y, 1, 5, APR_COIN_DEFAULT);
     }
 
     e->base.hide(g);
@@ -454,7 +455,7 @@ void enemy_apply_burn(game_obj_t *g)
     e->burning = true;
     e->burn_ticks_left = 2;
     timer_create(g, 1000, TIMER_MODE_REPEAT, enemy_burn_timer_cb, NULL);
-    CONSOLE("[ENEMY] Burn applied to enemy %d", e->pool_index);
+    CONSOLE_INFO("[ENEMY] Burn applied to enemy %d", e->pool_index);
 }
 
 /**
@@ -466,7 +467,7 @@ static void enemy_freeze_end_cb(game_obj_t *owner, void *usr_data)
     if (owner == NULL || !owner->active) return;
     enemy_t *e = (enemy_t *)owner;
     e->frozen = false;
-    CONSOLE("[ENEMY] Freeze ended for enemy %d", e->pool_index);
+    CONSOLE_INFO("[ENEMY] Freeze ended for enemy %d", e->pool_index);
 }
 
 /**
@@ -479,7 +480,7 @@ void enemy_apply_freeze(game_obj_t *g)
     if (e->frozen) return; // 不叠加
     e->frozen = true;
     timer_create(g, 2000, TIMER_MODE_ONCE, enemy_freeze_end_cb, NULL);
-    CONSOLE("[ENEMY] Freeze applied to enemy %d", e->pool_index);
+    CONSOLE_INFO("[ENEMY] Freeze applied to enemy %d", e->pool_index);
 }
 
 /**

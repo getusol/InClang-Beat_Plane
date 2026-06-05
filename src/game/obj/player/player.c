@@ -273,7 +273,7 @@ void player_init(lv_obj_t * parent)
   // 按键行为
   // X 主动技能
   input_sw_register_key_down_callback(KEY_EVENT_X, player_x_pressed_handler, player_p->skill_x_cd);
-  CONSOLE("[DEBUG-INIT] X key registered: cd=%d handler=%p active_func=%p",
+  CONSOLE_DEBUG("X key registered: cd=%d handler=%p active_func=%p",
           player_p->skill_x_cd, (void *)player_x_pressed_handler, (void *)player_p->skill_x_active);
   // A 射击
   input_sw_register_key_down_callback(KEY_EVENT_A, player_fire, player_p->shoot_cd);
@@ -389,10 +389,10 @@ void player_apply_config(int plane_id)
     // 重新注册按键回调 (Verdant X 用长按/状态检测，不注册 key_down)
     if (cfg->skill_x_cd > 0 && cfg->skill_x_active != NULL) {
         input_sw_register_key_down_callback(KEY_EVENT_X, player_x_pressed_handler, cfg->skill_x_cd);
-        CONSOLE("[DEBUG-CFG] X key re-registered: cd=%d handler=%p active=%p",
+        CONSOLE_DEBUG("X key re-registered: cd=%d handler=%p active=%p",
                 cfg->skill_x_cd, (void *)player_x_pressed_handler, (void *)cfg->skill_x_active);
     } else {
-        CONSOLE("[DEBUG-CFG] X key NOT registered: cd=%d active_func=%p",
+        CONSOLE_DEBUG("X key NOT registered: cd=%d active_func=%p",
                 cfg->skill_x_cd, (void *)cfg->skill_x_active);
     }
     input_sw_register_key_down_callback(KEY_EVENT_A, player_fire, player_p->shoot_cd);
@@ -559,20 +559,20 @@ static lv_obj_t * player_obj_create(game_obj_t * g, lv_obj_t * parent)
  */
 static void player_x_pressed_handler()
 {
-    CONSOLE("[DEBUG-X] X handler called, active=%d state=%d skill_x_active=%p",
+    CONSOLE_DEBUG("X handler called, active=%d state=%d skill_x_active=%p",
             player_p->base.active, fsm_get_state(), (void *)player_p->skill_x_active);
 
     if (!player_p->base.active || fsm_get_state() != GS_PLAY) {
-        CONSOLE("[DEBUG-X] X handler blocked: active=%d state=%d",
+        CONSOLE_DEBUG("X handler blocked: active=%d state=%d",
                 player_p->base.active, fsm_get_state());
         return ;
     }
     // 派遣到各飞机的X技能函数
     if (player_p->skill_x_active) {
-        CONSOLE("[DEBUG-X] Calling skill_x_active (plane=%d)", player_p->current_plane_id);
+        CONSOLE_DEBUG("Calling skill_x_active (plane=%d)", player_p->current_plane_id);
         player_p->skill_x_active();
     } else {
-        CONSOLE("[DEBUG-X] skill_x_active is NULL!");
+        CONSOLE_DEBUG("skill_x_active is NULL!");
     }
     return ;
 }
@@ -675,7 +675,7 @@ static void player_skill_shield(void)
 
     timer_create((game_obj_t *)player_p, 1000, TIMER_MODE_ONCE,
                  player_shield_end_cb, NULL);
-    CONSOLE("[PLAYER] Shield activated!");
+    CONSOLE_INFO("[PLAYER] Shield activated!");
 }
 
 /**
@@ -687,7 +687,7 @@ static void player_shield_end_cb(game_obj_t *owner, void *usr_data)
     if (player_p == NULL) return;
     player_p->shield_active = false;
     lv_obj_add_flag(player_p->shield_overlay, LV_OBJ_FLAG_HIDDEN);
-    CONSOLE("[PLAYER] Shield expired");
+    CONSOLE_INFO("[PLAYER] Shield expired");
 }
 
 /**
@@ -699,7 +699,7 @@ static void player_skill_flame_wall(void)
     lv_coord_t cx = g->x + g->apr->w / 2 - 32;
     lv_coord_t cy = g->y - g->apr->h / 2;
     flame_wall_create(cx, cy, -8);
-    CONSOLE("[PLAYER] Flame Wall launched!");
+    CONSOLE_INFO("[PLAYER] Flame Wall launched!");
 }
 
 /**
@@ -710,7 +710,7 @@ static void player_skill_bullet_slow(void)
     bullet_set_enemy_slow(true);
     timer_create((game_obj_t *)player_p, 2000, TIMER_MODE_ONCE,
                  player_slow_end_cb, NULL);
-    CONSOLE("[PLAYER] Bullet Slow activated!");
+    CONSOLE_INFO("[PLAYER] Bullet Slow activated!");
 }
 
 /**
@@ -720,7 +720,7 @@ static void player_slow_end_cb(game_obj_t *owner, void *usr_data)
 {
     (void)owner; (void)usr_data;
     bullet_set_enemy_slow(false);
-    CONSOLE("[PLAYER] Bullet Slow expired");
+    CONSOLE_INFO("[PLAYER] Bullet Slow expired");
 }
 
 /**

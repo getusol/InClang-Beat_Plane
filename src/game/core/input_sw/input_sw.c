@@ -149,7 +149,7 @@ void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t
             key_down_timers[event][i].delay_ms = cycle_delay_ms;
             // 设置 last_tick 使得首次按下立即触发
             key_down_timers[event][i].last_tick = play_tick_get() - cycle_delay_ms - 1;
-            CONSOLE("[INFO] key down callback registered for event %d at index %d with cycle delay %d ms\n", event, i, cycle_delay_ms);
+            CONSOLE_INFO("key down callback registered for event %d at index %d with cycle delay %d ms", event, i, cycle_delay_ms);
             return ;
         }
     }
@@ -205,7 +205,7 @@ static void input_sw_dispatch() {
     // X键诊断
     static int x_key_check_count = 0;
     if (x_key_check_count < 5 && key_down(KEY_EVENT_X + 1)) {
-        CONSOLE("[DEBUG-DISP] key_down(KEY_X)=true, callbacks[0]=%p callbacks[1]=%p",
+        CONSOLE_INFO("key_down(KEY_X)=true, callbacks[0]=%p callbacks[1]=%p",
                 (void *)key_down_callbacks[KEY_EVENT_X][0],
                 (void *)key_down_callbacks[KEY_EVENT_X][1]);
         x_key_check_count++;
@@ -220,7 +220,7 @@ static void input_sw_dispatch() {
                 // 仅X键: 检测到按下但无回调注册
                 static int x_no_cb_log = 0;
                 if (x_no_cb_log < 3) {
-                    CONSOLE("[DEBUG-DISP] KEY_X pressed but no callback at slot %d!", j);
+                    
                     x_no_cb_log++;
                 }
             }
