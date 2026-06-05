@@ -37,6 +37,7 @@ static void enemy_normal_shoot_timer(game_obj_t * g, void * v);
 static void boss_master_timer_cb(game_obj_t * g, void * v);
 static void boss_fire_barrage(game_obj_t * g);
 static void boss_fire_tracking(game_obj_t * g);
+static void boss_enter_cb(game_obj_t * g,void * v);
 
 /**********************
  *  STATIC VARIABLES
@@ -86,7 +87,7 @@ void enemy_behave_boss(game_obj_t * g, void * v)
 
     if (!g->timered) {
         g->vx = 0;
-        g->vy = 0;
+        g->vy = 5;
         g->x = SCREEN_WIDTH / 2 - g->apr->w / 2;
         g->y = 50;
         lv_obj_set_pos(g->obj, g->x, g->y);
@@ -94,6 +95,7 @@ void enemy_behave_boss(game_obj_t * g, void * v)
         boss_tick = 0;
 
         timer_create(g, BOSS_TICK_MS, TIMER_MODE_REPEAT, boss_master_timer_cb, NULL);
+        timer_create(g,500,TIMER_MODE_ONCE,boss_enter_cb,NULL);
 
         g->timered = true;
         CONSOLE_INFO("Boss activated at (%d, %d)", g->x, g->y);
@@ -208,4 +210,12 @@ static void boss_fire_tracking(game_obj_t * g)
     };
 
     bullet_create(g, cx, cy, 0, 2, 20, track_behave, APR_BULLET_TRIANGLE);
+}
+
+/**
+ * @brief boss进场走一段
+ */
+static void boss_enter_cb(game_obj_t * g,void * v)
+{
+    g->vy = 0;
 }

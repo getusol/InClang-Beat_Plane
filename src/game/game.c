@@ -85,12 +85,6 @@ void game_init()
     // 在数据源初始化之后注册 UI 事件（coin 更新、受击反馈等）
     ui_play_register_events();
 
-<<<<<<< HEAD
-=======
-    #if SHOW_HITBOX
-    game_for_each_obj(init_hitbox,NULL);
-    #endif
->>>>>>> origin/main
 
     game_for_each_obj(init_hitbox, NULL);
 

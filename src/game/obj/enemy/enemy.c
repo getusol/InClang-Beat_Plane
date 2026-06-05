@@ -339,22 +339,9 @@ static int16_t enemy_modify_hp(game_obj_t * g, int16_t delta)
   }
   if (e->hp <= 0) {
     e->hp = 0;
-    CONSOLE_INFO("Enemy %d has been killed.", e->pool_index);
+    //CONSOLE_INFO("Enemy %d has been killed.", e->pool_index);
 
-    lv_coord_t coin_x = g->x + (g->apr->w - 18) / 2;
-    lv_coord_t coin_y = g->y + (g->apr->h - 18) / 2;
-
-    if (e->is_boss) {
-      // Boss 死亡掉落 8 个金币
-      for (int c = 0; c < 8; c++) {
-        lv_coord_t cx = coin_x + lv_rand(-30, 30);
-        lv_coord_t cy = coin_y + lv_rand(-30, 30);
-        coin_spawn(cx, cy, 10, 5, APR_COIN_DEFAULT);
-      }
-      CONSOLE_INFO("Boss defeated! 8 coins dropped.");
-    } else {
-      coin_spawn(coin_x, coin_y, 1, 5, APR_COIN_DEFAULT);
-    }
+    event_dispatch(EVENT_ENEMY_DESTROYED,g,NULL);
 
     e->base.hide(g);
     return 0;

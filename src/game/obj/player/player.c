@@ -20,11 +20,8 @@
 #include "bullet.h"
 #include "bullet_behaviors.h"
 #include "enemy.h"
-<<<<<<< HEAD
 #include "ui_base.h" // for ui_base_get_selected_plane_id()
-=======
 #include "flame_wall.h"
->>>>>>> origin/main
 
 /**********************
  *      MACROS

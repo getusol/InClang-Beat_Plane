@@ -188,7 +188,7 @@ int coin_get_num(void)
  */
 void coin_add_num(int delta)
 {
-    coin_num += 100*delta;
+    coin_num += delta;
     if (coin_num < 0) coin_num = 0;
 }
 
