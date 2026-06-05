@@ -184,8 +184,6 @@ void apr_init()
         .is_alpha = false,
     };
 
-    // ==================== 预加载图片（仅模拟器） ====================
-#ifdef SIMULATOR
     for (int i = 0; i < APR_MAX; i++) {
         if (apr_list[i].img_name == NULL) continue;
         load_img_dsc(img_path(apr_list[i].img_name, path, 128),
@@ -194,7 +192,7 @@ void apr_init()
                      apr_list[i].is_alpha);
         CONSOLE_INFO("APR %d loaded: %s (%dx%d)", i, apr_list[i].img_name, apr_list[i].w, apr_list[i].h);
     }
-#endif
+
 }
 
 

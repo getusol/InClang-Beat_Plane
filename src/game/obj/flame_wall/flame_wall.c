@@ -67,11 +67,8 @@ void flame_wall_init(lv_obj_t *parent)
     memset(flame_walls, 0, sizeof(flame_walls));
     pool_init(&fw_pool, fw_free_indices, MAX_FLAME_WALL_COUNT);
 
-    apr_t *default_apr = apr_get(APR_FLAME_WALL);
-
     for (int i = 0; i < MAX_FLAME_WALL_COUNT; i++) {
         flame_walls[i].base.active = false;
-        flame_walls[i].base.apr = default_apr;
         flame_walls[i].base.type = GAME_OBJ_TYPE_FLAME_WALL;
         flame_walls[i].base.x = 0;
         flame_walls[i].base.y = 0;
@@ -83,16 +80,9 @@ void flame_wall_init(lv_obj_t *parent)
         flame_walls[i].base.update = flame_wall_update;
         flame_walls[i].base.show = flame_wall_show;
         flame_walls[i].base.hide = flame_wall_hide;
+        flame_walls[i].base.obj = lv_img_create(parent);
+        apr_apply(&flame_walls[i].base, APR_FLAME_WALL);
 
-        // 创建 LVGL 图像对象
-#ifdef SIMULATOR
-        flame_walls[i].base.obj = lv_img_create(parent);
-        lv_img_set_src(flame_walls[i].base.obj, &default_apr->img_dsc);
-#else
-        char path[128];
-        flame_walls[i].base.obj = lv_img_create(parent);
-        lv_img_set_src(flame_walls[i].base.obj, img_path(default_apr->img_name, path, 128));
-#endif
         lv_obj_set_align(flame_walls[i].base.obj, LV_ALIGN_TOP_LEFT);
 
         flame_walls[i].base.hide(&flame_walls[i].base);

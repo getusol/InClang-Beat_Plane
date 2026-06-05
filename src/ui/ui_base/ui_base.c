@@ -109,7 +109,7 @@ plane_id_t ui_base_get_selected_plane_id(void)
  */
 bool ui_base_plane_is_unlocked(plane_id_t plane_id)
 {
-    if (plane_id < 0 || plane_id >= PLANE_ID_MAX) return false;
+    if (plane_id >= PLANE_ID_MAX) return false;
     return g_plane_unlocked[plane_id];
 }
 
@@ -119,14 +119,14 @@ bool ui_base_plane_is_unlocked(plane_id_t plane_id)
  */
 void ui_base_plane_unlock(plane_id_t plane_id)
 {
-    if (plane_id < 0 || plane_id >= PLANE_ID_MAX) return;
+    if (plane_id >= PLANE_ID_MAX) return;
     g_plane_unlocked[plane_id] = true;
     CONSOLE_INFO("Plane %d unlocked.", plane_id);
 }
 
 void ui_base_set_selected_plane_id(plane_id_t id)
 {
-    if (id < 0 || id >= PLANE_ID_MAX) return;
+    if (id >= PLANE_ID_MAX) return;
     g_selected_plane_id = id;
 }
 
@@ -162,7 +162,7 @@ void ui_base_init(void)
 #ifdef SIMULATOR
     bg = img_create_from_dsc(dp_base, img_path(BASE_BG_IMG, bg_path_buf, 64), 1024, 600, NULL, &base_bg_dsc, false);
 #else  
-    bg = lv_img_create(base_screen);
+    bg = lv_img_create(dp_base);
     lv_img_set_src(bg, img_path(BASE_BG_IMG, bg_path_buf, 64));
 #endif
     lv_obj_center(bg);

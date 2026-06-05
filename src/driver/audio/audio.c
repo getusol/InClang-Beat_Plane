@@ -133,7 +133,7 @@ void audio_init()
  */
 void audio_load(audio_id_t id, audio_channel_id_t channel_id, bool do_repeat)
 {
-    if (id < 0 || id >= AUDIO_MAX) {
+    if (id >= AUDIO_MAX) {
         CONSOLE_WARNING("Invalid audio ID: %d", id);
         LOG_WARNING("Invalid audio ID: %d", id);
         return;
@@ -160,7 +160,7 @@ void audio_load(audio_id_t id, audio_channel_id_t channel_id, bool do_repeat)
  */
 void audio_stop(audio_channel_id_t channel_id)
 {
-    if (channel_id < 0 || channel_id >= AUDIO_CHAN_MAX) return;
+    if (channel_id >= AUDIO_CHAN_MAX) return;
 
     // 1. 进入临界区，快速切断通道并清空指针
     audio_lock();
@@ -194,7 +194,7 @@ void audio_stop_all(void)
  */
 void audio_pause(audio_channel_id_t channel_id)
 {
-    if (channel_id < 0 || channel_id >= AUDIO_CHAN_MAX) return;
+    if (channel_id >= AUDIO_CHAN_MAX) return;
     audio_lock();
     audio_channels[channel_id].is_active = false;
     audio_unlock();
@@ -205,7 +205,7 @@ void audio_pause(audio_channel_id_t channel_id)
  */
 void audio_resume(audio_channel_id_t channel_id)
 {
-    if (channel_id < 0 || channel_id >= AUDIO_CHAN_MAX) return;
+    if (channel_id >= AUDIO_CHAN_MAX) return;
     audio_lock();
     if (audio_channels[channel_id].data != NULL && audio_channels[channel_id].size > 0) {
         audio_channels[channel_id].is_active = true;
@@ -238,7 +238,7 @@ void audio_resume_all()
  */
 void audio_set_vol_bgm(uint8_t vol)
 {
-    if (vol > 255 || vol < 0) {
+    if (vol > 255) {
         vol_bgm = 255;
         return ;
     }
@@ -258,7 +258,7 @@ uint8_t audio_get_vol_bgm(void)
  */
 void audio_set_vol_sfx(uint8_t vol)
 {
-    if (vol > 255 || vol < 0) {
+    if (vol > 255) {
         vol_sfx = 255;
         return ;
     }
@@ -278,7 +278,7 @@ uint8_t audio_get_vol_sfx(void)
  */
 void audio_set_vol_amp(uint8_t vol)
 {
-    if (vol > 3 || vol < 0) vol_amp = 3;
+    if (vol > 3) vol_amp = 3;
     else vol_amp = vol;
     return ;
 }
@@ -294,8 +294,14 @@ uint8_t audio_get_vol_amp(void)
 #ifndef SIMULATOR
 void SPI1_IRQHandler(void)
 {
+    static int is_right = 0;
+    static int16_t last_sample = 0;
     if(SET != spi_i2s_interrupt_flag_get(SPI1, SPI_I2S_INT_FLAG_TP)) return ;
-
+    is_right = 1 - is_right;
+    if (is_right == 0) {
+        spi_i2s_data_transmit(SPI1, last_sample);
+        return ;
+    }
     // 多个通道安全读取并混音输出
     int16_t bgm_sample = read_sample(AUDIO_CHAN_BGM);
     int16_t sfx_sample[SFX_CNT] = {0};
@@ -304,6 +310,7 @@ void SPI1_IRQHandler(void)
     }
     int16_t mixed_sample = mix_wavg(bgm_sample, sfx_sample, SFX_CNT);
     spi_i2s_data_transmit(SPI1, mixed_sample);
+    last_sample = mixed_sample;
 }
 #endif
 
@@ -343,7 +350,7 @@ static void audio_unlock(void)
  */
 static void audio_play_on_channel(uint8_t channel_id, const char * path, uint32_t size, bool do_repeat)
 {
-    if (channel_id < 0 || channel_id >= AUDIO_CHAN_MAX) return;
+    if (channel_id >= AUDIO_CHAN_MAX) return;
 
     // 1. 锁外申请新内存并加载文件（I/O 耗时，绝不能放在锁内，否则会导致音频播放产生卡顿）
     uint8_t * new_data = (uint8_t *)ram_malloc(size);

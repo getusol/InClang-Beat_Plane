@@ -16,6 +16,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef SIMULATOR
+
+#else
+#include "ff.h"
+#endif
+
 /**********************
  * MACROS
  **********************/

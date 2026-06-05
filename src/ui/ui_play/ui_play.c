@@ -134,7 +134,7 @@ void ui_play_init()
     #else
     coin_img = lv_img_create(dp_play);
     lv_img_set_src(coin_img,img_path(COIN_BAR_IMG_NAME,img_path_buf,64));
-    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_RIGHT);
+    lv_obj_set_align(coin_img,LV_ALIGN_BOTTOM_LEFT);
 #endif
 
     if (coin_img == NULL) {

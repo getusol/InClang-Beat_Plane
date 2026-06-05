@@ -93,13 +93,10 @@ void enemy_init(lv_obj_t * parent)
   memset(enemies,0,sizeof(enemies)); // 初始化置零 重要！
   pool_init(&enemy_pool, enemy_free_indices, MAX_ENEMY_COUNT);
 
-  apr_t *default_apr = apr_get(APR_ENEMY_DEFAULT);
-
   for (int i = 0; i < MAX_ENEMY_COUNT; i++) {
 
     // base init
     enemies[i].base.active = false;
-    enemies[i].base.apr = default_apr;
     enemies[i].base.type = GAME_OBJ_TYPE_ENEMY;
     enemies[i].base.x = 0;
     enemies[i].base.y = 0;
@@ -119,21 +116,13 @@ void enemy_init(lv_obj_t * parent)
     enemies[i].base.show = enemy_show;
     enemies[i].base.hide = enemy_hide;
 
-    // 使用 APR 创建 LVGL 图像
-#ifdef SIMULATOR
     enemies[i].base.obj = lv_img_create(parent);
-    lv_img_set_src(enemies[i].base.obj, &default_apr->img_dsc);
-#else
-    char path[128];
-    enemies[i].base.obj = lv_img_create(parent);
-    lv_img_set_src(enemies[i].base.obj, img_path(default_apr->img_name, path, 128));
-#endif
-
+    apr_apply(&enemies[i].base, APR_ENEMY_DEFAULT);
 
     // health bar
     enemies[i].health_bar = lv_bar_create(parent);
     lv_obj_set_pos(enemies[i].health_bar,0,0);
-    lv_obj_set_size(enemies[i].health_bar, default_apr->w + 20, 5);
+    lv_obj_set_size(enemies[i].health_bar, enemies[i].base.apr->w + 20, 5);
     lv_bar_set_range(enemies[i].health_bar, 0, enemies[i].hp_max);
     lv_bar_set_value(enemies[i].health_bar, enemies[i].hp, LV_ANIM_OFF);
     lv_obj_set_style_bg_color(enemies[i].health_bar, lv_palette_main(LV_PALETTE_GREEN), LV_PART_INDICATOR);
@@ -141,7 +130,7 @@ void enemy_init(lv_obj_t * parent)
 
     // 冻结遮罩 - 蓝色半透明
     enemies[i].freeze_overlay = lv_obj_create(parent);
-    lv_obj_set_size(enemies[i].freeze_overlay, default_apr->w, 20);
+    lv_obj_set_size(enemies[i].freeze_overlay, enemies[i].base.apr->w, 20);
     lv_obj_set_style_bg_color(enemies[i].freeze_overlay, lv_palette_main(LV_PALETTE_BLUE), 0);
     lv_obj_set_style_bg_opa(enemies[i].freeze_overlay, LV_OPA_50, 0);
     lv_obj_set_style_border_width(enemies[i].freeze_overlay, 0, 0);

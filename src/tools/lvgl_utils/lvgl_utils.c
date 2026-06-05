@@ -191,8 +191,8 @@ int read_file_to_array(const char *filepath, uint8_t *buffer, uint32_t max_size)
     FSIZE_t file_size = f_size(&file);
     if (file_size > max_size) {
         f_close(&file);
-        CONSOLE_WARNING("File too large, need:%ld, given:%ld", file_size, max_size);
-        LOG_WARNING("File too large, need:%ld, given:%ld", file_size, max_size);
+        CONSOLE_WARNING("File too large, need:%lu, given:%lu", (unsigned long)file_size, (unsigned long)max_size);
+        LOG_WARNING("File too large, need:%lu, given:%lu", (unsigned long)file_size, (unsigned long)max_size);
         memset(buffer, 0, max_size);
         return -1;
     }

@@ -292,7 +292,7 @@ void player_init(lv_obj_t * parent)
   CONSOLE_INFO("player properties:");
   CONSOLE_INFO("    width: %d",player_p->base.apr->w);
   CONSOLE_INFO("    height: %d",player_p->base.apr->h);
-  CONSOLE_INFO("    speed: %f",player_p->base.speed);
+  CONSOLE_INFO("    speed: %d",player_p->base.speed);
   CONSOLE_INFO("    HP_max: %d",player_p->hp_max);
   CONSOLE_INFO("    shoot_cd: %dms",player_p->shoot_cd);
   CONSOLE_INFO("    bullet_damage: %d", player_p->bullet_damage);

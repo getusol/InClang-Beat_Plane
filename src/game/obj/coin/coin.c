@@ -59,12 +59,8 @@ static pool_t coin_pool;
 static uint16_t coin_free_indices[MAX_COIN_COUNT];
 static coin_t coins[MAX_COIN_COUNT];
 
-// coin img
-static uint8_t * coin_img_buf = NULL;
-static lv_img_dsc_t coin_img_struct;
-
 // 金币总数（模块内部维护）
-int coin_num = 0;
+static int coin_num = 0;
 
 /**********************
  * GLOBAL FUNCTIONS
@@ -92,6 +88,8 @@ void coin_init(lv_obj_t * parent)
         coins[i].base.behave = NULL_BEHAVE;
         coins[i].base.timered = false;
 
+        coins[i].base.obj = lv_img_create(parent);
+
         apr_apply(&(coins[i].base),APR_COIN_DEFAULT);
 
         // special init
@@ -102,16 +100,6 @@ void coin_init(lv_obj_t * parent)
         coins[i].base.update = coin_update;
         coins[i].base.show = coin_show;
         coins[i].base.hide = coin_hide;
-
-        // 使用 APR 创建 LVGL 图像
-#ifdef SIMULATOR
-        coins[i].base.obj = lv_img_create(parent);
-        lv_img_set_src(coins[i].base.obj, &coin_apr->img_dsc);
-#else
-        char path[128];
-        coins[i].base.obj = lv_img_create(parent);
-        lv_img_set_src(coins[i].base.obj, img_path(coin_apr->img_name, path, 128));
-#endif
 
         // 默认隐藏并注册
         coins[i].base.hide(&coins[i].base);

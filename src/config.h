@@ -136,7 +136,7 @@
  * BULLET
  *-----------*/
 
-#define MAX_BULLET_COUNT 100 // 最大子弹数量
+#define MAX_BULLET_COUNT 50 // 最大子弹数量
 
 /*-------------
  * ENEMY
@@ -148,7 +148,7 @@
  * COINS
  *-----------*/
 
-#define MAX_COIN_COUNT 10 // 最大金币数量
+#define MAX_COIN_COUNT 13 // 最大金币数量
 
 #define MAX_FLAME_WALL_COUNT 3 // 最大火墙数量
 

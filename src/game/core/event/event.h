@@ -29,8 +29,8 @@ typedef enum {
     EVENT_GAME_OVER,        // 游戏结束事件(胜利)
 
     EVENT_BULLET_HIT_ENEMY, // 子弹击中敌人
-    EVENT_PLAYER_HIT_ENEMY, // 敌人击中玩家
-    EVENT_ENEMY_DESTROYED,  // 玩家击中敌人
+    EVENT_PLAYER_HIT_ENEMY, // 玩家击中敌人
+    EVENT_ENEMY_DESTROYED,  // 敌人死亡
     EVENT_BULLET_HIT_PLAYER,// 子弹击中玩家
 
     EVENT_PLAYER_DIE,       // 玩家死亡(失败)

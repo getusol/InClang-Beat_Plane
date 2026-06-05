@@ -437,7 +437,7 @@ static void draw_btn_event_cb(lv_event_t * e)
 
     // 检查金币是否足够
     if (coin_get_num() < DRAW_COST) {
-        CONSOLE_INFO("Coins insufficient", DRAW_COST, coin_get_num());
+        CONSOLE_INFO("Coins insufficient");
         return;
     }
 
