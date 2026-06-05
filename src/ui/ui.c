@@ -89,8 +89,8 @@ void ui_run()
           ui_cg_run();
           break;
         case GS_MENU  :
-        CONSOLE_INFO("Come to menu");
-          audio_stop_all();
+        //CONSOLE_INFO("Come to menu");
+          //audio_stop_all();
           ui_menu_run();
           break;
         case GS_SETTING :
@@ -111,7 +111,7 @@ void ui_run()
           break;
         case GS_PAUSE : 
           if (last_game_state == GS_SETTING) audio_load(AUDIO_BGM,AUDIO_CHAN_BGM,true);
-          audio_pause_all();
+          audio_pause(AUDIO_CHAN_BGM);
           ui_play_run();
           break;
         case GS_OVER  :

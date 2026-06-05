@@ -21,6 +21,7 @@
 #include "perf_monitor.h"
 #include "ui_setting.h"
 #include "save.h"
+#include "audio.h"
 
 /**********************
  * MACROS
@@ -411,6 +412,7 @@ static void pause_exit_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     save_write();
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     fsm_switch_state(GS_MENU);
     CONSOLE_INFO("State has been switched to %d", fsm_get_state());
 }
@@ -421,6 +423,7 @@ static void pause_exit_btn_event_cb(lv_event_t * e)
 static void pause_continue_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     fsm_switch_state(GS_PLAY);
     CONSOLE_INFO("State has been switched to %d", fsm_get_state());
 }
@@ -432,8 +435,8 @@ static void pause_btn_event_cb(lv_event_t * e)
 {
     switch (fsm_get_state())
     {
-        case GS_PLAY : fsm_switch_state(GS_PAUSE); CONSOLE_INFO("State has been switched to %d", fsm_get_state()); break;
-        case GS_PAUSE : fsm_switch_state(GS_PLAY); CONSOLE_INFO("State has been switched to %d", fsm_get_state()); break;
+        case GS_PLAY : audio_load(AUDIO_MOUSEOPEN,AUDIO_CHAN_AUTO,false); fsm_switch_state(GS_PAUSE); CONSOLE_INFO("State has been switched to %d", fsm_get_state()); break;
+        case GS_PAUSE : audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false); fsm_switch_state(GS_PLAY); CONSOLE_INFO("State has been switched to %d", fsm_get_state()); break;
     }
 }
 
@@ -444,6 +447,7 @@ static void pause_setting_btn_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     ui_setting_set_prev_state(GS_PAUSE);
+    audio_load(AUDIO_MOUSEOPEN,AUDIO_CHAN_AUTO,false);
     fsm_switch_state(GS_SETTING);
     CONSOLE_INFO("Open settings from pause popup.");
 }

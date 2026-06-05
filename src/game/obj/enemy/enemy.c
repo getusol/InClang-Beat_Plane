@@ -19,6 +19,7 @@
 #include "coin.h"
 #include "player.h"
 #include "timer.h"
+#include "audio.h"
 
 /**********************
  *      MACROS
@@ -361,6 +362,9 @@ static void enemy_event_hit_by_bullet_cb(game_obj_t * scr, game_obj_t * trg)
 {
   uint8_t damage = bullet_get_damage(scr);
   enemy_modify_hp(trg, -damage);
+
+  // 播放音效
+  audio_load(AUDIO_ENEMYHIT,AUDIO_CHAN_AUTO,false);
 
   // 应用子弹特殊效果
   uint8_t flags = bullet_get_flags(scr);

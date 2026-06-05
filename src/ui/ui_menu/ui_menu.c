@@ -19,6 +19,7 @@
 #include "event.h"         // 用于分发游戏开始事件
 #include "tools.h"
 #include "ui_setting.h"
+#include "audio.h"
 #ifndef SIMULATOR
 #include "drivers.h"
 #endif
@@ -178,6 +179,7 @@ static void btn_base_event_cb(lv_event_t * e)
 static void btn_setting_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    audio_load(AUDIO_MOUSEOPEN,AUDIO_CHAN_AUTO,false);
     ui_setting_set_prev_state(GS_MENU);
     fsm_switch_state(GS_SETTING);
     CONSOLE_INFO("Open settings from menu.");

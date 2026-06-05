@@ -15,6 +15,7 @@
 #include "player.h"
 #include "apr.h"
 #include "coin.h"
+#include "audio.h"
 
 /**********************
  *      MACROS
@@ -52,6 +53,10 @@ static int boss_tick = 0;
 void enemy_behave_normal(game_obj_t * g, void * v)
 {
    if (v == BEHAVE_ON_DEATH) {
+
+        // 音效
+        audio_load(AUDIO_ENEMYDIE,AUDIO_CHAN_AUTO,false);
+
        lv_coord_t cx = g->x + (g->apr->w - 18) / 2;
        lv_coord_t cy = g->y + (g->apr->h - 18) / 2;
        coin_spawn(cx, cy, 50, 7, APR_COIN_DEFAULT);
@@ -75,6 +80,9 @@ void enemy_behave_normal(game_obj_t * g, void * v)
 void enemy_behave_boss(game_obj_t * g, void * v)
 {
     if (v == BEHAVE_ON_DEATH) {
+
+        audio_load(AUDIO_BOSSDIE,AUDIO_CHAN_AUTO,false);
+
         lv_coord_t cx = g->x + (g->apr->w - 18) / 2;
         lv_coord_t cy = g->y + (g->apr->h - 18) / 2;
         for (int i = 0; i < 8; i++) {

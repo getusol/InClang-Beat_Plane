@@ -101,6 +101,11 @@ static const audio_asset_t audio_assets[AUDIO_MAX] = {
     [AUDIO_BASKETBALLMUSIC] = {.path = AUDIO_PATH("basketballmusic.pcm"),.size = 3121920},
     [AUDIO_SHOPMUSIC] = {.path = AUDIO_PATH("PixelGameShopMusic.pcm"), .size = 2651904},
     [AUDIO_BASEMUSIC] = {.path = AUDIO_PATH("SoftBaseAmbient.pcm"), .size = 32693762 },
+    [AUDIO_ENEMYHIT] = {.path = AUDIO_PATH("enemy_hurted.pcm"), .size = 10342},
+    [AUDIO_BOSSDIE] = {.path = AUDIO_PATH("enemy_die.pcm"), .size = 88200},
+    [AUDIO_ENEMYDIE] = {.path = AUDIO_PATH("boss_killed.pcm"), .size = 83968},
+    [AUDIO_MOUSEOPEN] = {.path = AUDIO_PATH("Menu_Open.pcm"), .size = 13762},
+    [AUDIO_MOUSECLOSE] = {.path = AUDIO_PATH("Menu_Close.pcm"), .size = 12042},
 };
 
 // 音频频道实例
