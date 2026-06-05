@@ -96,6 +96,10 @@ void ui_run()
         case GS_SETTING :
           ui_setting_run();
           break;
+        case GS_COMM  :
+          audio_stop(AUDIO_CHAN_BGM);
+          ui_comm_run();
+          break;
         case GS_PLAY  :
           if (last_game_state == GS_MENU || last_game_state == GS_OVER) audio_load(AUDIO_BGM,AUDIO_CHAN_BGM,true);
           if (last_game_state == GS_PAUSE) audio_resume_all();

@@ -107,7 +107,7 @@ void save_write(void)
     fprintf(fp, "vol_sfx=%d\n", audio_get_vol_sfx());
     fprintf(fp, "vol_amp=%d\n", audio_get_vol_amp());
     fprintf(fp, "show_hitbox=%d\n", game_obj_get_show_hitbox() ? 1 : 0);
-    fprintf(fp, "selected_plane=%d\n", (int)ui_base_get_selected_plane_id());
+    fprintf(fp, "selected_plane=%d\n", (int)ui_base_get_p1_selected_plane_id());
     fprintf(fp, "unlocked_mask=%d\n", ui_base_get_unlocked_mask());
     fprintf(fp, "draw_count=%d\n", ui_shop_get_draw_cnt());
     fclose(fp);
@@ -137,7 +137,7 @@ void save_write(void)
     snprintf(line, sizeof(line), "vol_sfx=%d\n", audio_get_vol_sfx()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "vol_amp=%d\n", audio_get_vol_amp()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "show_hitbox=%d\n", game_obj_get_show_hitbox() ? 1 : 0); f_puts(line, &fp);
-    snprintf(line, sizeof(line), "selected_plane=%d\n", (int)ui_base_get_selected_plane_id()); f_puts(line, &fp);
+    snprintf(line, sizeof(line), "selected_plane=%d\n", (int)ui_base_get_p1_selected_plane_id()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "unlocked_mask=%d\n", ui_base_get_unlocked_mask()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "draw_count=%d\n", ui_shop_get_draw_cnt()); f_puts(line, &fp);
     f_close(&fp);
@@ -205,7 +205,7 @@ static int try_parse_file(const char * path)
     audio_set_vol_sfx((uint8_t)vol_sfx);
     audio_set_vol_amp((uint8_t)vol_amp);
     if (show_hitbox >= 0) game_obj_set_show_hitbox(show_hitbox != 0);
-    if (selected_plane >= 0) ui_base_set_selected_plane_id((plane_id_t)selected_plane);
+    if (selected_plane >= 0) ui_base_set_p1_selected_plane_id((plane_id_t)selected_plane);
     if (unlocked_mask >= 0) ui_base_set_unlocked_mask(unlocked_mask);
     if (draw_count >= 0) ui_shop_set_draw_cnt(draw_count);
     return 0;
@@ -245,7 +245,7 @@ static int try_parse_file(const char * path)
     audio_set_vol_sfx((uint8_t)vol_sfx);
     audio_set_vol_amp((uint8_t)vol_amp);
     if (show_hitbox >= 0) game_obj_set_show_hitbox(show_hitbox != 0);
-    if (selected_plane >= 0) ui_base_set_selected_plane_id((plane_id_t)selected_plane);
+    if (selected_plane >= 0) ui_base_set_p1_selected_plane_id((plane_id_t)selected_plane);
     if (unlocked_mask >= 0) ui_base_set_unlocked_mask(unlocked_mask);
     if (draw_count >= 0) ui_shop_set_draw_cnt(draw_count);
     return 0;
@@ -260,6 +260,6 @@ static void apply_defaults(void)
     audio_set_vol_amp(1);
     ui_shop_set_draw_cnt(0);
     ui_base_set_unlocked_mask(1);                  // 仅默认飞机解锁
-    ui_base_set_selected_plane_id(PLANE_ID_DEFAULT);
+    ui_base_set_p1_selected_plane_id(PLANE_ID_DEFAULT);
     game_obj_set_show_hitbox(false);
 }

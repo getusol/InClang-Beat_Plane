@@ -22,5 +22,6 @@
  ***********************/
 
 void ui_comm_init();
+void ui_comm_run();
 
 #endif

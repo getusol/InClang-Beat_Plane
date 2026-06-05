@@ -21,6 +21,7 @@ typedef enum {
     GS_CG,          //开场动画状态
     GS_MENU,
     GS_SETTING,     //设置界面
+    GS_COMM,        //通信界面 也即单片机从机禁用游戏状态
     GS_PLAY,
         GS_PAUSE,   //GS_PLAY子状态
         GS_OVER,    //GS_PLAY子状态

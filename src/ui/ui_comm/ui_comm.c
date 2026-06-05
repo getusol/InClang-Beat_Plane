@@ -11,10 +11,16 @@
 #include "comm_status.h"
 #include "comm.h"
 #include "debug.h"
+#include "multiplayer.h"
+#include "fsm.h"
+#include "save.h"
+#include "lvgl_utils.h"
 
 /**********************
  *      MACROS
  **********************/
+
+#define MULTI_ICON "2DMultiIcon.bin"
 
 /**********************
  *      TYPEDEFS
@@ -26,6 +32,8 @@
 
 static void comm_label_update(lv_timer_t * t);
 static void on_label_click(lv_event_t * e);
+static void on_mp_event_cb(mp_event_t event,void * v);
+static void on_mp_btm_click(lv_event_t * e);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -36,6 +44,9 @@ static void on_label_click(lv_event_t * e);
  **********************/
 
 static lv_obj_t *comm_status_label = NULL;
+static lv_obj_t * dp_comm = NULL;
+static lv_img_dsc_t multi_icon_dsc = {0};
+static lv_obj_t * mp_popup = NULL;
 
 /**********************
  *   GLOBAL FUNCTIONS
@@ -61,7 +72,48 @@ void ui_comm_init(void)
     lv_obj_add_flag(comm_status_label, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(comm_status_label, on_label_click, LV_EVENT_CLICKED, NULL);
 
+    // UI_COMM 界面
+    dp_comm = lv_img_create(NULL);
+    lv_obj_set_style_bg_color(dp_comm,lv_color_hex(0x252532),0);
+
+    // 文字提示
+    lv_obj_t * mp_label = lv_label_create(dp_comm);
+    lv_label_set_text(mp_label, "MCU now on multiplaying mode");
+    lv_obj_set_style_text_color(mp_label,lv_color_hex(0x16C559),0);
+    lv_obj_set_style_text_font(mp_label, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_align(mp_label, LV_ALIGN_CENTER, 0, -30);
+    
+    char img_path_buf[128];
+
+    // 图标提示
+    lv_obj_t * mp_img = img_create_from_dsc(dp_comm,img_path(MULTI_ICON,img_path_buf,128),96,82,NULL,&multi_icon_dsc,true);
+    lv_obj_align(mp_img, LV_ALIGN_CENTER, 0, 30);
+
+    // 图片按钮
+    lv_obj_t * mp_btm = lv_btn_create(dp_comm);
+    lv_obj_align(mp_btm, LV_ALIGN_CENTER, 0, 30);
+    lv_obj_set_size(mp_btm,96,82);
+    lv_obj_set_style_opa(mp_btm,LV_OPA_0,0);
+    lv_obj_add_event_cb(mp_btm, on_mp_btm_click, LV_EVENT_CLICKED, NULL);
+
+    // 弹窗
+    
+
+
+
+    // 事件注册
+    mp_event_register(MP_EVENT_CONNECTED,on_mp_event_cb);
+    mp_event_register(MP_EVENT_DISCONNECTED,on_mp_event_cb);
+
     CONSOLE_INFO("Communication status UI initialized on overlay");
+}
+
+/**
+ * @brief 通信界面运行函数
+ */
+void ui_comm_run()
+{
+    lv_scr_load(dp_comm);
 }
 
 /**********************
@@ -122,4 +174,41 @@ static void on_label_click(lv_event_t * e)
 #else
     (void)e; // MCU端点击标签无效
 #endif
+}
+
+/**
+ * @brief 多玩家事件回调函数
+ */
+static void on_mp_event_cb(mp_event_t event,void * v)
+{
+#ifdef SIMULATOR
+    LV_UNUSED(event);
+    LV_UNUSED(v);
+    // PC上不做事 暂时不做处理
+#else
+    LV_UNUSED(v);
+    switch (event) {
+        case MP_EVENT_CONNECTED:
+            save_write();
+            fsm_switch_state(GS_COMM);
+            break;
+        case MP_EVENT_DISCONNECTED:
+            //持续同步状态
+            // 然后 存档 回到菜单界面
+            save_write();
+            fsm_switch_state(GS_MENU);
+            break;
+        default:
+            break;
+    }
+#endif
+}
+
+/**
+ * @brief 多人图标按钮点击回调（TODO）
+ */
+static void on_mp_btm_click(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    /* TODO: 点击多人图标后跳转到 base 界面 */
 }
