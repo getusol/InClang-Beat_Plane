@@ -42,6 +42,8 @@ typedef enum {
     APR_ENEMY_BOSS,
     // 金币
     APR_COIN_DEFAULT,
+    // 火墙
+    APR_FLAME_WALL,
 
     APR_MAX
 } apr_id_t;

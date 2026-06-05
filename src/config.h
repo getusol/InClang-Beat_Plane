@@ -126,7 +126,7 @@
  * TIMERS
  *-----------*/
 
-#define MAX_TIMER_COUNT 20 // 最大定时器数量
+#define MAX_TIMER_COUNT 30 // 最大定时器数量
 
 /*-------------
  * AUDIOS
@@ -149,6 +149,8 @@
  *-----------*/
 
 #define MAX_COIN_COUNT 10 // 最大金币数量
+
+#define MAX_FLAME_WALL_COUNT 3 // 最大火墙数量
 
 /*=======================
  * UI PARAMS

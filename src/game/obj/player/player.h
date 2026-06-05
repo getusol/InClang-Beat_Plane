@@ -30,6 +30,7 @@ game_obj_t * player_get_base(void);
 int16_t player_hp_modify(int16_t delta);
 void player_apply_config(int plane_id);
 int player_get_current_plane(void);
+bool player_is_shield_active(void);
 
 #ifdef __cplusplus
 } /*extern "C"*/

@@ -174,7 +174,18 @@ void apr_init()
         .is_alpha = true,
     };
 
-    // ==================== 预加载图片（所有外观模板） ====================
+    
+    // APR_FLAME_WALL - 火墙
+    apr_list[APR_FLAME_WALL] = (apr_t){
+        .w = 64, .h = 10,
+        .hitbox_x = 0, .hitbox_y = 0,
+        .hitbox_w = 64, .hitbox_h = 10,
+        .img_name = "flame.bin",
+        .is_alpha = false,
+    };
+
+    // ==================== 预加载图片（仅模拟器） ====================
+#ifdef SIMULATOR
     for (int i = 0; i < APR_MAX; i++) {
         if (apr_list[i].img_name == NULL) continue;
         load_img_dsc(img_path(apr_list[i].img_name, path, 128),
@@ -183,7 +194,9 @@ void apr_init()
                      apr_list[i].is_alpha);
         CONSOLE_INFO("APR %d loaded: %s (%dx%d)", i, apr_list[i].img_name, apr_list[i].w, apr_list[i].h);
     }
+#endif
 }
+
 
 /**
  * @brief 根据枚举值获取外观模板指针

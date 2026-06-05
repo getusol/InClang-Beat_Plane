@@ -29,7 +29,7 @@
 #define PLAYER_VERDANT_IMG  "player_verdant.bin"
 #define COIN_LEAVE_IMG      "coin.bin"
 #define COIN_IMG_NAME       "coin.bin"
-#define DRAW_COST           110
+#define DRAW_COST           10
 #define TOTAL_SLOTS         8
 
 // 网格单元大小

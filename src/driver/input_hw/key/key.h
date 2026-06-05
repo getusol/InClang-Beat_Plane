@@ -30,7 +30,7 @@ typedef enum
     KEY_X,
     KEY_Y,
 #ifdef SIMULATOR
-    RKEY_A,
+    RKEY_A = 0x80,
     RKEY_B,
     RKEY_X,
     RKEY_Y,
