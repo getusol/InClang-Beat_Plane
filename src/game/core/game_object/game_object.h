@@ -88,5 +88,7 @@ lv_obj_t * game_obj_hitbox_init(game_obj_t * obj);
 void game_obj_hitbox_update(game_obj_t * obj);
 void game_obj_set_show_hitbox(bool show);
 bool game_obj_get_show_hitbox(void);
+void game_obj_set_show_hurt_overlay(bool show);
+bool game_obj_get_show_hurt_overlay(void);
 
 #endif //#ifndef __GAME_OBJECT_H__

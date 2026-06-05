@@ -71,6 +71,10 @@ static bool g_show_hitbox = true;
 void game_obj_set_show_hitbox(bool show) { g_show_hitbox = show; }
 bool game_obj_get_show_hitbox(void) { return g_show_hitbox; }
 
+static bool g_show_hurt_overlay = false;
+void game_obj_set_show_hurt_overlay(bool show) { g_show_hurt_overlay = show; }
+bool game_obj_get_show_hurt_overlay(void) { return g_show_hurt_overlay; }
+
 /**
  * @brief 初始化游戏对象的碰撞框
  * @param obj 游戏对象指针

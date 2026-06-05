@@ -42,6 +42,7 @@ static void amp_preview_cb(lv_event_t * e);
 static void update_volume_labels(void);
 static void hitbox_switch_event_cb(lv_event_t * e);
 static void update_hitbox_preview(void);
+static void hurt_overlay_switch_event_cb(lv_event_t * e);
 static void clear_save_btn_event_cb(lv_event_t * e);
 static void clear_confirm_btn_cb(lv_event_t * e);
 static void clear_cancel_btn_cb(lv_event_t * e);
@@ -66,6 +67,8 @@ static lv_obj_t * hitbox_preview_box = NULL;
 static lv_obj_t * clear_save_label = NULL;
 static lv_obj_t * clear_save_btn = NULL;
 static lv_obj_t * clear_confirm_popup = NULL;
+static lv_obj_t * hurt_overlay_label = NULL;
+static lv_obj_t * hurt_overlay_switch = NULL;
 
 #ifdef SIMULATOR
 static lv_img_dsc_t back_arrow_img_struct;
@@ -184,16 +187,28 @@ void ui_setting_init(void)
     lv_obj_set_pos(hitbox_preview_box, preview_apr->hitbox_x, preview_apr->hitbox_y);
     lv_obj_set_size(hitbox_preview_box, preview_apr->hitbox_w, preview_apr->hitbox_h);
 
+    // ---- Show Hurt Overlay 开关 ----
+    hurt_overlay_label = lv_label_create(container);
+    lv_obj_set_style_text_font(hurt_overlay_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+    lv_label_set_text_fmt(hurt_overlay_label, "Show Hurt Overlay: %s", game_obj_get_show_hurt_overlay() ? "ON" : "OFF");
+    lv_obj_set_style_text_color(hurt_overlay_label, lv_color_white(), LV_STATE_DEFAULT);
+    lv_obj_set_pos(hurt_overlay_label, 60, 340);
+
+    hurt_overlay_switch = lv_switch_create(container);
+    lv_obj_set_pos(hurt_overlay_switch, 60, 380);
+    lv_obj_add_event_cb(hurt_overlay_switch, hurt_overlay_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_group_add_obj(setting_group, hurt_overlay_switch);
+
     // ---- 清空存档 ----
     clear_save_label = lv_label_create(container);
     lv_obj_set_style_text_font(clear_save_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(clear_save_label, lv_color_make(255, 0, 0), LV_STATE_DEFAULT);
     lv_label_set_text(clear_save_label, "CLEAR SAVE DATA");
-    lv_obj_set_pos(clear_save_label, 60, 370);
+    lv_obj_set_pos(clear_save_label, 60, 450);
 
     clear_save_btn = lv_btn_create(container);
     lv_obj_set_size(clear_save_btn, 200, 50);
-    lv_obj_set_pos(clear_save_btn, 60, 410);
+    lv_obj_set_pos(clear_save_btn, 60, 490);
     lv_obj_set_style_bg_color(clear_save_btn, lv_color_hex(0xD32F2F), LV_STATE_DEFAULT);
     lv_obj_add_event_cb(clear_save_btn, clear_save_btn_event_cb, LV_EVENT_CLICKED, NULL);
     lv_group_add_obj(setting_group, clear_save_btn);
@@ -280,6 +295,15 @@ void ui_setting_run(void)
         update_hitbox_preview();
     }
 
+    // 刷新 hurt overlay 开关状态
+    if (hurt_overlay_switch) {
+        if (game_obj_get_show_hurt_overlay()) {
+            lv_obj_add_state(hurt_overlay_switch, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(hurt_overlay_switch, LV_STATE_CHECKED);
+        }
+    }
+
     update_volume_labels();
 }
 
@@ -346,6 +370,14 @@ static void hitbox_switch_event_cb(lv_event_t * e)
     bool on = lv_obj_has_state(hitbox_switch, LV_STATE_CHECKED);
     game_obj_set_show_hitbox(on);
     update_hitbox_preview();
+}
+
+static void hurt_overlay_switch_event_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    bool on = lv_obj_has_state(hurt_overlay_switch, LV_STATE_CHECKED);
+    lv_label_set_text_fmt(hurt_overlay_label, "Show Hurt Overlay: %s", on ? "ON" : "OFF");
+    game_obj_set_show_hurt_overlay(on);
 }
 
 static void back_btn_event_cb(lv_event_t * e)

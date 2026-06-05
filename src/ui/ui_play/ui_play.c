@@ -898,6 +898,7 @@ static void ui_play_event_player_hurt_cb(game_obj_t * a, game_obj_t * b)
     LV_UNUSED(a);
     LV_UNUSED(b);
     if (hurt_img == NULL) return;
+    if (!game_obj_get_show_hurt_overlay()) return;
     lv_obj_clear_flag(hurt_img, LV_OBJ_FLAG_HIDDEN);
     if (hurt_timer == NULL) {
         hurt_timer = lv_timer_create(hurt_flash_timer_cb, 200, NULL);
