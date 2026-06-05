@@ -63,10 +63,10 @@ static int current_viewing_idx = 0;         // 当前正在点击浏览的飞机
 
 // 飞机固有属性配置表
 static const plane_info_t plane_templates[PLANE_ID_MAX] = {
-    {0, "Player",  "player.bin",          200, 34, "Burst: 3-way shot"},
-    {1, "Ember",   "player_ember.bin",    200, 20, "Flame Circle"},
-    {2, "Stream",  "player_stream.bin",   200, 10, "Shield"},
-    {3, "Verdant", "player_verdant.bin",  250, 15, "HP Reclaim"}
+    {0, "Player",  "player.bin",          200, 34, "E:3-Way Shot\nF:Shield 1s"},
+    {1, "Ember",   "player_ember.bin",    200, 20, "E:Burn Bullet\nF:Flame Wall"},
+    {2, "Stream",  "player_stream.bin",   200, 10, "E:Freeze Bullet\nF:Slow Enemy"},
+    {3, "Verdant", "player_verdant.bin",  250, 15, "E:Speed Boost\nF:HP Reclaim"}
 };
 
 // 静态化的长周期路径缓冲区，防止 LVGL 异步渲染时读取到脏数据导致乱码

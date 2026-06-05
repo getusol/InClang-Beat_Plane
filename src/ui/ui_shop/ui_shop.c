@@ -553,9 +553,8 @@ static int get_random_reward_slot(void)
 
     // 固定抽奖结果
     switch (draw_count) {
-        case 1: return 0;  // Ember
-        case 3: return 4;  // Verdant
-        case 6: return 2;  // Stream
+        case 1: return 2;   //stream
+        case 6: return 4;   // Verdant
         default: break;
     }
 

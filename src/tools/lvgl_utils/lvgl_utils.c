@@ -14,6 +14,10 @@
 
 #include "ui_key.h"
 
+#ifdef EMBED_ASSETS
+#include "embedded_assets.h"
+#endif
+
 #ifdef SIMULATOR
 #include <SDL.h>
 #else
@@ -100,6 +104,23 @@ int read_file_to_array(const char *filepath, uint8_t *buffer, uint32_t max_size)
         memset(buffer, 0, max_size);
         return -1;
     }
+#ifdef EMBED_ASSETS
+    // 嵌入资源优先：如果文件已编译进exe则直接拷贝，否则回退到磁盘读取
+    {
+        uint32_t emb_size = 0;
+        const uint8_t *emb_data = embedded_asset_find(filepath, &emb_size);
+        if (emb_data != NULL) {
+            if (emb_size > max_size) {
+                CONSOLE_WARNING("Embedded too large: %s", filepath);
+                LOG_WARNING("Embedded too large: %s", filepath);
+                memset(buffer, 0, max_size);
+                return -1;
+            }
+            memcpy(buffer, emb_data, emb_size);
+            return (int)emb_size;
+        }
+    }
+#endif
 #ifdef SIMULATOR
    FILE *file = fopen(filepath, "rb");
     if (file == NULL) {

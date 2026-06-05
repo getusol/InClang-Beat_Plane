@@ -21,6 +21,7 @@
 #include "perf_monitor.h"
 #include "ui_setting.h"
 #include "save.h"
+#include "player.h"
 
 /**********************
  * MACROS
@@ -55,6 +56,7 @@ static void hurt_flash_timer_cb(lv_timer_t * timer);
 static void ui_play_event_player_hurt_cb(game_obj_t * a, game_obj_t * b);
 static void ui_play_event_hit_coin_cb(game_obj_t * src, game_obj_t * trg);
 static void pause_setting_btn_event_cb(lv_event_t * e);
+static void cd_update_timer_cb(lv_timer_t * timer);
 
 /***********************
  * GLOBAL PROTOTYPES
@@ -84,6 +86,14 @@ static lv_img_dsc_t setting_icon_dsc;
 #endif
 static lv_obj_t * hurt_img = NULL;
 static lv_timer_t * hurt_timer = NULL;
+static lv_obj_t * freeze_overlay = NULL;
+
+// 技能CD可视化
+static lv_obj_t * cd_arc_x = NULL;      // X技能(E键) CD弧
+static lv_obj_t * cd_arc_y = NULL;      // Y技能(F键) CD弧
+static lv_obj_t * cd_ready_x = NULL;    // X技能 Ready! 文字
+static lv_obj_t * cd_ready_y = NULL;    // Y技能 Ready! 文字
+static lv_timer_t * cd_update_timer = NULL;  // CD更新定时器
 
  /**********************
  * GLOBAL FUNCTIONS
@@ -277,8 +287,104 @@ void ui_play_init()
         lv_obj_move_foreground(hurt_img);
     }
 
+    // 冰冻减速遮罩 (Stream Y技能) — 冰蓝色半透明矩形
+    {
+        freeze_overlay = lv_obj_create(dp_play);
+        lv_obj_set_size(freeze_overlay, 1024, 600);
+        lv_obj_set_style_bg_color(freeze_overlay, lv_color_hex(0x4488CC), 0);
+        lv_obj_set_style_bg_opa(freeze_overlay, LV_OPA_20, 0);
+        lv_obj_set_style_border_width(freeze_overlay, 0, 0);
+        lv_obj_add_flag(freeze_overlay, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(freeze_overlay, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_move_foreground(freeze_overlay);
+    }
+
+    // 技能CD可视化 — 右侧两个CD圆圈 (X/E 和 Y/F)
+    {
+        // —— X技能 (E键) CD指示器 ——
+        lv_obj_t * black_x = lv_obj_create(dp_play);
+        lv_obj_set_size(black_x, 38, 38);
+        lv_obj_set_pos(black_x, 949, 99);
+        lv_obj_set_style_bg_color(black_x, lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(black_x, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(black_x, 0, 0);
+        lv_obj_set_style_radius(black_x, LV_RADIUS_CIRCLE, 0);
+        lv_obj_clear_flag(black_x, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(black_x, LV_OBJ_FLAG_SCROLLABLE);
+
+        cd_arc_x = lv_arc_create(dp_play);
+        lv_obj_set_size(cd_arc_x, 56, 56);
+        lv_obj_set_pos(cd_arc_x, 940, 90);
+        lv_obj_clear_flag(cd_arc_x, LV_OBJ_FLAG_SCROLLABLE);
+        lv_arc_set_mode(cd_arc_x, LV_ARC_MODE_NORMAL);
+        lv_arc_set_bg_angles(cd_arc_x, 0, 360);
+        lv_arc_set_rotation(cd_arc_x, 270);
+        lv_arc_set_range(cd_arc_x, 0, 100);
+        lv_arc_set_value(cd_arc_x, 100);
+        lv_obj_set_style_arc_color(cd_arc_x, lv_color_hex(0x333344), LV_PART_MAIN);
+        lv_obj_set_style_arc_color(cd_arc_x, lv_color_hex(0x4488CC), LV_PART_INDICATOR);
+        lv_obj_set_style_arc_width(cd_arc_x, 5, LV_PART_MAIN);
+        lv_obj_set_style_arc_width(cd_arc_x, 5, LV_PART_INDICATOR);
+        lv_obj_set_style_bg_opa(cd_arc_x, LV_OPA_TRANSP, LV_PART_KNOB);
+        lv_obj_set_style_pad_all(cd_arc_x, 0, LV_PART_KNOB);
+
+        lv_obj_t * label_e = lv_label_create(black_x);
+        lv_label_set_text(label_e, "E");
+        lv_obj_set_style_text_font(label_e, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_color(label_e, lv_color_white(), 0);
+        lv_obj_center(label_e);
+
+        cd_ready_x = lv_label_create(dp_play);
+        lv_label_set_text(cd_ready_x, "Ready!");
+        lv_obj_set_style_text_font(cd_ready_x, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(cd_ready_x, lv_color_hex(0x44FF44), 0);
+        lv_obj_align_to(cd_ready_x, cd_arc_x, LV_ALIGN_OUT_BOTTOM_MID, 0, 4);
+
+        // —— Y技能 (F键) CD指示器 ——
+        lv_obj_t * black_y = lv_obj_create(dp_play);
+        lv_obj_set_size(black_y, 38, 38);
+        lv_obj_set_pos(black_y, 949, 207);
+        lv_obj_set_style_bg_color(black_y, lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(black_y, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(black_y, 0, 0);
+        lv_obj_set_style_radius(black_y, LV_RADIUS_CIRCLE, 0);
+        lv_obj_clear_flag(black_y, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(black_y, LV_OBJ_FLAG_SCROLLABLE);
+
+        cd_arc_y = lv_arc_create(dp_play);
+        lv_obj_set_size(cd_arc_y, 56, 56);
+        lv_obj_set_pos(cd_arc_y, 940, 198);
+        lv_obj_clear_flag(cd_arc_y, LV_OBJ_FLAG_SCROLLABLE);
+        lv_arc_set_mode(cd_arc_y, LV_ARC_MODE_NORMAL);
+        lv_arc_set_bg_angles(cd_arc_y, 0, 360);
+        lv_arc_set_rotation(cd_arc_y, 270);
+        lv_arc_set_range(cd_arc_y, 0, 100);
+        lv_arc_set_value(cd_arc_y, 100);
+        lv_obj_set_style_arc_color(cd_arc_y, lv_color_hex(0x333344), LV_PART_MAIN);
+        lv_obj_set_style_arc_color(cd_arc_y, lv_color_hex(0x4488CC), LV_PART_INDICATOR);
+        lv_obj_set_style_arc_width(cd_arc_y, 5, LV_PART_MAIN);
+        lv_obj_set_style_arc_width(cd_arc_y, 5, LV_PART_INDICATOR);
+        lv_obj_set_style_bg_opa(cd_arc_y, LV_OPA_TRANSP, LV_PART_KNOB);
+        lv_obj_set_style_pad_all(cd_arc_y, 0, LV_PART_KNOB);
+
+        lv_obj_t * label_f = lv_label_create(black_y);
+        lv_label_set_text(label_f, "F");
+        lv_obj_set_style_text_font(label_f, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_color(label_f, lv_color_white(), 0);
+        lv_obj_center(label_f);
+
+        cd_ready_y = lv_label_create(dp_play);
+        lv_label_set_text(cd_ready_y, "Ready!");
+        lv_obj_set_style_text_font(cd_ready_y, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(cd_ready_y, lv_color_hex(0x44FF44), 0);
+        lv_obj_align_to(cd_ready_y, cd_arc_y, LV_ALIGN_OUT_BOTTOM_MID, 0, 4);
+    }
+
     // 事件注册
     event_register(EVENT_GAME_START,ui_play_event_game_start_cb);
+
+    // 技能CD可视化更新定时器 (每100ms更新一次)
+    cd_update_timer = lv_timer_create(cd_update_timer_cb, 100, NULL);
 }
 
 /**
@@ -387,6 +493,20 @@ void ui_play_level_enter_anim(const char * level_name)
     lv_anim_start(&anim_fade);
     
     //CONSOLE_INFO("Complete");
+}
+
+/**
+ * @brief 控制冰冻减速遮罩的显示/隐藏 (Stream Y技能)
+ * @param show true=显示遮罩, false=隐藏遮罩
+ */
+void ui_play_set_freeze_overlay(bool show)
+{
+    if (freeze_overlay == NULL) return;
+    if (show) {
+        lv_obj_clear_flag(freeze_overlay, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(freeze_overlay, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
  /**********************
@@ -521,6 +641,48 @@ static void ui_play_event_game_start_cb(game_obj_t * a, game_obj_t * b)
     CONSOLE_INFO("Level 1 Animation Start.");
     ui_play_level_enter_anim("Level 1");
     lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+}
+
+/**
+ * @brief 技能CD可视化定时器回调：更新CD弧和Ready文本
+ */
+static void cd_update_timer_cb(lv_timer_t * timer)
+{
+    LV_UNUSED(timer);
+    if (fsm_get_state() != GS_PLAY) return;
+    if (cd_arc_x == NULL || cd_arc_y == NULL) return;
+
+    // —— X技能(E键) CD更新 ——
+    uint32_t cd_x = player_get_skill_x_cd();
+    uint32_t elapsed_x = player_get_skill_x_elapsed();
+    int pct_x;
+    if (cd_x == 0) {
+        pct_x = 100; // 无CD技能，始终就绪
+    } else {
+        pct_x = (elapsed_x >= cd_x) ? 100 : (int)(elapsed_x * 100 / cd_x);
+    }
+    lv_arc_set_value(cd_arc_x, pct_x);
+    if (pct_x >= 100) {
+        lv_obj_clear_flag(cd_ready_x, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(cd_ready_x, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // —— Y技能(F键) CD更新 ——
+    uint32_t cd_y = player_get_skill_y_cd();
+    uint32_t elapsed_y = player_get_skill_y_elapsed();
+    int pct_y;
+    if (cd_y == 0) {
+        pct_y = 100;
+    } else {
+        pct_y = (elapsed_y >= cd_y) ? 100 : (int)(elapsed_y * 100 / cd_y);
+    }
+    lv_arc_set_value(cd_arc_y, pct_y);
+    if (pct_y >= 100) {
+        lv_obj_clear_flag(cd_ready_y, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(cd_ready_y, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 /**
