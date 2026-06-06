@@ -106,6 +106,7 @@ void save_write(void)
     fprintf(fp, "vol_bgm=%d\n", audio_get_vol_bgm());
     fprintf(fp, "vol_sfx=%d\n", audio_get_vol_sfx());
     fprintf(fp, "vol_amp=%d\n", audio_get_vol_amp());
+    fprintf(fp, "sound_enabled=%d\n", audio_get_sound_enabled() ? 1 : 0);
     fprintf(fp, "show_hitbox=%d\n", game_obj_get_show_hitbox() ? 1 : 0);
     fprintf(fp, "show_hurt_overlay=%d\n", game_obj_get_show_hurt_overlay() ? 1 : 0);
     fprintf(fp, "selected_plane=%d\n", (int)ui_base_get_p1_selected_plane_id());
@@ -138,6 +139,7 @@ void save_write(void)
     snprintf(line, sizeof(line), "vol_bgm=%d\n", audio_get_vol_bgm()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "vol_sfx=%d\n", audio_get_vol_sfx()); f_puts(line, &fp);
     snprintf(line, sizeof(line), "vol_amp=%d\n", audio_get_vol_amp()); f_puts(line, &fp);
+    snprintf(line, sizeof(line), "sound_enabled=%d\n", audio_get_sound_enabled() ? 1 : 0); f_puts(line, &fp);
     snprintf(line, sizeof(line), "show_hitbox=%d\n", game_obj_get_show_hitbox() ? 1 : 0); f_puts(line, &fp);
     snprintf(line, sizeof(line), "show_hurt_overlay=%d\n", game_obj_get_show_hurt_overlay() ? 1 : 0); f_puts(line, &fp);
     snprintf(line, sizeof(line), "selected_plane=%d\n", (int)ui_base_get_p1_selected_plane_id()); f_puts(line, &fp);
@@ -182,7 +184,7 @@ static int try_parse_file(const char * path)
     if (!fp) return -1;
 
     char line[MAX_LINE_LEN];
-    int coin_num = -1, coin_p2_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, show_hitbox = -1;
+    int coin_num = -1, coin_p2_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, sound_enabled = -1, show_hitbox = -1;
     int selected_plane = -1, unlocked_mask = -1, draw_count = -1, show_hurt_overlay = -1;
 
     while (fgets(line, sizeof(line), fp)) {
@@ -194,6 +196,7 @@ static int try_parse_file(const char * path)
             else if (strcmp(key, "vol_bgm") == 0) vol_bgm = val;
             else if (strcmp(key, "vol_sfx") == 0) vol_sfx = val;
             else if (strcmp(key, "vol_amp") == 0) vol_amp = val;
+            else if (strcmp(key, "sound_enabled") == 0) sound_enabled = val;
             else if (strcmp(key, "show_hitbox") == 0) show_hitbox = val;
             else if (strcmp(key, "show_hurt_overlay") == 0) show_hurt_overlay = val;
             else if (strcmp(key, "selected_plane") == 0) selected_plane = val;
@@ -210,6 +213,7 @@ static int try_parse_file(const char * path)
     audio_set_vol_bgm((uint8_t)vol_bgm);
     audio_set_vol_sfx((uint8_t)vol_sfx);
     audio_set_vol_amp((uint8_t)vol_amp);
+    if (sound_enabled >= 0) audio_set_sound_enabled(sound_enabled != 0);
     if (show_hitbox >= 0) game_obj_set_show_hitbox(show_hitbox != 0);
     if (show_hurt_overlay >= 0) game_obj_set_show_hurt_overlay(show_hurt_overlay != 0);
     if (selected_plane >= 0) ui_base_set_p1_selected_plane_id((plane_id_t)selected_plane);
@@ -226,7 +230,7 @@ static int try_parse_file(const char * path)
     buf[bytes_read] = '\0';
     f_close(&fp);
 
-    int coin_num = -1, coin_p2_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, show_hitbox = -1;
+    int coin_num = -1, coin_p2_num = -1, vol_bgm = -1, vol_sfx = -1, vol_amp = -1, sound_enabled = -1, show_hitbox = -1;
     int selected_plane = -1, unlocked_mask = -1, draw_count = -1, show_hurt_overlay = -1;
     char * line = strtok(buf, "\n");
     while (line) {
@@ -238,6 +242,7 @@ static int try_parse_file(const char * path)
             else if (strcmp(key, "vol_bgm") == 0) vol_bgm = val;
             else if (strcmp(key, "vol_sfx") == 0) vol_sfx = val;
             else if (strcmp(key, "vol_amp") == 0) vol_amp = val;
+            else if (strcmp(key, "sound_enabled") == 0) sound_enabled = val;
             else if (strcmp(key, "show_hitbox") == 0) show_hitbox = val;
             else if (strcmp(key, "show_hurt_overlay") == 0) show_hurt_overlay = val;
             else if (strcmp(key, "selected_plane") == 0) selected_plane = val;
@@ -254,6 +259,7 @@ static int try_parse_file(const char * path)
     audio_set_vol_bgm((uint8_t)vol_bgm);
     audio_set_vol_sfx((uint8_t)vol_sfx);
     audio_set_vol_amp((uint8_t)vol_amp);
+    if (sound_enabled >= 0) audio_set_sound_enabled(sound_enabled != 0);
     if (show_hitbox >= 0) game_obj_set_show_hitbox(show_hitbox != 0);
     if (show_hurt_overlay >= 0) game_obj_set_show_hurt_overlay(show_hurt_overlay != 0);
     if (selected_plane >= 0) ui_base_set_p1_selected_plane_id((plane_id_t)selected_plane);
@@ -269,6 +275,7 @@ static void apply_defaults(void)
     audio_set_vol_bgm(255);
     audio_set_vol_sfx(255);
     audio_set_vol_amp(1);
+    audio_set_sound_enabled(true);
     ui_shop_set_draw_cnt(0);
     ui_base_set_unlocked_mask(1);                  // 仅默认飞机解锁
     ui_base_set_p1_selected_plane_id(PLANE_ID_DEFAULT);

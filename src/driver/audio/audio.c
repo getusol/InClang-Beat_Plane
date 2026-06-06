@@ -123,6 +123,8 @@ static uint8_t vol_sfx = 255;
 
 static uint8_t vol_amp = 1; // 0 +1(0.5) 1 +0(1.0) 2 -1(2.0) 3 -2(4.0)
 
+static bool sound_enabled = true; // 音效总开关 默认开
+
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
@@ -144,6 +146,9 @@ void audio_init()
  */
 void audio_load(audio_id_t id, audio_channel_id_t channel_id, bool do_repeat)
 {
+    // 音效总开关关闭时，不加载任何音频 (节省内存与IO)
+    if (!sound_enabled) return;
+
     if (id >= AUDIO_MAX) {
         CONSOLE_WARNING("Invalid audio ID: %d", id);
         LOG_WARNING("Invalid audio ID: %d", id);
@@ -300,6 +305,22 @@ void audio_set_vol_amp(uint8_t vol)
 uint8_t audio_get_vol_amp(void)
 {
     return vol_amp;
+}
+
+/**
+ * @brief 设置音效总开关
+ */
+void audio_set_sound_enabled(bool enabled)
+{
+    sound_enabled = enabled;
+}
+
+/**
+ * @brief 获取音效总开关状态
+ */
+bool audio_get_sound_enabled(void)
+{
+    return sound_enabled;
 }
 
 #ifndef SIMULATOR

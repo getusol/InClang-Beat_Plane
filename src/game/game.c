@@ -253,7 +253,7 @@ static void check_collisions(void)
                 }
                 // 4.子弹 vs 玩家 (护盾反射)
                 else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET) {
-                    if (bullet_get_source(b) != a) {
+                    if (bullet_get_source(b)->type != GAME_OBJ_TYPE_PLAYER) {
                         if (player_is_shield_active_for(a)) {
                             const apr_t *bullet_apr = b->apr;
                             if (bullet_apr == apr_get(APR_BULLET_CIRCLE) ||
@@ -267,7 +267,7 @@ static void check_collisions(void)
                         }
                     }
                 } else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER) {
-                    if (bullet_get_source(a) != b) {
+                    if (bullet_get_source(a)->type != GAME_OBJ_TYPE_PLAYER) {
                         if (player_is_shield_active_for(b)) {
                             const apr_t *bullet_apr = a->apr;
                             if (bullet_apr == apr_get(APR_BULLET_CIRCLE) ||

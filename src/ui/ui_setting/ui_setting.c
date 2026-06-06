@@ -32,6 +32,7 @@
  **********************/
 
 static void back_btn_event_cb(lv_event_t * e);
+static void sound_fx_switch_event_cb(lv_event_t * e);
 static void bgm_slider_event_cb(lv_event_t * e);
 static void bgm_preview_cb(lv_event_t * e);
 static void sfx_preview_cb(lv_event_t * e);
@@ -54,6 +55,8 @@ static void clear_cancel_btn_cb(lv_event_t * e);
 static lv_obj_t * dp_setting = NULL;
 static lv_obj_t * container = NULL;
 static lv_group_t * setting_group = NULL;
+static lv_obj_t * sound_fx_label = NULL;
+static lv_obj_t * sound_fx_switch = NULL;
 static lv_obj_t * bgm_slider = NULL;
 static lv_obj_t * sfx_slider = NULL;
 static lv_obj_t * bgm_label = NULL;
@@ -106,15 +109,28 @@ void ui_setting_init(void)
     lv_obj_set_pos(container,0,40);
     lv_obj_add_flag(container,LV_OBJ_FLAG_SCROLLABLE);
 
+    // ---- 音效总开关 ----
+    sound_fx_label = lv_label_create(container);
+    lv_obj_set_style_text_font(sound_fx_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(sound_fx_label, lv_color_white(), LV_STATE_DEFAULT);
+    lv_label_set_text_fmt(sound_fx_label, "Sound Effects: %s", audio_get_sound_enabled() ? "ON" : "OFF");
+    lv_obj_set_pos(sound_fx_label, 60, 20);
+
+    sound_fx_switch = lv_switch_create(container);
+    lv_obj_set_pos(sound_fx_switch, 60, 50);
+    if (audio_get_sound_enabled()) lv_obj_add_state(sound_fx_switch, LV_STATE_CHECKED);
+    lv_obj_add_event_cb(sound_fx_switch, sound_fx_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_group_add_obj(setting_group, sound_fx_switch);
+
     // ---- 总体 音量 放大器 ---
     amp_label = lv_label_create(container);
     lv_obj_set_style_text_font(amp_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(amp_label, lv_color_white(), LV_STATE_DEFAULT);
-    lv_obj_set_pos(amp_label, 60, 20);
+    lv_obj_set_pos(amp_label, 60, 100);
 
     amp_slider = lv_slider_create(container);
     lv_obj_set_size(amp_slider, 400, 20);
-    lv_obj_set_pos(amp_slider, 60, 60);
+    lv_obj_set_pos(amp_slider, 60, 140);
     lv_slider_set_range(amp_slider, 0, 3);
     lv_slider_set_value(amp_slider, audio_get_vol_amp(), LV_ANIM_OFF);
     lv_obj_add_event_cb(amp_slider, amp_slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
@@ -125,11 +141,11 @@ void ui_setting_init(void)
     bgm_label = lv_label_create(container);
     lv_obj_set_style_text_font(bgm_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(bgm_label, lv_color_white(), LV_STATE_DEFAULT);
-    lv_obj_set_pos(bgm_label, 60, 100);
+    lv_obj_set_pos(bgm_label, 60, 180);
 
     bgm_slider = lv_slider_create(container);
     lv_obj_set_size(bgm_slider, 400, 20);
-    lv_obj_set_pos(bgm_slider, 60, 140);
+    lv_obj_set_pos(bgm_slider, 60, 220);
     lv_slider_set_range(bgm_slider, 0, 100);
     lv_slider_set_value(bgm_slider, (audio_get_vol_bgm() * 100) >> 8, LV_ANIM_OFF);
     lv_obj_add_event_cb(bgm_slider, bgm_slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
@@ -140,11 +156,11 @@ void ui_setting_init(void)
     sfx_label = lv_label_create(container);
     lv_obj_set_style_text_font(sfx_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(sfx_label, lv_color_white(), LV_STATE_DEFAULT);
-    lv_obj_set_pos(sfx_label, 60, 180);
+    lv_obj_set_pos(sfx_label, 60, 260);
 
     sfx_slider = lv_slider_create(container);
     lv_obj_set_size(sfx_slider, 400, 20);
-    lv_obj_set_pos(sfx_slider, 60, 220);
+    lv_obj_set_pos(sfx_slider, 60, 300);
     lv_slider_set_range(sfx_slider, 0, 100);
     lv_slider_set_value(sfx_slider, (audio_get_vol_sfx() * 100) >> 8, LV_ANIM_OFF);
     lv_obj_add_event_cb(sfx_slider, sfx_slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
@@ -155,10 +171,10 @@ void ui_setting_init(void)
     hitbox_label = lv_label_create(container);
     lv_obj_set_style_text_font(hitbox_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(hitbox_label, lv_color_white(), LV_STATE_DEFAULT);
-    lv_obj_set_pos(hitbox_label, 60, 260);
+    lv_obj_set_pos(hitbox_label, 60, 340);
 
     hitbox_switch = lv_switch_create(container);
-    lv_obj_set_pos(hitbox_switch, 60, 300);
+    lv_obj_set_pos(hitbox_switch, 60, 380);
     lv_obj_add_event_cb(hitbox_switch, hitbox_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_group_add_obj(setting_group, hitbox_switch);
 
@@ -172,7 +188,7 @@ void ui_setting_init(void)
     hitbox_preview_img = lv_img_create(container);
     lv_img_set_src(hitbox_preview_img, img_path(preview_apr->img_name, preview_path_buf, 64));
 #endif
-    lv_obj_set_pos(hitbox_preview_img, 410, 270);
+    lv_obj_set_pos(hitbox_preview_img, 410, 350);
     lv_obj_set_size(hitbox_preview_img, preview_apr->w, preview_apr->h);
 
     // 预览碰撞框（红色线框，叠在预览图上）
@@ -192,10 +208,10 @@ void ui_setting_init(void)
     lv_obj_set_style_text_font(hurt_overlay_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
     lv_label_set_text_fmt(hurt_overlay_label, "Show Hurt Overlay: %s", game_obj_get_show_hurt_overlay() ? "ON" : "OFF");
     lv_obj_set_style_text_color(hurt_overlay_label, lv_color_white(), LV_STATE_DEFAULT);
-    lv_obj_set_pos(hurt_overlay_label, 60, 340);
+    lv_obj_set_pos(hurt_overlay_label, 60, 420);
 
     hurt_overlay_switch = lv_switch_create(container);
-    lv_obj_set_pos(hurt_overlay_switch, 60, 380);
+    lv_obj_set_pos(hurt_overlay_switch, 60, 460);
     lv_obj_add_event_cb(hurt_overlay_switch, hurt_overlay_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_group_add_obj(setting_group, hurt_overlay_switch);
 
@@ -204,11 +220,11 @@ void ui_setting_init(void)
     lv_obj_set_style_text_font(clear_save_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(clear_save_label, lv_color_make(255, 0, 0), LV_STATE_DEFAULT);
     lv_label_set_text(clear_save_label, "CLEAR SAVE DATA");
-    lv_obj_set_pos(clear_save_label, 60, 450);
+    lv_obj_set_pos(clear_save_label, 60, 530);
 
     clear_save_btn = lv_btn_create(container);
     lv_obj_set_size(clear_save_btn, 200, 50);
-    lv_obj_set_pos(clear_save_btn, 60, 490);
+    lv_obj_set_pos(clear_save_btn, 60, 570);
     lv_obj_set_style_bg_color(clear_save_btn, lv_color_hex(0xD32F2F), LV_STATE_DEFAULT);
     lv_obj_add_event_cb(clear_save_btn, clear_save_btn_event_cb, LV_EVENT_CLICKED, NULL);
     lv_group_add_obj(setting_group, clear_save_btn);
@@ -280,6 +296,16 @@ void ui_setting_run(void)
 
     lv_scr_load(dp_setting);
     set_group(setting_group);
+
+    // 刷新音效总开关状态
+    if (sound_fx_switch) {
+        if (audio_get_sound_enabled()) {
+            lv_obj_add_state(sound_fx_switch, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(sound_fx_switch, LV_STATE_CHECKED);
+        }
+        lv_label_set_text_fmt(sound_fx_label, "Sound Effects: %s", audio_get_sound_enabled() ? "ON" : "OFF");
+    }
 
     // 刷新滑块到当前音量 (内部 0-255 → 显示 0-100)
     if (bgm_slider) lv_slider_set_value(bgm_slider, (audio_get_vol_bgm() * 100) >> 8, LV_ANIM_OFF);
@@ -362,6 +388,14 @@ static void update_hitbox_preview(void)
     } else {
         lv_obj_add_flag(hitbox_preview_box, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+static void sound_fx_switch_event_cb(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    bool on = lv_obj_has_state(sound_fx_switch, LV_STATE_CHECKED);
+    lv_label_set_text_fmt(sound_fx_label, "Sound Effects: %s", on ? "ON" : "OFF");
+    audio_set_sound_enabled(on);
 }
 
 static void hitbox_switch_event_cb(lv_event_t * e)

@@ -78,4 +78,8 @@ uint8_t audio_get_vol_sfx(void);
 void audio_set_vol_amp(uint8_t vol);
 uint8_t audio_get_vol_amp(void);
 
+// 音效总开关 (true=开, false=关)
+void audio_set_sound_enabled(bool enabled);
+bool audio_get_sound_enabled(void);
+
 #endif // #ifndef __AUDIO_H__
