@@ -135,20 +135,28 @@
 /*-------------
  * BULLET
  *-----------*/
-
-#define MAX_BULLET_COUNT 50 // 最大子弹数量
-
+#ifdef SIMULATOR // ON PC
+        #define MAX_BULLET_COUNT 50 // 最大子弹数量
+#else
+        #define MAX_BULLET_COUNT 10 // 最大子弹数量
+#endif
 /*-------------
  * ENEMY
  *-----------*/
-
-#define MAX_ENEMY_COUNT 10 // 最大敌人数量
+#ifdef SIMULATOR // ON PC
+        #define MAX_ENEMY_COUNT 10 // 最大敌人数量
+#else
+        #define MAX_ENEMY_COUNT 3 // 最大敌人数量
+#endif
 
 /*-------------
  * COINS
  *-----------*/
-
-#define MAX_COIN_COUNT 13 // 最大金币数量
+#ifdef SIMULATOR // ON PC
+        #define MAX_COIN_COUNT 13 // 最大金币数量
+#else
+        #define MAX_COIN_COUNT 10 // 最大金币数量
+#endif
 
 #define MAX_FLAME_WALL_COUNT 3 // 最大火墙数量
 
