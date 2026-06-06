@@ -160,6 +160,7 @@ void ui_play_init()
     hud_img = lv_img_create(dp_play);
     if (hud_img != NULL) {
         lv_img_set_src(hud_img, img_path(HUD_BLUE_IMG_NAME, img_path_buf, 64));
+        lv_obj_set_pos(hud_img,2,5);
         lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
     }
 #endif
@@ -704,6 +705,7 @@ static void pause_btn_event_cb(lv_event_t * e)
     {
         case GS_PLAY : audio_load(AUDIO_MOUSEOPEN,AUDIO_CHAN_AUTO,false); fsm_switch_state(GS_PAUSE); CONSOLE_INFO("State has been switched to %d", fsm_get_state()); break;
         case GS_PAUSE : audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false); fsm_switch_state(GS_PLAY); CONSOLE_INFO("State has been switched to %d", fsm_get_state()); break;
+        default: CONSOLE_WARNING("Unknown state %d", fsm_get_state()); LOG_WARNING("Unknown state %d", fsm_get_state()); break;
     }
 }
 

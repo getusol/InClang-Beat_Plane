@@ -20,6 +20,7 @@
 #include "apr.h"
 #include "timer.h"
 #include <string.h>
+#include "audio.h"
 
 /**********************
  * MACROS
@@ -254,7 +255,9 @@ static void coin_event_hit_player_cb(game_obj_t * src, game_obj_t * trg)
         coin_add_p2_num(c->value);
     else
 #endif
-        coin_add_num(c->value);
+    coin_add_num(c->value);
+    // 音效
+    audio_load(AUDIO_COINPICKED,AUDIO_CHAN_AUTO,false);
 
     trg->hide(trg);
 }

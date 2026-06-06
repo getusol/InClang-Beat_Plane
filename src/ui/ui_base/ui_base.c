@@ -447,7 +447,7 @@ void ui_base_init(void)
     lv_obj_clear_flag(p1_selection_box, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(p1_selection_box, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_bg_opa(p1_selection_box, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_color(p1_selection_box, lv_color_hex(0xFF2020), 0);
+    lv_obj_set_style_border_color(p1_selection_box, lv_color_hex(0x2080FF), 0);
     lv_obj_set_style_border_width(p1_selection_box, 3, 0);
 
     p2_selection_box = lv_obj_create(dp_base);
@@ -456,19 +456,19 @@ void ui_base_init(void)
     lv_obj_clear_flag(p2_selection_box, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(p2_selection_box, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_bg_opa(p2_selection_box, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_color(p2_selection_box, lv_color_hex(0x2080FF), 0);
+    lv_obj_set_style_border_color(p2_selection_box, lv_color_hex(0xFF2020), 0);
     lv_obj_set_style_border_width(p2_selection_box, 3, 0);
     lv_obj_add_flag(p2_selection_box, LV_OBJ_FLAG_HIDDEN);
 
     p1_indicator = lv_label_create(dp_base);
     lv_label_set_text(p1_indicator, "1P");
-    lv_obj_set_style_text_color(p1_indicator, lv_color_hex(0xFF2020), 0);
+    lv_obj_set_style_text_color(p1_indicator, lv_color_hex(0x2080FF), 0);
     lv_obj_set_style_text_font(p1_indicator, &lv_font_montserrat_22, 0);
     lv_obj_add_flag(p1_indicator, LV_OBJ_FLAG_HIDDEN);
 
     p2_indicator = lv_label_create(dp_base);
     lv_label_set_text(p2_indicator, "2P");
-    lv_obj_set_style_text_color(p2_indicator, lv_color_hex(0x2080FF), 0);
+    lv_obj_set_style_text_color(p2_indicator, lv_color_hex(0xFF2020), 0);
     lv_obj_set_style_text_font(p2_indicator, &lv_font_montserrat_22, 0);
     lv_obj_add_flag(p2_indicator, LV_OBJ_FLAG_HIDDEN);
 #endif

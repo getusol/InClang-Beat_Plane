@@ -716,14 +716,17 @@ static void player_skill_shield(void)
     lv_obj_clear_flag(SKP->shield_overlay, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_pos(SKP->shield_overlay, SKP->base.x, SKP->base.y);
     timer_create((game_obj_t *)SKP, 1000, TIMER_MODE_ONCE, player_shield_end_cb, NULL);
+    // 音效
+    audio_load(AUDIO_SKILLSHIELD,AUDIO_CHAN_AUTO,false);
 }
 
 static void player_shield_end_cb(game_obj_t *owner, void *usr_data)
 {
-    (void)owner; (void)usr_data;
-    if (SKP == NULL) return;
-    SKP->shield_active = false;
-    lv_obj_add_flag(SKP->shield_overlay, LV_OBJ_FLAG_HIDDEN);
+    (void)usr_data;
+    if (owner == NULL) return;
+    player_t *p = (player_t *)owner;  // base 是 player_t 首成员，转换安全
+    p->shield_active = false;
+    lv_obj_add_flag(p->shield_overlay, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void player_skill_flame_wall(void)
