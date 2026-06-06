@@ -17,6 +17,7 @@
 #include "apr.h"
 #include "save.h"
 #include "multiplayer.h"
+#include "audio.h"
 #ifdef SIMULATOR
 #include "joystick.h"
 #include "key.h"
@@ -739,12 +740,14 @@ static void base_exit_btn_cb(lv_event_t * e)
         CONSOLE_INFO("Cannot exit: Invite is in progress. Please cancel it first.");
         return;
     }
+    audio_load(AUDIO_MOUSEOPEN,AUDIO_CHAN_AUTO,false);
     popup_show(base_exit_popup);
 }
 
 static void base_continue_btn_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     popup_hide(base_exit_popup);
 }
 
@@ -753,6 +756,7 @@ static void base_back_menu_btn_cb(lv_event_t * e)
     LV_UNUSED(e);
     popup_hide(base_exit_popup);
     save_write();
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     fsm_switch_state(GS_MENU);
     CONSOLE_INFO("Returning back to main menu.");
 }
@@ -760,6 +764,7 @@ static void base_back_menu_btn_cb(lv_event_t * e)
 static void base_invite_btn_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    audio_load(AUDIO_MOUSEOPEN,AUDIO_CHAN_AUTO,false);
 
     if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN)) return ;
 
@@ -799,7 +804,7 @@ static void base_invite_btn_cb(lv_event_t * e)
 static void base_invite_yes_btn_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
-
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     switch (mp_get_state()) {
         case MP_STATE_CONNECTED:
             mp_disconnect();
@@ -816,6 +821,7 @@ static void base_invite_yes_btn_cb(lv_event_t * e)
 static void base_invite_no_btn_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     switch (mp_get_state()) {
         case MP_STATE_CONNECTED:
             popup_hide(multi_invite_popup);
@@ -832,6 +838,7 @@ static void base_invite_no_btn_cb(lv_event_t * e)
 static void base_invite_cancel_btn_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     if(mp_get_state() == MP_STATE_INVITING) {
         mp_cancel_invite();
     }
@@ -845,6 +852,7 @@ static void base_invite_ok_btn_cb(lv_event_t * e)
 {
     // simply hide the popup
     LV_UNUSED(e);
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     popup_hide(multi_invite_popup);
 }
 

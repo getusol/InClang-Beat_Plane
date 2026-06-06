@@ -24,6 +24,18 @@
 #include "drivers.h"
 #endif // #ifdef SIMULATOR
 
+
+/**********************
+ *      MACROS
+ **********************/
+
+// CORDIC 增益常数 (约 0.607252935, 缩放 2^16)
+#define CORDIC_GAIN 39797  // 0.607252935 * 65536
+
+
+// atan(2^-i) 的 0.1° 值 (i=0..15)
+static const int16_t atan_table[16] = {450, 266, 140, 71, 36, 18, 9, 4, 2, 1, 1, 0};
+
  /**********************
  *   GLOBAL FUNCTIONS
  **********************/
@@ -163,4 +175,43 @@ uint32_t play_tick_get()
     }
     last_sys_tick = now;
     return accumulated;
+}
+
+/**
+ * @brief cordic算法计算atan2(y,x)
+ * @param y y分量
+ * @param x x分量
+ * @return atan2(y,x) 角度值 int16_t 分辨率 0.1 degree
+ */
+int16_t cordic_atan2(int16_t y, int16_t x) 
+{
+    if (x == 0 && y == 0) return 0;
+    uint8_t quadrant = 0;
+    if (x < 0) { x = -x; quadrant ^= 1; }
+    if (y < 0) { y = -y; quadrant ^= 2; }
+
+    int16_t angle = 0;
+    int16_t x_cur = x;
+    int16_t y_cur = y;
+
+    for (int i = 0; i < 12; i++) {
+        if (y_cur > 0) {
+            int16_t x_new = x_cur + (y_cur >> i);
+            int16_t y_new = y_cur - (x_cur >> i);
+            angle += atan_table[i];
+            x_cur = x_new;
+            y_cur = y_new;
+        } else {
+            int16_t x_new = x_cur - (y_cur >> i);
+            int16_t y_new = y_cur + (x_cur >> i);
+            angle -= atan_table[i];
+            x_cur = x_new;
+            y_cur = y_new;
+        }
+    }
+
+    if (quadrant & 1) angle = 1800 - angle;
+    if (quadrant & 2) angle = -angle;
+    if (angle < 0) angle += 3600;
+    return angle % 3600;
 }

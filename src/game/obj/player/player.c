@@ -809,14 +809,14 @@ static void player_event_player_die_cb(game_obj_t * src, game_obj_t * trg)
  */
 static void player_event_hit_by_enemy_cb(game_obj_t * src, game_obj_t * trg)
 {
-  if (trg != (game_obj_t *)player_p) return;
+  if (src != &player_p->base) return;
   int16_t damage = enemy_get_damage(trg);
   player_hp_modify(-damage);
 }
 
 static void player_event_hit_by_bullet_cb(game_obj_t * src, game_obj_t * trg)
 {
-  if (trg != (game_obj_t *)player_p) return;
+  if (trg != &player_p->base) return;
   int16_t damage = bullet_get_damage(src);
   player_hp_modify(-damage);
 }
@@ -1035,6 +1035,7 @@ static void p2_player_fire(void)
 {
     if (!player_p2 || fsm_get_state() != GS_PLAY || !player_p2->base.active) return;
     game_obj_t *g = &player_p2->base;
+    audio_load(AUDIO_PLAYERFIREP2, AUDIO_CHAN_AUTO, false);
     bullet_create(g,
         g->x + g->apr->w / 2 - g->apr->w / 16,
         g->y - g->apr->h / 4,
@@ -1073,7 +1074,7 @@ static void p2_player_die_cb(game_obj_t *src, game_obj_t *trg)
 static void p2_player_hit_enemy_cb(game_obj_t *src, game_obj_t *trg)
 {
     if (!player_p2 || !trg) return;
-    if (trg != (game_obj_t *)player_p2) return;
+    if (src != &player_p2->base) return;
     int dmg = enemy_get_damage(trg);
     player_hp_modify_p2(-dmg);
     if (player_p2->hp <= 0)

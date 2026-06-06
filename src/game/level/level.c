@@ -202,7 +202,7 @@ void level_update(void)
                     current_boss = enemy_spawn(SCREEN_WIDTH / 2, 70,
                                                0, 0,
                                                wave->boss_hp,
-                                               200,  // 高伤害 ≈ 触碰秒杀
+                                               2000,  // 高伤害 ≈ 触碰秒杀
                                                boss_behave,
                                                APR_ENEMY_BOSS);
                     wave->enemy_spawned = 1;

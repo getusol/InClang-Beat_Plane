@@ -38,6 +38,7 @@ typedef enum audio_id_t
     AUDIO_BOSSATTACK,
     AUDIO_PLAYERFIRE,
     AUDIO_ENEMYATTACK,
+    AUDIO_PLAYERFIREP2,
 
     AUDIO_MAX,
 } audio_id_t;

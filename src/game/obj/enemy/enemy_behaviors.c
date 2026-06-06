@@ -139,7 +139,7 @@ static void enemy_normal_shoot_timer(game_obj_t * g, void * v)
     if (enemy_is_frozen(g)) return; // 冻结时不能射击
     int8_t speed = lv_rand(10, 33);
     audio_load(AUDIO_ENEMYATTACK,AUDIO_CHAN_AUTO,false);
-    bullet_create(g, g->x + g->apr->w / 2 - 6, g->y + g->apr->h, 0, speed, 5, NULL_BEHAVE, APR_BULLET_CIRCLE);
+    bullet_create(g, g->x + g->apr->w / 2 - 6, g->y + g->apr->h, 0, speed, 8, NULL_BEHAVE, APR_BULLET_CIRCLE);
 }
 
 // ==================== Boss 行为实现 ====================
@@ -154,16 +154,16 @@ static void boss_master_timer_cb(game_obj_t * g, void * v)
 
     switch (phase) {
         case 0:
-            // 270° 对称弹幕 —— 每 2 tick (600ms)
-            if (phase_tick % 2 == 0) {
+            // 270° 对称弹幕 —— 每 1 tick (300ms)
+            if (phase_tick % 1 == 0) {
                 boss_fire_barrage(g);
                 audio_load(AUDIO_BOSSATTACK,AUDIO_CHAN_AUTO,false);
             }
             break;
 
         case 1:
-            // 追踪弹 —— 每 3 tick (900ms)
-            if (phase_tick % 3 == 0) {
+            // 追踪弹 —— 每 4 tick (1200ms)
+            if (phase_tick % 4 == 0) {
                 boss_fire_tracking(g);
             }
             break;
@@ -185,22 +185,24 @@ static void boss_fire_barrage(game_obj_t * g)
     lv_coord_t cx = g->x + g->apr->w / 2;
     lv_coord_t cy = g->y + g->apr->h / 2;
 
-    // 270° 以正下方(90°)为中心: 从 -135° 到 +135°，步长 270°/7
-    // 跳过正上方 90°（Boss 头顶方向，不会打到玩家）
-    #define BARRAGE_COUNT 8
-    float angle_start = -135.0f * 3.14159f / 180.0f;  // rad
-    float angle_step  = (270.0f * 3.14159f / 180.0f) / (BARRAGE_COUNT - 1);
+    static int16_t offset_ag = 0;
 
-    for (int i = 0; i < BARRAGE_COUNT; i++) {
-        float theta = angle_start + (float)i * angle_step;
+    offset_ag = (offset_ag + 10) % 38;
 
-        // Taylor 级数 sin/cos（避免 math.h，适配 MCU）
-        float sin_t = theta - theta * theta * theta / 6.0f;
-        float cos_t = 1.0f - theta * theta / 2.0f;
+    int16_t delta = offset_ag << 2;
 
+    // 预先定义好的8个方向
+    static const int16_t base_dx[8] = {  71,  99,  85,  33, -33, -85, -99, -71 };
+    static const int16_t base_dy[8] = { -71, -11,  53,  94,  94,  53, -11, -71 };
+
+    for (int i = 0; i < 8; i++) {
         int16_t vx, vy;
-        direction_to_velocity((int16_t)(cos_t * 100), (int16_t)(sin_t * 100), 3, &vx, &vy);
-        bullet_create(g, cx, cy, vx, vy, 8, NULL_BEHAVE, APR_BULLET_CIRCLE);
+        int16_t dx0 = base_dx[i];
+        int16_t dy0 = base_dy[i];
+        int16_t dx = dx0 - ((dy0 * delta) >> 8);
+        int16_t dy = dy0 + ((dx0 * delta) >> 8);
+        direction_to_velocity(dx, dy, 13, &vx, &vy);
+        bullet_create(g, cx, cy, vx, vy, 14, NULL_BEHAVE, APR_BULLET_CIRCLE);
     }
 }
 
@@ -235,7 +237,7 @@ static void boss_fire_tracking(game_obj_t * g)
         .usr_data = (void *)player,
     };
 
-    bullet_create(g, cx, cy, 0, 2, 20, track_behave, APR_BULLET_TRIANGLE);
+    bullet_create(g, cx, cy, 0, 2, 25, track_behave, APR_BULLET_TRIANGLE);
 }
 
 /**

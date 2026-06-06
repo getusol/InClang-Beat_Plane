@@ -150,7 +150,7 @@ int read_file_to_array(const char *filepath, uint8_t *buffer, uint32_t max_size)
     }
 
     // 打印原始获取到的文件大小，排查是否在这里就已经是 0 了
-    CONSOLE_INFO("Raw file size from ftell: %ld bytes", raw_file_size);
+    //CONSOLE_DEBUG("Raw file size from ftell: %ld bytes", raw_file_size);
 
     uint32_t file_size = (uint32_t)raw_file_size;
 
@@ -193,7 +193,7 @@ int read_file_to_array(const char *filepath, uint8_t *buffer, uint32_t max_size)
     }
 
     fclose(file);
-    CONSOLE_INFO("File read successfully, size:%ld ,path:%s", bytes_read, filepath);
+    //CONSOLE_INFO("File read successfully, size:%ld ,path:%s", bytes_read, filepath);
     return bytes_read;
 
 #else
@@ -228,7 +228,7 @@ int read_file_to_array(const char *filepath, uint8_t *buffer, uint32_t max_size)
     }
 
     f_close(&file);
-    CONSOLE_INFO("File read successfully, size:%ld ,path:%s", bytes_read, filepath);
+    //CONSOLE_INFO("File read successfully, size:%ld ,path:%s", bytes_read, filepath);
     return bytes_read;
 #endif
 }

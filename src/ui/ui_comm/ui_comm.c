@@ -16,6 +16,7 @@
 #include "save.h"
 #include "lvgl_utils.h"
 #include "ui_templates.h"
+#include "audio.h"
 
 /**********************
  *      MACROS
@@ -247,6 +248,7 @@ static void on_mp_event_cb(mp_event_t event,void * v)
 static void on_mp_btm_click(lv_event_t * e)
 {
     LV_UNUSED(e);
+    audio_load(AUDIO_MOUSEOPEN,AUDIO_CHAN_AUTO,false);
     popup_show(mp_popup);
 }
 
@@ -255,6 +257,8 @@ static void on_mp_btm_click(lv_event_t * e)
  */
 static void on_mp_popup_yes_btn_click(lv_event_t * e)
 {
+    LV_UNUSED(e);
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     popup_hide(mp_popup);
     mp_disconnect();
 }
@@ -264,5 +268,7 @@ static void on_mp_popup_yes_btn_click(lv_event_t * e)
  */
 static void on_mp_popup_no_btn_click(lv_event_t * e)
 {
+    LV_UNUSED(e);
+    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
     popup_hide(mp_popup);
 }
