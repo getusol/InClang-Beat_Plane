@@ -26,7 +26,7 @@
 
 #define CONSOLE_ENABLE            1   // 主开关
 #define CONSOLE_DEBUG_ENABLE      0   // [DEBUG] 详细信息，默认关闭
-#define CONSOLE_INFO_ENABLE       1   // [INFO]
+#define CONSOLE_INFO_ENABLE       0   // [INFO]
 #define CONSOLE_WARNING_ENABLE    1   // [WARNING]
 #define CONSOLE_ERROR_ENABLE      1   // [ERROR]
 
@@ -138,7 +138,7 @@
 #ifdef SIMULATOR // ON PC
         #define MAX_BULLET_COUNT 50 // 最大子弹数量
 #else
-        #define MAX_BULLET_COUNT 10 // 最大子弹数量
+        #define MAX_BULLET_COUNT 23 // 最大子弹数量
 #endif
 /*-------------
  * ENEMY
@@ -146,7 +146,7 @@
 #ifdef SIMULATOR // ON PC
         #define MAX_ENEMY_COUNT 10 // 最大敌人数量
 #else
-        #define MAX_ENEMY_COUNT 3 // 最大敌人数量
+        #define MAX_ENEMY_COUNT 6 // 最大敌人数量
 #endif
 
 /*-------------

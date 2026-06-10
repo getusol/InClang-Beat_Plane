@@ -15,7 +15,7 @@
 #include "config.h"
 
 #ifdef SIMULATOR
-    #include "SDL2/SDL.h"
+    #include "SDL.h"
     #include <stdlib.h>
 #else
     #include "drivers.h"

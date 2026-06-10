@@ -27,7 +27,7 @@
  *      MACROS
  **********************/
 
-#define MP_MAX_CALLBACKS        3     /**< 每个事件最多注册的回调数量 */
+#define MP_MAX_CALLBACKS        4     /**< 每个事件最多注册的回调数量 */
 #define MP_INVITE_TIMEOUT_MS    10000 /**< 邀请超时时间（毫秒），超时后触发 MP_EVENT_INVITE_TIMEOUT */
 #define MP_WAITING_TIMEOUT_MS   15000 /**< 等待响应超时（毫秒），比 INVITING 超时更长以防竞争 */
 
