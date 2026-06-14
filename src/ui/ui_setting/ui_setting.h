@@ -20,7 +20,8 @@
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void ui_setting_init(void);
+void ui_setting_init_stage1(void);
+void ui_setting_init_stage2(void);
 void ui_setting_run(void);
 void ui_setting_set_prev_state(game_state_t s);
 game_state_t ui_setting_get_prev_state(void);

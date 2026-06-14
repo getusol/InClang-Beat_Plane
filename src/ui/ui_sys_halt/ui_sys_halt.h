@@ -18,7 +18,8 @@
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void ui_sys_halt_init(void);
+void ui_sys_halt_init_stage1(void);
+void ui_sys_halt_init_stage2(void);
 void ui_sys_halt_run(void);
 
 #endif // #ifndef __UI_SYS_HALT_H__

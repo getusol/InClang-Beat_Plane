@@ -24,11 +24,11 @@
 // CONSOLE_ENABLE = 0 时所有 CONSOLE_* 宏编译为空
 // (compile-time level filtering)
 
-#define CONSOLE_ENABLE            1   // 主开关
-#define CONSOLE_DEBUG_ENABLE      0   // [DEBUG] 详细信息，默认关闭
-#define CONSOLE_INFO_ENABLE       0   // [INFO]
-#define CONSOLE_WARNING_ENABLE    1   // [WARNING]
-#define CONSOLE_ERROR_ENABLE      1   // [ERROR]
+#define CONSOLE_ENABLE 1         // 主开关
+#define CONSOLE_DEBUG_ENABLE 1   // [DEBUG] 详细信息，默认关闭
+#define CONSOLE_INFO_ENABLE 0    // [INFO]
+#define CONSOLE_WARNING_ENABLE 1 // [WARNING]
+#define CONSOLE_ERROR_ENABLE 1   // [ERROR]
 
 /*-------------
  * LOG
@@ -37,7 +37,7 @@
 // LOG_ENABLE = 0 时所有 LOG_* 宏编译为空
 // 一般LOG只会在WARNING和ERROR级别打印 所以这里只保留总开关
 
-#define LOG_ENABLE                1   // 主开关
+#define LOG_ENABLE 1 // 主开关
 
 /*=======================
  * HARDWARE PARAMS
@@ -57,14 +57,14 @@
 #define DEFAULT_BAUD_RATE 115200
 #define DEFAULT_COM_PORT "COM11"
 
-#if 1                     // 是否开启高级通信功能
-    #define DO_MCU_SEND_CONSOLE 1  // 启用MCU控制台向电脑输出传输
-    #define DO_MCU_SEND_INPUT   1  // 启用MCU按键摇杆状态向电脑输出传输
-    #define DO_PC_PRINT_CONSOLE 1  // 启用PC控制台打印
+#if 1                         // 是否开启高级通信功能
+#define DO_MCU_SEND_CONSOLE 1 // 启用MCU控制台向电脑输出传输
+#define DO_MCU_SEND_INPUT 1   // 启用MCU按键摇杆状态向电脑输出传输
+#define DO_PC_PRINT_CONSOLE 1 // 启用PC控制台打印
 #else
-    #define DO_MCU_SEND_CONSOLE 0  // 关闭MCU控制台向电脑输出传输
-    #define DO_MCU_SEND_INPUT   0  // 关闭MCU按键摇杆状态向电脑输出传输
-    #define DO_PC_PRINT_CONSOLE 0  // 关闭PC控制台打印
+#define DO_MCU_SEND_CONSOLE 0 // 关闭MCU控制台向电脑输出传输
+#define DO_MCU_SEND_INPUT 0   // 关闭MCU按键摇杆状态向电脑输出传输
+#define DO_PC_PRINT_CONSOLE 0 // 关闭PC控制台打印
 #endif
 
 /*-------------
@@ -135,27 +135,27 @@
 /*-------------
  * BULLET
  *-----------*/
-#ifdef SIMULATOR // ON PC
-        #define MAX_BULLET_COUNT 50 // 最大子弹数量
+#ifdef SIMULATOR            // ON PC
+#define MAX_BULLET_COUNT 50 // 最大子弹数量
 #else
-        #define MAX_BULLET_COUNT 23 // 最大子弹数量
+#define MAX_BULLET_COUNT 23 // 最大子弹数量
 #endif
 /*-------------
  * ENEMY
  *-----------*/
-#ifdef SIMULATOR // ON PC
-        #define MAX_ENEMY_COUNT 10 // 最大敌人数量
+#ifdef SIMULATOR           // ON PC
+#define MAX_ENEMY_COUNT 10 // 最大敌人数量
 #else
-        #define MAX_ENEMY_COUNT 6 // 最大敌人数量
+#define MAX_ENEMY_COUNT 6 // 最大敌人数量
 #endif
 
 /*-------------
  * COINS
  *-----------*/
-#ifdef SIMULATOR // ON PC
-        #define MAX_COIN_COUNT 13 // 最大金币数量
+#ifdef SIMULATOR          // ON PC
+#define MAX_COIN_COUNT 13 // 最大金币数量
 #else
-        #define MAX_COIN_COUNT 10 // 最大金币数量
+#define MAX_COIN_COUNT 10 // 最大金币数量
 #endif
 
 #define MAX_FLAME_WALL_COUNT 3 // 最大火墙数量
@@ -169,5 +169,15 @@
  *-----------*/
 
 #define DP_PLAY_FILL_COLOR 0x252532
+
+/*=======================
+ * STORAGE PARAMS
+ *=======================*/
+
+/*-------------
+ * SETTINGS
+ *-----------*/
+
+#define SETTINGS_MAX 12 // 最大配置项数量
 
 #endif // #ifndef __CONFIG_H__

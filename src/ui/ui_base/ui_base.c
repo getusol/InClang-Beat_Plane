@@ -15,7 +15,6 @@
 #include "ui_base.h"
 #include "player.h"
 #include "apr.h"
-#include "save.h"
 #include "multiplayer.h"
 #include "audio.h"
 #ifdef SIMULATOR
@@ -27,32 +26,33 @@
 /*********************
  * MACROS
  *********************/
-#define BASE_BG_IMG     "base_bg.bin"
+#define BASE_BG_IMG "base_bg.bin"
 #define BASE_BACK_ICON "back_arrow.bin"
 #define MULTI_INVITE_ICON "2DMultiIcon.bin"
 
-#define PLANE_WIDTH     160
-#define PLANE_HEIGHT    160
-#define PLANE_GAP       60
+#define PLANE_WIDTH 160
+#define PLANE_HEIGHT 160
+#define PLANE_GAP 60
 #ifdef SIMULATOR
-#define BOX_W           176
-#define BOX_H           386
-#define BOX_Y           152
-#define NAV_DELAY_MS    200
-#define NAV_THRESHOLD   80
+#define BOX_W 176
+#define BOX_H 386
+#define BOX_Y 152
+#define NAV_DELAY_MS 200
+#define NAV_THRESHOLD 80
 #endif
-#define START_X         102  // (1024 - (160*4 + 60*3)) / 2 保持完美居中
+#define START_X 102 // (1024 - (160*4 + 60*3)) / 2 保持完美居中
 
 /**********************
  * TYPEDEFS
  **********************/
-typedef struct {
+typedef struct
+{
     int id;
-    const char* name;
-    const char* img_src;
+    const char *name;
+    const char *img_src;
     int max_hp;
     int damage;
-    const char* skill_desc;
+    const char *skill_desc;
 } plane_info_t;
 
 /**********************
@@ -61,29 +61,29 @@ typedef struct {
 static bool g_plane_unlocked[PLANE_ID_MAX] = {true, false, false, false};
 static plane_id_t g_selected_plane_id = PLANE_ID_DEFAULT;
 
-static lv_obj_t * dp_base = NULL;
+static lv_obj_t *dp_base = NULL;
 
-static lv_obj_t * plane_objs[PLANE_ID_MAX] = {NULL};
-static lv_obj_t * lock_masks[PLANE_ID_MAX] = {NULL};
+static lv_obj_t *plane_objs[PLANE_ID_MAX] = {NULL};
+static lv_obj_t *lock_masks[PLANE_ID_MAX] = {NULL};
 
-static lv_obj_t * choosed_indicator = NULL; // 头顶的 "CHOOSED" 变换标签
-static lv_obj_t * detail_panel = NULL;      // 动态移动的属性面板
-static lv_obj_t * choose_btn = NULL;        // 选择按钮
-static lv_obj_t * choose_lbl = NULL;        // 选择按钮文本
-static lv_obj_t * hp_label = NULL;
-static lv_obj_t * dmg_label = NULL;
-static lv_obj_t * skill_label = NULL;
+static lv_obj_t *choosed_indicator = NULL; // 头顶的 "CHOOSED" 变换标签
+static lv_obj_t *detail_panel = NULL;      // 动态移动的属性面板
+static lv_obj_t *choose_btn = NULL;        // 选择按钮
+static lv_obj_t *choose_lbl = NULL;        // 选择按钮文本
+static lv_obj_t *hp_label = NULL;
+static lv_obj_t *dmg_label = NULL;
+static lv_obj_t *skill_label = NULL;
 
 // 多人联机相关组件
-static lv_obj_t * multi_invite_popup = NULL;
-static lv_obj_t * multi_invite_popup_label = NULL;
-static lv_obj_t * multi_invite_yes_btn = NULL;
-static lv_obj_t * multi_invite_no_btn = NULL;
-static lv_obj_t * multi_invite_cancel_btn = NULL;
-static lv_obj_t * multi_invite_ok_btn = NULL;
+static lv_obj_t *multi_invite_popup = NULL;
+static lv_obj_t *multi_invite_popup_label = NULL;
+static lv_obj_t *multi_invite_yes_btn = NULL;
+static lv_obj_t *multi_invite_no_btn = NULL;
+static lv_obj_t *multi_invite_cancel_btn = NULL;
+static lv_obj_t *multi_invite_ok_btn = NULL;
 
-static lv_obj_t * base_exit_popup = NULL;   // 退出确认弹窗
-static int current_viewing_idx = 0;         // 当前正在点击浏览的飞机索引
+static lv_obj_t *base_exit_popup = NULL; // 退出确认弹窗
+static int current_viewing_idx = 0;      // 当前正在点击浏览的飞机索引
 
 #ifdef SIMULATOR
 // 双人摇杆选角
@@ -92,41 +92,44 @@ static plane_id_t g_p2_selected_plane_id = PLANE_ID_DEFAULT;
 static int g_p1_current_idx = 0;
 static int g_p2_current_idx = 0;
 
-static lv_obj_t * p1_selection_box = NULL;
-static lv_obj_t * p2_selection_box = NULL;
-static lv_obj_t * p1_indicator = NULL;
-static lv_obj_t * p2_indicator = NULL;
+static lv_obj_t *p1_selection_box = NULL;
+static lv_obj_t *p2_selection_box = NULL;
+static lv_obj_t *p1_indicator = NULL;
+static lv_obj_t *p2_indicator = NULL;
 
-static lv_timer_t * selection_timer = NULL;
+static lv_timer_t *selection_timer = NULL;
 
 static bool p1_nav_dir = 0;
 static bool p2_nav_dir = 0;
 
-static lv_obj_t * detail_panel_p2 = NULL;      // 动态移动的属性面板
-static lv_obj_t * choose_btn_p2 = NULL;        // 选择按钮
-static lv_obj_t * choose_lbl_p2 = NULL;        // 选择按钮文本
+static lv_obj_t *detail_panel_p2 = NULL; // 动态移动的属性面板
+static lv_obj_t *choose_btn_p2 = NULL;   // 选择按钮
+static lv_obj_t *choose_lbl_p2 = NULL;   // 选择按钮文本
 
-static lv_obj_t * hp_label_p2 = NULL;
-static lv_obj_t * dmg_label_p2 = NULL;
-static lv_obj_t * skill_label_p2 = NULL;
+static lv_obj_t *hp_label_p2 = NULL;
+static lv_obj_t *dmg_label_p2 = NULL;
+static lv_obj_t *skill_label_p2 = NULL;
 
 static non_blocking_timer_t p1_nav_timer = {
-    .func = NULL, .tick_get = lv_tick_get,
-    .delay_ms = NAV_DELAY_MS, .last_tick = 0,
+    .func = NULL,
+    .tick_get = lv_tick_get,
+    .delay_ms = NAV_DELAY_MS,
+    .last_tick = 0,
 };
 static non_blocking_timer_t p2_nav_timer = {
-    .func = NULL, .tick_get = lv_tick_get,
-    .delay_ms = NAV_DELAY_MS, .last_tick = 0,
+    .func = NULL,
+    .tick_get = lv_tick_get,
+    .delay_ms = NAV_DELAY_MS,
+    .last_tick = 0,
 };
 #endif
 
 // 飞机固有属性配置表
 static const plane_info_t plane_templates[PLANE_ID_MAX] = {
-    {0, "Player",  "player.bin",          200, 34, "E:3-Way Shot\nF:Shield 1s"},
-    {1, "Ember",   "player_ember.bin",    200, 20, "E:Burn Bullet\nF:Flame Wall"},
-    {2, "Stream",  "player_stream.bin",   200, 10, "E:Freeze Bullet\nF:Slow Enemy"},
-    {3, "Verdant", "player_verdant.bin",  250, 15, "E:Speed Boost\nF:HP Reclaim"}
-};
+    {0, "Player", "player.bin", 200, 34, "E:3-Way Shot\nF:Shield 1s"},
+    {1, "Ember", "player_ember.bin", 200, 20, "E:Burn Bullet\nF:Flame Wall"},
+    {2, "Stream", "player_stream.bin", 200, 10, "E:Freeze Bullet\nF:Slow Enemy"},
+    {3, "Verdant", "player_verdant.bin", 250, 15, "E:Speed Boost\nF:HP Reclaim"}};
 
 // 静态化的长周期路径缓冲区，防止 LVGL 异步渲染时读取到脏数据导致乱码
 static char plane_path_buf[PLANE_ID_MAX][64];
@@ -135,31 +138,31 @@ static char plane_path_buf[PLANE_ID_MAX][64];
 static lv_img_dsc_t base_bg_dsc;
 static lv_img_dsc_t plane_base_dsc;
 static lv_img_dsc_t plane_dscs[PLANE_ID_MAX];
-static lv_img_dsc_t back_arrow_dsc,multi_icon_dsc;
+static lv_img_dsc_t back_arrow_dsc, multi_icon_dsc;
 #endif
 
 /**********************
  * STATIC PROTOTYPES
  **********************/
-static void plane_click_cb(lv_event_t * e);
-static void choose_btn_cb(lv_event_t * e);
-static void base_exit_btn_cb(lv_event_t * e);
-static void base_continue_btn_cb(lv_event_t * e);
-static void base_back_menu_btn_cb(lv_event_t * e);
+static void plane_click_cb(lv_event_t *e);
+static void choose_btn_cb(lv_event_t *e);
+static void base_exit_btn_cb(lv_event_t *e);
+static void base_continue_btn_cb(lv_event_t *e);
+static void base_back_menu_btn_cb(lv_event_t *e);
 static void update_detail_panel(int idx);
-static void base_invite_btn_cb(lv_event_t * e);
-static void base_invite_yes_btn_cb(lv_event_t * e);
-static void base_invite_no_btn_cb(lv_event_t * e);
-static void base_invite_cancel_btn_cb(lv_event_t * e);
-static void base_invite_ok_btn_cb(lv_event_t * e);
-static void base_mp_event_cb(mp_event_t event,void * data);
+static void base_invite_btn_cb(lv_event_t *e);
+static void base_invite_yes_btn_cb(lv_event_t *e);
+static void base_invite_no_btn_cb(lv_event_t *e);
+static void base_invite_cancel_btn_cb(lv_event_t *e);
+static void base_invite_ok_btn_cb(lv_event_t *e);
+static void base_mp_event_cb(mp_event_t event, void *data);
 #ifdef SIMULATOR
-static void selection_timer_cb(lv_timer_t * timer);
+static void selection_timer_cb(lv_timer_t *timer);
 static void p1_move_cb(void);
 static void p2_move_cb(void);
-static void update_selection_box_pos(lv_obj_t * box, int idx);
+static void update_selection_box_pos(lv_obj_t *box, int idx);
 static void update_detail_panel_p2(int idx);
-static void choose_btn_p2_cb(lv_event_t * e);
+static void choose_btn_p2_cb(lv_event_t *e);
 #endif
 
 /**********************
@@ -182,7 +185,8 @@ plane_id_t ui_base_get_selected_plane_id(void)
  */
 bool ui_base_plane_is_unlocked(plane_id_t plane_id)
 {
-    if (plane_id >= PLANE_ID_MAX) return false;
+    if (plane_id >= PLANE_ID_MAX)
+        return false;
     return g_plane_unlocked[plane_id];
 }
 
@@ -192,29 +196,34 @@ bool ui_base_plane_is_unlocked(plane_id_t plane_id)
  */
 void ui_base_plane_unlock(plane_id_t plane_id)
 {
-    if (plane_id >= PLANE_ID_MAX) return;
+    if (plane_id >= PLANE_ID_MAX)
+        return;
     g_plane_unlocked[plane_id] = true;
     CONSOLE_INFO("Plane %d unlocked.", plane_id);
 }
 
 void ui_base_set_selected_plane_id(plane_id_t id)
 {
-    if (id >= PLANE_ID_MAX) return;
+    if (id >= PLANE_ID_MAX)
+        return;
     g_selected_plane_id = id;
 }
 
 int ui_base_get_unlocked_mask(void)
 {
     int mask = 0;
-    for (int i = 0; i < PLANE_ID_MAX; i++) {
-        if (g_plane_unlocked[i]) mask |= (1 << i);
+    for (int i = 0; i < PLANE_ID_MAX; i++)
+    {
+        if (g_plane_unlocked[i])
+            mask |= (1 << i);
     }
     return mask;
 }
 
 void ui_base_set_unlocked_mask(int mask)
 {
-    for (int i = 0; i < PLANE_ID_MAX; i++) {
+    for (int i = 0; i < PLANE_ID_MAX; i++)
+    {
         g_plane_unlocked[i] = (mask & (1 << i)) != 0;
     }
     // 确保 Default 飞机始终解锁
@@ -242,7 +251,8 @@ plane_id_t ui_base_get_p2_selected_plane_id(void)
 void ui_base_set_p1_selected_plane_id(plane_id_t id)
 {
 #ifdef SIMULATOR
-    if (id >= PLANE_ID_MAX) return;
+    if (id >= PLANE_ID_MAX)
+        return;
     g_p1_selected_plane_id = id;
 #else
     (void)id;
@@ -252,7 +262,8 @@ void ui_base_set_p1_selected_plane_id(plane_id_t id)
 void ui_base_set_p2_selected_plane_id(plane_id_t id)
 {
 #ifdef SIMULATOR
-    if (id >= PLANE_ID_MAX) return;
+    if (id >= PLANE_ID_MAX)
+        return;
     g_p2_selected_plane_id = id;
 #else
     (void)id;
@@ -260,51 +271,69 @@ void ui_base_set_p2_selected_plane_id(plane_id_t id)
 }
 
 /**
- * @brief 基地UI界面初始化
+ * @brief 基地UI界面初始化 第一阶段 初始化根容器等可能与其它模块共享的资源  先调用
  */
-void ui_base_init(void)
+void ui_base_init_stage1(void)
 {
     dp_base = lv_obj_create(NULL);
     lv_obj_clear_flag(dp_base, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(dp_base, lv_color_hex(0x546373), 0);
+}
+
+/**
+ * @brief 基地UI界面初始化 第二阶段 渲染lvgl界面
+ */
+void ui_base_init_stage2(void)
+{
+    /*
+    dp_base = lv_obj_create(NULL);
+    lv_obj_clear_flag(dp_base, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(dp_base, lv_color_hex(0x546373), 0);
+    */
+    // 被注释掉，因为dp_base已经在stage1中创建了
+
+    if (dp_base == NULL)
+    {
+        CONSOLE_ERROR("dp_base is NULL,cannot render base UI.");
+        LOG_ERROR("dp_base is NULL,cannot render base UI.");
+        return;
+    }
 
     char bg_path_buf[64];
-    lv_obj_t * bg;
+    lv_obj_t *bg;
 #ifdef SIMULATOR
     bg = img_create_from_dsc(dp_base, img_path(BASE_BG_IMG, bg_path_buf, 64), 1024, 600, NULL, &base_bg_dsc, false);
-#else  
+#else
     bg = lv_img_create(dp_base);
     lv_img_set_src(bg, img_path(BASE_BG_IMG, bg_path_buf, 64));
 #endif
     lv_obj_center(bg);
 
-   
-
     // 1. 右上角返回按钮
-    lv_obj_t * exit_btn = lv_btn_create(dp_base);
+    lv_obj_t *exit_btn = lv_btn_create(dp_base);
     lv_obj_set_size(exit_btn, 64, 64);
     lv_obj_set_pos(exit_btn, 0, 0);
     lv_obj_set_align(exit_btn, LV_ALIGN_TOP_RIGHT);
     lv_obj_add_event_cb(exit_btn, base_exit_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_set_style_opa(exit_btn, LV_OPA_0, 0);
-    
-    lv_obj_t * back_icon;
+
+    lv_obj_t *back_icon;
 #ifdef SIMULATOR
     back_icon = img_create_from_dsc(dp_base, img_path(BASE_BACK_ICON, bg_path_buf, 64), 64, 64, NULL, &back_arrow_dsc, true);
     lv_obj_align(back_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
-#else  
+#else
     back_icon = lv_img_create(dp_base);
     lv_img_set_src(back_icon, img_path(BASE_BACK_ICON, bg_path_buf, 64));
     lv_obj_align(back_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
 #endif
-    
-    lv_obj_t * exit_btn_label = lv_label_create(exit_btn);
+
+    lv_obj_t *exit_btn_label = lv_label_create(exit_btn);
     lv_obj_center(exit_btn_label);
     lv_label_set_text(exit_btn_label, "Back");
     lv_obj_set_style_text_font(exit_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
 
     // 左上角多人联机Icon按钮
-    lv_obj_t * multi_invite_btn = lv_btn_create(dp_base);
+    lv_obj_t *multi_invite_btn = lv_btn_create(dp_base);
     lv_obj_set_size(multi_invite_btn, 96, 82);
     lv_obj_set_pos(multi_invite_btn, 20, 20);
     lv_obj_set_align(multi_invite_btn, LV_ALIGN_TOP_LEFT);
@@ -313,71 +342,69 @@ void ui_base_init(void)
 
     // 联机Icon图片
 #ifdef SIMULATOR
-    lv_obj_t * multi_invite_img = img_create_from_dsc(dp_base,img_path(MULTI_INVITE_ICON,bg_path_buf,64),96,82,NULL,&multi_icon_dsc,true);
+    lv_obj_t *multi_invite_img = img_create_from_dsc(dp_base, img_path(MULTI_INVITE_ICON, bg_path_buf, 64), 96, 82, NULL, &multi_icon_dsc, true);
 #else
-    lv_obj_t * multi_invite_img = lv_img_create(dp_base);
-    lv_img_set_src(multi_invite_img, img_path(MULTI_INVITE_ICON,bg_path_buf,64));
+    lv_obj_t *multi_invite_img = lv_img_create(dp_base);
+    lv_img_set_src(multi_invite_img, img_path(MULTI_INVITE_ICON, bg_path_buf, 64));
 #endif
     lv_obj_set_size(multi_invite_img, 96, 82);
     lv_obj_align(multi_invite_img, LV_ALIGN_TOP_LEFT, 20, 20);
 
     // 联机弹窗和标签 按钮
     multi_invite_popup = popup_create(lv_layer_top());
-    lv_obj_add_flag(multi_invite_popup,LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_style_opa(multi_invite_popup,LV_OPA_COVER,0);
-    lv_obj_set_size(multi_invite_popup,400,200);
+    lv_obj_add_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_opa(multi_invite_popup, LV_OPA_COVER, 0);
+    lv_obj_set_size(multi_invite_popup, 400, 200);
 
     multi_invite_popup_label = lv_label_create(multi_invite_popup);
-    lv_obj_set_align(multi_invite_popup_label,LV_ALIGN_CENTER);
-    lv_obj_set_pos(multi_invite_popup_label,0,-40);
-    lv_obj_set_style_text_font(multi_invite_popup_label,&lv_font_montserrat_14,0);
-    lv_obj_set_style_text_color(multi_invite_popup_label,lv_color_white(),0);
+    lv_obj_set_align(multi_invite_popup_label, LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_popup_label, 0, -40);
+    lv_obj_set_style_text_font(multi_invite_popup_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(multi_invite_popup_label, lv_color_white(), 0);
 
     multi_invite_yes_btn = lv_btn_create(multi_invite_popup);
-    lv_obj_set_align(multi_invite_yes_btn,LV_ALIGN_CENTER);
-    lv_obj_set_pos(multi_invite_yes_btn,-90,40);
-    lv_obj_set_size(multi_invite_yes_btn,150,45);
+    lv_obj_set_align(multi_invite_yes_btn, LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_yes_btn, -90, 40);
+    lv_obj_set_size(multi_invite_yes_btn, 150, 45);
     lv_obj_add_event_cb(multi_invite_yes_btn, base_invite_yes_btn_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t * multi_invite_yes_btn_label = lv_label_create(multi_invite_yes_btn);
+    lv_obj_t *multi_invite_yes_btn_label = lv_label_create(multi_invite_yes_btn);
     lv_obj_center(multi_invite_yes_btn_label);
     lv_label_set_text(multi_invite_yes_btn_label, "Yes");
     lv_obj_set_style_text_font(multi_invite_yes_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
 
     multi_invite_ok_btn = lv_btn_create(multi_invite_popup);
-    lv_obj_set_align(multi_invite_ok_btn,LV_ALIGN_CENTER);
-    lv_obj_set_pos(multi_invite_ok_btn,-90,40);
-    lv_obj_set_size(multi_invite_ok_btn,150,45);
+    lv_obj_set_align(multi_invite_ok_btn, LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_ok_btn, -90, 40);
+    lv_obj_set_size(multi_invite_ok_btn, 150, 45);
     lv_obj_add_event_cb(multi_invite_ok_btn, base_invite_ok_btn_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t * multi_invite_ok_btn_label = lv_label_create(multi_invite_ok_btn);
+    lv_obj_t *multi_invite_ok_btn_label = lv_label_create(multi_invite_ok_btn);
     lv_obj_center(multi_invite_ok_btn_label);
     lv_label_set_text(multi_invite_ok_btn_label, "OK");
     lv_obj_set_style_text_font(multi_invite_ok_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
-    
 
     multi_invite_no_btn = lv_btn_create(multi_invite_popup);
-    lv_obj_set_align(multi_invite_no_btn,LV_ALIGN_CENTER);
-    lv_obj_set_pos(multi_invite_no_btn,90,40);
-    lv_obj_set_size(multi_invite_no_btn,150,45);
+    lv_obj_set_align(multi_invite_no_btn, LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_no_btn, 90, 40);
+    lv_obj_set_size(multi_invite_no_btn, 150, 45);
     lv_obj_add_event_cb(multi_invite_no_btn, base_invite_no_btn_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t * multi_invite_no_btn_label = lv_label_create(multi_invite_no_btn);
+    lv_obj_t *multi_invite_no_btn_label = lv_label_create(multi_invite_no_btn);
     lv_obj_center(multi_invite_no_btn_label);
     lv_label_set_text(multi_invite_no_btn_label, "No");
     lv_obj_set_style_text_font(multi_invite_no_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
 
     multi_invite_cancel_btn = lv_btn_create(multi_invite_popup);
-    lv_obj_set_align(multi_invite_cancel_btn,LV_ALIGN_CENTER);
-    lv_obj_set_pos(multi_invite_cancel_btn,90,40);
-    lv_obj_set_size(multi_invite_cancel_btn,150,45);
+    lv_obj_set_align(multi_invite_cancel_btn, LV_ALIGN_CENTER);
+    lv_obj_set_pos(multi_invite_cancel_btn, 90, 40);
+    lv_obj_set_size(multi_invite_cancel_btn, 150, 45);
     lv_obj_add_event_cb(multi_invite_cancel_btn, base_invite_cancel_btn_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t * multi_invite_cancel_btn_label = lv_label_create(multi_invite_cancel_btn);
+    lv_obj_t *multi_invite_cancel_btn_label = lv_label_create(multi_invite_cancel_btn);
     lv_obj_center(multi_invite_cancel_btn_label);
     lv_label_set_text(multi_invite_cancel_btn_label, "Cancel");
     lv_obj_set_style_text_font(multi_invite_cancel_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
-
 
     // 2. 头顶选中态变换标签 "CHOOSED"
     choosed_indicator = lv_label_create(dp_base);
@@ -386,7 +413,8 @@ void ui_base_init(void)
     lv_obj_set_style_text_font(choosed_indicator, &lv_font_montserrat_16, 0);
 
     // 3. 循环创建横向排列的四个飞机组件
-    for (int i = 0; i < PLANE_ID_MAX; i++) {
+    for (int i = 0; i < PLANE_ID_MAX; i++)
+    {
         // 飞机触控底座容器
         plane_objs[i] = lv_obj_create(dp_base);
         lv_obj_set_size(plane_objs[i], PLANE_WIDTH, PLANE_HEIGHT);
@@ -399,7 +427,7 @@ void ui_base_init(void)
 
         // 飞机图片渲染（使用 APR 外观模板）
         apr_t *plane_apr = apr_get(APR_PLAYER_DEFAULT + i);
-        lv_obj_t * plane_img;
+        lv_obj_t *plane_img;
 #ifdef SIMULATOR
         plane_img = lv_img_create(plane_objs[i]);
         lv_img_set_src(plane_img, &plane_apr->img_dsc);
@@ -408,10 +436,9 @@ void ui_base_init(void)
         lv_img_set_src(plane_img, img_path(plane_apr->img_name, plane_path_buf[i], 64));
 #endif
         lv_obj_center(plane_img);
-    
 
         // 飞机名字标签
-        lv_obj_t * name_lbl = lv_label_create(plane_objs[i]);
+        lv_obj_t *name_lbl = lv_label_create(plane_objs[i]);
         lv_label_set_text(name_lbl, plane_templates[i].name);
         lv_obj_set_style_text_color(name_lbl, lv_color_white(), 0); // 确保名字也可见
         lv_obj_align(name_lbl, LV_ALIGN_BOTTOM_MID, 0, -5);
@@ -426,7 +453,7 @@ void ui_base_init(void)
         lv_obj_set_style_border_width(lock_masks[i], 0, 0);
 
         // 锁图标或文本提示
-        lv_obj_t * lock_lbl = lv_label_create(lock_masks[i]);
+        lv_obj_t *lock_lbl = lv_label_create(lock_masks[i]);
         lv_label_set_text(lock_lbl, "LOCKED");
         lv_obj_set_style_text_color(lock_lbl, lv_color_hex(0x999999), 0);
         lv_obj_center(lock_lbl);
@@ -436,7 +463,7 @@ void ui_base_init(void)
         lv_obj_clear_flag(lock_masks[i], LV_OBJ_FLAG_CLICKABLE);
 
         // 绑定飞机点击事件
-        lv_obj_add_event_cb(plane_objs[i], plane_click_cb, LV_EVENT_CLICKED, (void*)(uintptr_t)i);
+        lv_obj_add_event_cb(plane_objs[i], plane_click_cb, LV_EVENT_CLICKED, (void *)(uintptr_t)i);
     }
 
 #ifdef SIMULATOR
@@ -477,7 +504,7 @@ void ui_base_init(void)
     detail_panel = lv_obj_create(dp_base);
     lv_obj_set_size(detail_panel, PLANE_WIDTH, 200);
     lv_obj_clear_flag(detail_panel, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(detail_panel, LV_OPA_TRANSP, 0); 
+    lv_obj_set_style_bg_opa(detail_panel, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(detail_panel, 0, 0);
     lv_obj_set_style_pad_all(detail_panel, 0, 0);
 
@@ -486,7 +513,7 @@ void ui_base_init(void)
     detail_panel_p2 = lv_obj_create(dp_base);
     lv_obj_set_size(detail_panel_p2, PLANE_WIDTH, 200);
     lv_obj_clear_flag(detail_panel_p2, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(detail_panel_p2, LV_OPA_TRANSP, 0); 
+    lv_obj_set_style_bg_opa(detail_panel_p2, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(detail_panel_p2, 0, 0);
     lv_obj_set_style_pad_all(detail_panel_p2, 0, 0);
 
@@ -498,14 +525,14 @@ void ui_base_init(void)
     lv_obj_set_size(choose_btn_p2, LV_PCT(100), 40);
     lv_obj_align(choose_btn_p2, LV_ALIGN_TOP_MID, 0, 0);
     lv_obj_add_event_cb(choose_btn_p2, choose_btn_p2_cb, LV_EVENT_CLICKED, NULL);
-     lv_obj_set_style_bg_color(choose_btn_p2, lv_color_hex(0xCC0052), 0);
+    lv_obj_set_style_bg_color(choose_btn_p2, lv_color_hex(0xCC0052), 0);
 
     choose_lbl_p2 = lv_label_create(choose_btn_p2);
     lv_label_set_text(choose_lbl_p2, "CHOOSE");
     lv_obj_center(choose_lbl_p2);
 
-        // 属性详情展示（单列垂直排布布局）
-    lv_obj_t * info_cont_p2 = lv_obj_create(detail_panel_p2);
+    // 属性详情展示（单列垂直排布布局）
+    lv_obj_t *info_cont_p2 = lv_obj_create(detail_panel_p2);
     lv_obj_set_size(info_cont_p2, LV_PCT(100), 150);
     lv_obj_align(info_cont_p2, LV_ALIGN_TOP_MID, 0, 45);
     lv_obj_set_flex_flow(info_cont_p2, LV_FLEX_FLOW_COLUMN);
@@ -517,7 +544,7 @@ void ui_base_init(void)
     hp_label_p2 = lv_label_create(info_cont_p2);
     dmg_label_p2 = lv_label_create(info_cont_p2);
     skill_label_p2 = lv_label_create(info_cont_p2);
-    
+
     lv_obj_set_style_text_color(hp_label_p2, lv_color_white(), 0);
     lv_obj_set_style_text_color(dmg_label_p2, lv_color_white(), 0);
     lv_obj_set_style_text_color(skill_label_p2, lv_color_white(), 0);
@@ -525,7 +552,7 @@ void ui_base_init(void)
     // 设置文本字体以便阅读
     lv_obj_set_style_text_font(hp_label_p2, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_font(dmg_label_p2, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_font(skill_label_p2, &lv_font_montserrat_14, 0); 
+    lv_obj_set_style_text_font(skill_label_p2, &lv_font_montserrat_14, 0);
 
 #endif
 
@@ -540,7 +567,7 @@ void ui_base_init(void)
     lv_obj_center(choose_lbl);
 
     // 属性详情展示（单列垂直排布布局）
-    lv_obj_t * info_cont = lv_obj_create(detail_panel);
+    lv_obj_t *info_cont = lv_obj_create(detail_panel);
     lv_obj_set_size(info_cont, LV_PCT(100), 150);
     lv_obj_align(info_cont, LV_ALIGN_TOP_MID, 0, 45);
     lv_obj_set_flex_flow(info_cont, LV_FLEX_FLOW_COLUMN);
@@ -552,7 +579,7 @@ void ui_base_init(void)
     hp_label = lv_label_create(info_cont);
     dmg_label = lv_label_create(info_cont);
     skill_label = lv_label_create(info_cont);
-    
+
     lv_obj_set_style_text_color(hp_label, lv_color_white(), 0);
     lv_obj_set_style_text_color(dmg_label, lv_color_white(), 0);
     lv_obj_set_style_text_color(skill_label, lv_color_white(), 0);
@@ -560,38 +587,37 @@ void ui_base_init(void)
     // 设置文本字体以便阅读
     lv_obj_set_style_text_font(hp_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_font(dmg_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_font(skill_label, &lv_font_montserrat_14, 0); 
+    lv_obj_set_style_text_font(skill_label, &lv_font_montserrat_14, 0);
 
     // 5. 退出确认弹窗声明
     base_exit_popup = popup_create(dp_base);
     lv_obj_add_flag(base_exit_popup, LV_OBJ_FLAG_HIDDEN);
 
-    lv_obj_t * pause_label = lv_label_create(base_exit_popup);
+    lv_obj_t *pause_label = lv_label_create(base_exit_popup);
     lv_obj_set_pos(pause_label, 10, 50);
     lv_label_set_text(pause_label, "LEAVE BASE?");
     lv_obj_set_style_text_font(pause_label, &lv_font_montserrat_44, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(pause_label, lv_color_hex(0x13AEFB), LV_STATE_DEFAULT);
 
-    lv_obj_t * continue_btn = lv_btn_create(base_exit_popup);
+    lv_obj_t *continue_btn = lv_btn_create(base_exit_popup);
     lv_obj_set_size(continue_btn, 300, 60);
     lv_obj_set_pos(continue_btn, 25, 240);
     lv_obj_add_event_cb(continue_btn, base_continue_btn_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t * continue_lbl = lv_label_create(continue_btn);
+    lv_obj_t *continue_lbl = lv_label_create(continue_btn);
     lv_obj_center(continue_lbl);
     lv_label_set_text(continue_lbl, "Stay");
     lv_obj_set_style_text_font(continue_lbl, &lv_font_montserrat_22, LV_STATE_DEFAULT);
 
-    lv_obj_t * back_menu_btn = lv_btn_create(base_exit_popup);
+    lv_obj_t *back_menu_btn = lv_btn_create(base_exit_popup);
     lv_obj_set_size(back_menu_btn, 300, 60);
     lv_obj_set_pos(back_menu_btn, 25, 320);
     lv_obj_add_event_cb(back_menu_btn, base_back_menu_btn_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t * back_menu_lbl = lv_label_create(back_menu_btn);
+    lv_obj_t *back_menu_lbl = lv_label_create(back_menu_btn);
     lv_obj_center(back_menu_lbl);
     lv_label_set_text(back_menu_lbl, "Leave");
     lv_obj_set_style_text_font(back_menu_lbl, &lv_font_montserrat_22, LV_STATE_DEFAULT);
-
 
 #ifdef SIMULATOR
     // 双人选角定时器
@@ -615,9 +641,6 @@ void ui_base_init(void)
  */
 void ui_base_run(void)
 {
-    if (dp_base == NULL) {
-        ui_base_init();
-    }
     lv_scr_load(dp_base);
 
     /* 清空上一次屏幕可能残留的 LVGL 输入组，防止按键被拦截 */
@@ -626,10 +649,14 @@ void ui_base_run(void)
     popup_hide(base_exit_popup);
 
     // 动态同步最新的解锁状态幕层 (保留遮罩展示，但点击已能穿透)
-    for (int i = 0; i < PLANE_ID_MAX; i++) {
-        if (g_plane_unlocked[i]) {
+    for (int i = 0; i < PLANE_ID_MAX; i++)
+    {
+        if (g_plane_unlocked[i])
+        {
             lv_obj_add_flag(lock_masks[i], LV_OBJ_FLAG_HIDDEN);
-        } else {
+        }
+        else
+        {
             lv_obj_clear_flag(lock_masks[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
@@ -649,7 +676,8 @@ void ui_base_run(void)
     update_selection_box_pos(p1_selection_box, g_p1_current_idx);
     p1_nav_timer.last_tick = 0;
 
-    if (mp_get_state() == MP_STATE_CONNECTED) {
+    if (mp_get_state() == MP_STATE_CONNECTED)
+    {
         lv_obj_add_flag(choosed_indicator, LV_OBJ_FLAG_HIDDEN);
         lv_obj_align_to(p1_indicator, plane_objs[g_p1_selected_plane_id],
                         LV_ALIGN_OUT_TOP_MID, -20, -8);
@@ -662,25 +690,25 @@ void ui_base_run(void)
         p2_nav_timer.last_tick = 0;
         lv_obj_clear_flag(p2_selection_box, LV_OBJ_FLAG_HIDDEN);
 
- 
-            lv_obj_align_to(p2_indicator, plane_objs[g_p2_selected_plane_id],
-                            LV_ALIGN_OUT_TOP_MID, 20, -8);
+        lv_obj_align_to(p2_indicator, plane_objs[g_p2_selected_plane_id],
+                        LV_ALIGN_OUT_TOP_MID, 20, -8);
         lv_obj_clear_flag(p2_indicator, LV_OBJ_FLAG_HIDDEN);
-    } else {
+    }
+    else
+    {
         lv_obj_add_flag(p1_indicator, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(p2_indicator, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(p2_selection_box, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(detail_panel_p2, LV_OBJ_FLAG_HIDDEN);
     }
 #endif
-
 }
 
 /**********************
  * STATIC FUNCTIONS
  **********************/
 
-static void plane_click_cb(lv_event_t * e)
+static void plane_click_cb(lv_event_t *e)
 {
     int idx = (int)(uintptr_t)lv_event_get_user_data(e);
 
@@ -702,20 +730,24 @@ static void update_detail_panel(int idx)
     lv_label_set_text_fmt(dmg_label, "DMG: %d", plane_templates[idx].damage);
     lv_label_set_text_fmt(skill_label, "SKILL:\n%s", plane_templates[idx].skill_desc);
 
-    if (!g_plane_unlocked[idx]) {
+    if (!g_plane_unlocked[idx])
+    {
         lv_label_set_text(choose_lbl, "LOCKED");
         lv_obj_set_style_bg_color(choose_btn, lv_color_hex(0x555555), 0);
-    } else {
+    }
+    else
+    {
         lv_label_set_text(choose_lbl, "CHOOSE");
         lv_obj_set_style_bg_color(choose_btn, lv_color_hex(0x2196F3), 0); // 恢复原本的按钮高亮色（根据你的主题自行调整颜色值）
     }
 }
 
-static void choose_btn_cb(lv_event_t * e)
+static void choose_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
 
-    if (!g_plane_unlocked[current_viewing_idx]) {
+    if (!g_plane_unlocked[current_viewing_idx])
+    {
         CONSOLE_INFO("Cannot choose: Plane %s is locked. Spin the shop roulette to unlock!", plane_templates[current_viewing_idx].name);
         return;
     }
@@ -732,114 +764,122 @@ static void choose_btn_cb(lv_event_t * e)
     CONSOLE_INFO("Successfully switched to aircraft: %s", plane_templates[g_selected_plane_id].name);
 }
 
-static void base_exit_btn_cb(lv_event_t * e)
+static void base_exit_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
     // 不能执行退出操作，因为当前正在处理邀请，需要先取消邀请
-    if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN)) {
+    if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN))
+    {
         CONSOLE_INFO("Cannot exit: Invite is in progress. Please cancel it first.");
         return;
     }
-    audio_load(AUDIO_MOUSEOPEN,AUDIO_CHAN_AUTO,false);
+    audio_load(AUDIO_MOUSEOPEN, AUDIO_CHAN_AUTO, false);
     popup_show(base_exit_popup);
 }
 
-static void base_continue_btn_cb(lv_event_t * e)
+static void base_continue_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
-    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
+    audio_load(AUDIO_MOUSECLOSE, AUDIO_CHAN_AUTO, false);
     popup_hide(base_exit_popup);
 }
 
-static void base_back_menu_btn_cb(lv_event_t * e)
+static void base_back_menu_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
     popup_hide(base_exit_popup);
-    save_write();
-    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
+    audio_load(AUDIO_MOUSECLOSE, AUDIO_CHAN_AUTO, false);
     fsm_switch_state(GS_MENU);
     CONSOLE_INFO("Returning back to main menu.");
 }
 
-static void base_invite_btn_cb(lv_event_t * e)
+static void base_invite_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
-    audio_load(AUDIO_MOUSEOPEN,AUDIO_CHAN_AUTO,false);
+    audio_load(AUDIO_MOUSEOPEN, AUDIO_CHAN_AUTO, false);
 
-    if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN)) return ;
+    if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN))
+        return;
 
     popup_show(multi_invite_popup);
-    lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(multi_invite_popup_label,LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
-    
+    lv_obj_add_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(multi_invite_popup_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+
     mp_state_t mp_state = mp_get_state();
-    switch (mp_state) {
-        case MP_STATE_IDLE:
-            if (mp_send_invite()) {
-                lv_label_set_text_fmt(multi_invite_popup_label,"Invite sent,waiting...");
-                lv_obj_clear_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
-            } else {
-                lv_label_set_text(multi_invite_popup_label, "Invite failed, please check your connection.");
-                lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
-            }
-            break;
-        case MP_STATE_CONNECTED:
-            lv_label_set_text(multi_invite_popup_label, "Connected, disconnect?");
-            lv_obj_clear_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
-            break;
+    switch (mp_state)
+    {
+    case MP_STATE_IDLE:
+        if (mp_send_invite())
+        {
+            lv_label_set_text_fmt(multi_invite_popup_label, "Invite sent,waiting...");
+            lv_obj_clear_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+        }
+        else
+        {
+            lv_label_set_text(multi_invite_popup_label, "Invite failed, please check your connection.");
+            lv_obj_clear_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        }
+        break;
+    case MP_STATE_CONNECTED:
+        lv_label_set_text(multi_invite_popup_label, "Connected, disconnect?");
+        lv_obj_clear_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+        break;
 
-        default:
-            lv_label_set_text(multi_invite_popup_label, "Unexpected state,please report to the developer.");
-            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
-            CONSOLE_WARNING("Unexpected state: %d on invite button click.", mp_state);
-            LOG_WARNING("Unexpected state: %d on invite button click.", mp_state);
-            break;
+    default:
+        lv_label_set_text(multi_invite_popup_label, "Unexpected state,please report to the developer.");
+        lv_obj_clear_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        CONSOLE_WARNING("Unexpected state: %d on invite button click.", mp_state);
+        LOG_WARNING("Unexpected state: %d on invite button click.", mp_state);
+        break;
     }
 }
 
-static void base_invite_yes_btn_cb(lv_event_t * e)
+static void base_invite_yes_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
-    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
-    switch (mp_get_state()) {
-        case MP_STATE_CONNECTED:
-            mp_disconnect();
-            break;
-        case MP_STATE_WAITING:
-            popup_hide(multi_invite_popup);
-            mp_accept_invite();
-            break;
-        default:
-            break;
+    audio_load(AUDIO_MOUSECLOSE, AUDIO_CHAN_AUTO, false);
+    switch (mp_get_state())
+    {
+    case MP_STATE_CONNECTED:
+        mp_disconnect();
+        break;
+    case MP_STATE_WAITING:
+        popup_hide(multi_invite_popup);
+        mp_accept_invite();
+        break;
+    default:
+        break;
     }
 }
 
-static void base_invite_no_btn_cb(lv_event_t * e)
+static void base_invite_no_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
-    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
-    switch (mp_get_state()) {
-        case MP_STATE_CONNECTED:
-            popup_hide(multi_invite_popup);
-            break;
-        case MP_STATE_WAITING:
-            popup_hide(multi_invite_popup);
-            mp_reject_invite();
-            break;
-        default:
-            break;
+    audio_load(AUDIO_MOUSECLOSE, AUDIO_CHAN_AUTO, false);
+    switch (mp_get_state())
+    {
+    case MP_STATE_CONNECTED:
+        popup_hide(multi_invite_popup);
+        break;
+    case MP_STATE_WAITING:
+        popup_hide(multi_invite_popup);
+        mp_reject_invite();
+        break;
+    default:
+        break;
     }
 }
 
-static void base_invite_cancel_btn_cb(lv_event_t * e)
+static void base_invite_cancel_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
-    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
-    if(mp_get_state() == MP_STATE_INVITING) {
+    audio_load(AUDIO_MOUSECLOSE, AUDIO_CHAN_AUTO, false);
+    if (mp_get_state() == MP_STATE_INVITING)
+    {
         mp_cancel_invite();
     }
     popup_hide(multi_invite_popup);
@@ -848,125 +888,127 @@ static void base_invite_cancel_btn_cb(lv_event_t * e)
 /**
  * @brief 确认邀请按钮点击事件处理函数
  */
-static void base_invite_ok_btn_cb(lv_event_t * e)
+static void base_invite_ok_btn_cb(lv_event_t *e)
 {
     // simply hide the popup
     LV_UNUSED(e);
-    audio_load(AUDIO_MOUSECLOSE,AUDIO_CHAN_AUTO,false);
+    audio_load(AUDIO_MOUSECLOSE, AUDIO_CHAN_AUTO, false);
     popup_hide(multi_invite_popup);
 }
 
-static void base_mp_event_cb(mp_event_t event,void * data)
+static void base_mp_event_cb(mp_event_t event, void *data)
 {
-    switch (event) {
-        case MP_EVENT_DISCONNECTED:
-            CONSOLE_INFO("MP_EVENT_DISCONNECTED");
+    switch (event)
+    {
+    case MP_EVENT_DISCONNECTED:
+        CONSOLE_INFO("MP_EVENT_DISCONNECTED");
 #ifdef SIMULATOR
-            lv_obj_add_flag(p2_indicator, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(p2_selection_box, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(detail_panel_p2, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(p1_indicator, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(choosed_indicator, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(p2_indicator, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(p2_selection_box, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(detail_panel_p2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(p1_indicator, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(choosed_indicator, LV_OBJ_FLAG_HIDDEN);
 #endif
-            // 防止ui 重叠
-            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+        // 防止ui 重叠
+        lv_obj_add_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
 
-            popup_show(multi_invite_popup);
+        popup_show(multi_invite_popup);
 
-            lv_label_set_text(multi_invite_popup_label, "Disconnected.");
-            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
-            break;
-        case MP_EVENT_INVITE_RECEIVED:
-            popup_show(multi_invite_popup);
-            lv_label_set_text(multi_invite_popup_label, "Received invite! Accept?");
-            lv_obj_clear_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
-            CONSOLE_INFO("MP_EVENT_INVITE_RECEIVED");
-            break;
-        case MP_EVENT_INVITE_ACCEPTED:
-            popup_show(multi_invite_popup);
-            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN); 
+        lv_label_set_text(multi_invite_popup_label, "Disconnected.");
+        lv_obj_clear_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        break;
+    case MP_EVENT_INVITE_RECEIVED:
+        popup_show(multi_invite_popup);
+        lv_label_set_text(multi_invite_popup_label, "Received invite! Accept?");
+        lv_obj_clear_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        CONSOLE_INFO("MP_EVENT_INVITE_RECEIVED");
+        break;
+    case MP_EVENT_INVITE_ACCEPTED:
+        popup_show(multi_invite_popup);
+        lv_obj_add_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
 
-            lv_label_set_text(multi_invite_popup_label, "Invite accepted.Connected.");
-            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
-            CONSOLE_INFO("MP_EVENT_INVITE_ACCEPTED");
-            break;
-        case MP_EVENT_INVITE_REJECTED:
-            popup_show(multi_invite_popup);
-            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN); 
+        lv_label_set_text(multi_invite_popup_label, "Invite accepted.Connected.");
+        lv_obj_clear_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        CONSOLE_INFO("MP_EVENT_INVITE_ACCEPTED");
+        break;
+    case MP_EVENT_INVITE_REJECTED:
+        popup_show(multi_invite_popup);
+        lv_obj_add_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
 
-            lv_label_set_text(multi_invite_popup_label, "Invite rejected.");
-            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
-            CONSOLE_INFO("MP_EVENT_INVITE_REJECTED");
-            break;
-        case MP_EVENT_INVITE_TIMEOUT:
-            popup_show(multi_invite_popup);
-            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN); 
+        lv_label_set_text(multi_invite_popup_label, "Invite rejected.");
+        lv_obj_clear_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        CONSOLE_INFO("MP_EVENT_INVITE_REJECTED");
+        break;
+    case MP_EVENT_INVITE_TIMEOUT:
+        popup_show(multi_invite_popup);
+        lv_obj_add_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
 
-            lv_label_set_text(multi_invite_popup_label, "Invite timeout.");
-            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
-            CONSOLE_INFO("MP_EVENT_INVITE_TIMEOUT");
-            break;
-        case MP_EVENT_CONNECTED:
-            // 连接成功 隐藏"SELECTED" 显示"1P" "2P"
+        lv_label_set_text(multi_invite_popup_label, "Invite timeout.");
+        lv_obj_clear_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        CONSOLE_INFO("MP_EVENT_INVITE_TIMEOUT");
+        break;
+    case MP_EVENT_CONNECTED:
+        // 连接成功 隐藏"SELECTED" 显示"1P" "2P"
 #ifdef SIMULATOR
-            /* 双人选角初始化（联机时覆盖单人标签） */
-            g_p1_current_idx = g_p1_selected_plane_id;
-            update_selection_box_pos(p1_selection_box, g_p1_current_idx);
-            p1_nav_timer.last_tick = 0;
-            lv_obj_add_flag(choosed_indicator, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_align_to(p1_indicator, plane_objs[g_p1_selected_plane_id],
-                            LV_ALIGN_OUT_TOP_MID, -20, -8);
-            lv_obj_clear_flag(p1_indicator, LV_OBJ_FLAG_HIDDEN);
+        /* 双人选角初始化（联机时覆盖单人标签） */
+        g_p1_current_idx = g_p1_selected_plane_id;
+        update_selection_box_pos(p1_selection_box, g_p1_current_idx);
+        p1_nav_timer.last_tick = 0;
+        lv_obj_add_flag(choosed_indicator, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_align_to(p1_indicator, plane_objs[g_p1_selected_plane_id],
+                        LV_ALIGN_OUT_TOP_MID, -20, -8);
+        lv_obj_clear_flag(p1_indicator, LV_OBJ_FLAG_HIDDEN);
 
-            g_p2_current_idx = g_p2_selected_plane_id;
-            lv_obj_clear_flag(detail_panel_p2, LV_OBJ_FLAG_HIDDEN);
-            update_selection_box_pos(p2_selection_box, g_p2_current_idx);
-            p2_nav_timer.last_tick = 0;
-            lv_obj_clear_flag(p2_selection_box, LV_OBJ_FLAG_HIDDEN);
+        g_p2_current_idx = g_p2_selected_plane_id;
+        lv_obj_clear_flag(detail_panel_p2, LV_OBJ_FLAG_HIDDEN);
+        update_selection_box_pos(p2_selection_box, g_p2_current_idx);
+        p2_nav_timer.last_tick = 0;
+        lv_obj_clear_flag(p2_selection_box, LV_OBJ_FLAG_HIDDEN);
 
-                lv_obj_align_to(p2_indicator, plane_objs[g_p2_selected_plane_id],
-                                LV_ALIGN_OUT_TOP_MID, 20, -8);
-            lv_obj_clear_flag(p2_indicator, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_align_to(p2_indicator, plane_objs[g_p2_selected_plane_id],
+                        LV_ALIGN_OUT_TOP_MID, 20, -8);
+        lv_obj_clear_flag(p2_indicator, LV_OBJ_FLAG_HIDDEN);
 #endif
-            if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN)) {
-                break ;
-            }
-            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
-            popup_show(multi_invite_popup);
-            lv_label_set_text(multi_invite_popup_label, "Connected.");
-            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
+        if (!lv_obj_has_flag(multi_invite_popup, LV_OBJ_FLAG_HIDDEN))
+        {
             break;
-        case MP_EVENT_WAITING_TIMEOUT:
-            popup_show(multi_invite_popup);
-            lv_obj_add_flag(multi_invite_yes_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_cancel_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_no_btn,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN); 
+        }
+        lv_obj_add_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        popup_show(multi_invite_popup);
+        lv_label_set_text(multi_invite_popup_label, "Connected.");
+        lv_obj_clear_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        break;
+    case MP_EVENT_WAITING_TIMEOUT:
+        popup_show(multi_invite_popup);
+        lv_obj_add_flag(multi_invite_yes_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_cancel_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_no_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
 
-            lv_label_set_text(multi_invite_popup_label, "Waiting timeout.");
-            lv_obj_clear_flag(multi_invite_ok_btn,LV_OBJ_FLAG_HIDDEN);
-            CONSOLE_INFO("MP_EVENT_WAITING_TIMEOUT");
-            break;
-        default:
-            break;
+        lv_label_set_text(multi_invite_popup_label, "Waiting timeout.");
+        lv_obj_clear_flag(multi_invite_ok_btn, LV_OBJ_FLAG_HIDDEN);
+        CONSOLE_INFO("MP_EVENT_WAITING_TIMEOUT");
+        break;
+    default:
+        break;
     }
 }
 
@@ -974,54 +1016,71 @@ static void base_mp_event_cb(mp_event_t event,void * data)
 /**
  * @brief 双人摇杆选角定时器回调（每 30ms 执行一次）
  */
-static void selection_timer_cb(lv_timer_t * timer)
+static void selection_timer_cb(lv_timer_t *timer)
 {
-    if (fsm_get_state() != GS_BASE) return;
+    if (fsm_get_state() != GS_BASE)
+        return;
 
     /* --- P1: 本地摇杆导航 --- */
     int16_t joy = joystick_get_x();
-    if (joy > NAV_THRESHOLD) {
+    if (joy > NAV_THRESHOLD)
+    {
         p1_nav_dir = 0;
         non_blocking_delay(&p1_nav_timer);
-    } else if (joy < -NAV_THRESHOLD) {
+    }
+    else if (joy < -NAV_THRESHOLD)
+    {
         p1_nav_dir = 1;
         non_blocking_delay(&p1_nav_timer);
-    } else {
+    }
+    else
+    {
         p1_nav_timer.last_tick = 0; /* 回中 → 下次即时响应 */
     }
 
     /* 移动红框并同步浏览 */
-    if (current_viewing_idx != g_p1_current_idx) {
+    if (current_viewing_idx != g_p1_current_idx)
+    {
         current_viewing_idx = g_p1_current_idx;
         update_detail_panel(current_viewing_idx);
     }
     update_selection_box_pos(p1_selection_box, g_p1_current_idx);
 
     /* P1: KEY_A 确认选择 */
-    if (key_down(KEY_A) && g_plane_unlocked[g_p1_current_idx]) {
+    if (key_down(KEY_A) && g_plane_unlocked[g_p1_current_idx])
+    {
         g_p1_selected_plane_id = (plane_id_t)g_p1_current_idx;
         g_selected_plane_id = (plane_id_t)g_p1_current_idx; /* 同步单人选择 */
-        if (mp_get_state() == MP_STATE_CONNECTED) {
+        if (mp_get_state() == MP_STATE_CONNECTED)
+        {
             lv_obj_align_to(p1_indicator, plane_objs[g_p1_current_idx],
-                        LV_ALIGN_OUT_TOP_MID, -20, -8);
+                            LV_ALIGN_OUT_TOP_MID, -20, -8);
             lv_obj_clear_flag(p1_indicator, LV_OBJ_FLAG_HIDDEN);
-        } else {
+        }
+        else
+        {
             lv_obj_align_to(choosed_indicator, plane_objs[g_selected_plane_id], LV_ALIGN_OUT_TOP_MID, 0, -8);
         }
     }
 
     /* --- P2: 远程摇杆导航（仅联机状态） --- */
-    if (mp_get_state() == MP_STATE_CONNECTED) {
+    if (mp_get_state() == MP_STATE_CONNECTED)
+    {
         lv_obj_clear_flag(p2_selection_box, LV_OBJ_FLAG_HIDDEN);
 
         int16_t rjoy = rjoystick_get_x();
-        if (rjoy > NAV_THRESHOLD) {
+        if (rjoy > NAV_THRESHOLD)
+        {
             p2_nav_dir = 0;
             non_blocking_delay(&p2_nav_timer);
-        } else if (rjoy < -NAV_THRESHOLD) {
+        }
+        else if (rjoy < -NAV_THRESHOLD)
+        {
             p2_nav_dir = 1;
             non_blocking_delay(&p2_nav_timer);
-        } else {
+        }
+        else
+        {
             p2_nav_timer.last_tick = 0;
         }
 
@@ -1029,18 +1088,22 @@ static void selection_timer_cb(lv_timer_t * timer)
         update_detail_panel_p2(g_p2_current_idx);
 
         /* P2: RKEY_A 确认选择 */
-        if (key_down(RKEY_A) && g_plane_unlocked[g_p2_current_idx]) {
+        if (key_down(RKEY_A) && g_plane_unlocked[g_p2_current_idx])
+        {
             g_p2_selected_plane_id = (plane_id_t)g_p2_current_idx;
-                lv_obj_align_to(p2_indicator, plane_objs[g_p2_current_idx],
-                                LV_ALIGN_OUT_TOP_MID, 20, -8);
+            lv_obj_align_to(p2_indicator, plane_objs[g_p2_current_idx],
+                            LV_ALIGN_OUT_TOP_MID, 20, -8);
             lv_obj_clear_flag(p2_indicator, LV_OBJ_FLAG_HIDDEN);
         }
 
         /* 红蓝框重合 → 红框在上 */
-        if (g_p1_current_idx == g_p2_current_idx) {
+        if (g_p1_current_idx == g_p2_current_idx)
+        {
             lv_obj_move_foreground(p1_selection_box);
         }
-    } else {
+    }
+    else
+    {
         lv_obj_add_flag(p2_selection_box, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(p2_indicator, LV_OBJ_FLAG_HIDDEN);
     }
@@ -1051,9 +1114,12 @@ static void selection_timer_cb(lv_timer_t * timer)
  */
 static void p1_move_cb(void)
 {
-    if (p1_nav_dir == 0 && g_p1_current_idx < PLANE_ID_MAX - 1) {
+    if (p1_nav_dir == 0 && g_p1_current_idx < PLANE_ID_MAX - 1)
+    {
         g_p1_current_idx++;
-    } else if (p1_nav_dir == 1 && g_p1_current_idx > 0) {
+    }
+    else if (p1_nav_dir == 1 && g_p1_current_idx > 0)
+    {
         g_p1_current_idx--;
     }
 }
@@ -1063,9 +1129,12 @@ static void p1_move_cb(void)
  */
 static void p2_move_cb(void)
 {
-    if (p2_nav_dir == 0 && g_p2_current_idx < PLANE_ID_MAX - 1) {
+    if (p2_nav_dir == 0 && g_p2_current_idx < PLANE_ID_MAX - 1)
+    {
         g_p2_current_idx++;
-    } else if (p2_nav_dir == 1 && g_p2_current_idx > 0) {
+    }
+    else if (p2_nav_dir == 1 && g_p2_current_idx > 0)
+    {
         g_p2_current_idx--;
     }
 }
@@ -1073,7 +1142,7 @@ static void p2_move_cb(void)
 /**
  * @brief 将选择框移动到指定飞机的位置
  */
-static void update_selection_box_pos(lv_obj_t * box, int idx)
+static void update_selection_box_pos(lv_obj_t *box, int idx)
 {
     int box_x = START_X + idx * (PLANE_WIDTH + PLANE_GAP) - 8;
     lv_obj_set_pos(box, box_x, BOX_Y);
@@ -1092,20 +1161,24 @@ static void update_detail_panel_p2(int idx)
     lv_label_set_text_fmt(dmg_label_p2, "DMG: %d", plane_templates[idx].damage);
     lv_label_set_text_fmt(skill_label_p2, "SKILL:\n%s", plane_templates[idx].skill_desc);
 
-    if (!g_plane_unlocked[idx]) {
+    if (!g_plane_unlocked[idx])
+    {
         lv_label_set_text(choose_lbl_p2, "LOCKED");
         lv_obj_set_style_bg_color(choose_btn_p2, lv_color_hex(0x555555), 0);
-    } else {
+    }
+    else
+    {
         lv_label_set_text(choose_lbl_p2, "CHOOSE");
         lv_obj_set_style_bg_color(choose_btn_p2, lv_color_hex(0xCC0052), 0); // 恢复原本的按钮高亮色（根据你的主题自行调整颜色值）
     }
 }
 
-static void choose_btn_p2_cb(lv_event_t * e)
+static void choose_btn_p2_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
 
-    if (!g_plane_unlocked[current_viewing_idx]) {
+    if (!g_plane_unlocked[current_viewing_idx])
+    {
         CONSOLE_INFO("Cannot choose: Plane %s is locked. Spin the shop roulette to unlock!", plane_templates[current_viewing_idx].name);
         return;
     }

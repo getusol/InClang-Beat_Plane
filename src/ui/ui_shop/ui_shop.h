@@ -15,10 +15,11 @@
  * GLOBAL PROTOTYPES
  **********************/
 
-void ui_shop_init(void);
+void ui_shop_init_stage1(void);
+void ui_shop_init_stage2(void);
 void ui_shop_run(void);
 void ui_shop_esc_behave(void);
 int ui_shop_get_draw_cnt(void);
 void ui_shop_set_draw_cnt(int cnt);
 
-#endif // #ifndef __SHOP_H__ 
+#endif // #ifndef __SHOP_H__

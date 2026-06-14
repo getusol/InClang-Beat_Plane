@@ -20,9 +20,9 @@
  *      TYPEDEFS
  **********************/
 
- /**********************
-  *  STATIC PROTOTYPES
-  **********************/
+/**********************
+ *  STATIC PROTOTYPES
+ **********************/
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -32,18 +32,19 @@
  *  STATIC VARIABLES
  **********************/
 
- /**********************
+/**********************
  *   GLOBAL FUNCTIONS
  **********************/
-void ui_play_init();
+
+void ui_play_init_stage1();
+void ui_play_init_stage2();
 void ui_play_run();
-void ui_play_register_events(void);
-lv_obj_t * ui_play_get_display(void);
-void ui_play_level_enter_anim(const char * level_name);
+lv_obj_t *ui_play_get_display(void);
+void ui_play_level_enter_anim(const char *level_name);
 void ui_play_set_freeze_overlay(bool show);
 
- /**********************
+/**********************
  *   STATIC FUNCTIONS
  **********************/
 
-#endif //#ifndef __UI_PLAY_H__
+#endif // #ifndef __UI_PLAY_H__

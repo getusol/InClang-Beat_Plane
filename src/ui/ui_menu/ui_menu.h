@@ -18,7 +18,8 @@
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void ui_menu_init(void);
+void ui_menu_init_stage1(void);
+void ui_menu_init_stage2(void);
 void ui_menu_run(void);
 
-#endif //#ifndef __UI_MENU_H__
+#endif // #ifndef __UI_MENU_H__
