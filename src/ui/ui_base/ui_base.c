@@ -19,7 +19,7 @@
 #include "audio.h"
 #ifdef SIMULATOR
 #include "joystick.h"
-#include "key.h"
+#include "lkey.h"
 #endif
 #include "config.h"
 

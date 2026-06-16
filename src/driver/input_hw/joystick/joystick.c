@@ -186,28 +186,34 @@ int16_t joystick_get_y()
     return joystick.state.y;
 }
 
-#ifdef SIMULATOR
 /**
- * @brief 获取PC模拟远程摇杆 x 处理值
+ * @brief 获取远程摇杆 x 处理值 (PC: 读 comm_rx, MCU: stub)
  */
-int16_t rjoystick_get_x()
+int16_t rjoystick_get_x(void)
 {
+#ifdef SIMULATOR
     if (comm_get_status() != COMM_STATUS_CONNECTED) {
-        return 0; // 未连接时返回0，避免误动作
+        return 0;
     }
     return comm_get_joystick_x();
+#else
+    return 0;
+#endif
 }
 /**
- * @brief 获取PC模拟远程摇杆 y 处理值
+ * @brief 获取远程摇杆 y 处理值 (PC: 读 comm_rx, MCU: stub)
  */
-int16_t rjoystick_get_y()
+int16_t rjoystick_get_y(void)
 {
+#ifdef SIMULATOR
     if (comm_get_status() != COMM_STATUS_CONNECTED) {
-        return 0; // 未连接时返回0，避免误动作
+        return 0;
     }
     return comm_get_joystick_y();
-}
+#else
+    return 0;
 #endif
+}
 
  /**********************
  *   STATIC FUNCTIONS

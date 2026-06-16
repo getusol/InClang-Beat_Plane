@@ -133,6 +133,12 @@
  *-----------*/
 
 /*-------------
+ * PLAYER
+ *-----------*/
+
+#define MAX_PLAYER_COUNT 2 // 最大玩家数量
+
+/*-------------
  * BULLET
  *-----------*/
 #ifdef SIMULATOR            // ON PC
@@ -168,7 +174,7 @@
  * UI_PLAY
  *-----------*/
 
-#define DP_PLAY_FILL_COLOR 0x252532
+#define DP_PLAY_FILL_COLOR 0x252532 // Warn: Do not change,or all .bin files will be affected
 
 /*=======================
  * STORAGE PARAMS

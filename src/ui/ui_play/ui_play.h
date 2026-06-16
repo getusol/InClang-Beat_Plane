@@ -40,6 +40,7 @@ void ui_play_init_stage1();
 void ui_play_init_stage2();
 void ui_play_run();
 lv_obj_t *ui_play_get_display(void);
+lv_obj_t *ui_play_get_hud_layer(void);
 void ui_play_level_enter_anim(const char *level_name);
 void ui_play_set_freeze_overlay(bool show);
 

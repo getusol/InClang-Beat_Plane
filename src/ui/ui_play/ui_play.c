@@ -733,6 +733,21 @@ void ui_play_set_freeze_overlay(bool show)
     }
 }
 
+/**
+ * @brief 获取hud层
+ * @return hud层
+ */
+lv_obj_t *ui_play_get_hud_layer(void)
+{
+    if (hud_layer == NULL)
+    {
+        CONSOLE_ERROR("hud_layer is NULL!");
+        LOG_ERROR("hud_layer is NULL!");
+        return NULL;
+    }
+    return hud_layer;
+}
+
 /**********************
  * STATIC FUNCTIONS
  **********************/

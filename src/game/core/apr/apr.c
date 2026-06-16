@@ -54,36 +54,48 @@ void apr_init()
 
     // APR_PLAYER_DEFAULT - 基础飞机
     apr_list[APR_PLAYER_DEFAULT] = (apr_t){
-        .w = 64, .h = 64,
-        .hitbox_x = 2, .hitbox_y = 22,
-        .hitbox_w = 60, .hitbox_h = 20,
+        .w = 64,
+        .h = 64,
+        .hitbox_x = 2,
+        .hitbox_y = 22,
+        .hitbox_w = 60,
+        .hitbox_h = 20,
         .img_name = "player.bin",
         .is_alpha = true,
     };
 
     // APR_PLAYER_EMBER - 火焰飞机
     apr_list[APR_PLAYER_EMBER] = (apr_t){
-        .w = 64, .h = 53,
-        .hitbox_x = 2, .hitbox_y = 22,
-        .hitbox_w = 60, .hitbox_h = 20,
+        .w = 64,
+        .h = 53,
+        .hitbox_x = 2,
+        .hitbox_y = 22,
+        .hitbox_w = 60,
+        .hitbox_h = 20,
         .img_name = "player_ember.bin",
         .is_alpha = false,
     };
 
     // APR_PLAYER_STREAM - 水流飞机
     apr_list[APR_PLAYER_STREAM] = (apr_t){
-        .w = 64, .h = 53,
-        .hitbox_x = 2, .hitbox_y = 22,
-        .hitbox_w = 60, .hitbox_h = 20,
+        .w = 64,
+        .h = 53,
+        .hitbox_x = 2,
+        .hitbox_y = 22,
+        .hitbox_w = 60,
+        .hitbox_h = 20,
         .img_name = "player_stream.bin",
         .is_alpha = false,
     };
 
     // APR_PLAYER_VERDANT - 自然飞机
     apr_list[APR_PLAYER_VERDANT] = (apr_t){
-        .w = 64, .h = 51,
-        .hitbox_x = 2, .hitbox_y = 22,
-        .hitbox_w = 60, .hitbox_h = 20,
+        .w = 64,
+        .h = 51,
+        .hitbox_x = 2,
+        .hitbox_y = 22,
+        .hitbox_w = 60,
+        .hitbox_h = 20,
         .img_name = "player_verdant.bin",
         .is_alpha = false,
     };
@@ -92,73 +104,109 @@ void apr_init()
 
     // APR_BULLET_DEFAULT - 默认子弹
     apr_list[APR_BULLET_DEFAULT] = (apr_t){
-        .w = 6, .h = 16,
-        .hitbox_x = 0, .hitbox_y = 0,
-        .hitbox_w = 6, .hitbox_h = 16,
+        .w = 6,
+        .h = 16,
+        .hitbox_x = 0,
+        .hitbox_y = 0,
+        .hitbox_w = 6,
+        .hitbox_h = 16,
         .img_name = "bullet.bin",
         .is_alpha = false,
     };
 
     // APR_BULLET_EMBER - 火焰弹
     apr_list[APR_BULLET_EMBER] = (apr_t){
-        .w = 6, .h = 16,
-        .hitbox_x = 0, .hitbox_y = 0,
-        .hitbox_w = 6, .hitbox_h = 16,
+        .w = 6,
+        .h = 16,
+        .hitbox_x = 0,
+        .hitbox_y = 0,
+        .hitbox_w = 6,
+        .hitbox_h = 16,
         .img_name = "bullet_ember.bin",
         .is_alpha = false,
     };
 
     // APR_BULLET_STREAM - 水弹
     apr_list[APR_BULLET_STREAM] = (apr_t){
-        .w = 6, .h = 16,
-        .hitbox_x = 0, .hitbox_y = 0,
-        .hitbox_w = 6, .hitbox_h = 16,
+        .w = 6,
+        .h = 16,
+        .hitbox_x = 0,
+        .hitbox_y = 0,
+        .hitbox_w = 6,
+        .hitbox_h = 16,
         .img_name = "bullet_stream.bin",
         .is_alpha = false,
     };
 
     // APR_BULLET_VERDANT - 绿色弹
     apr_list[APR_BULLET_VERDANT] = (apr_t){
-        .w = 6, .h = 16,
-        .hitbox_x = 0, .hitbox_y = 0,
-        .hitbox_w = 6, .hitbox_h = 16,
+        .w = 6,
+        .h = 16,
+        .hitbox_x = 0,
+        .hitbox_y = 0,
+        .hitbox_w = 6,
+        .hitbox_h = 16,
         .img_name = "bullet_verdant.bin",
         .is_alpha = false,
     };
 
     // APR_BULLET_CIRCLE - 圆形弹（碰撞框内缩，匹配实际圆形可见区域）
     apr_list[APR_BULLET_CIRCLE] = (apr_t){
-        .w = 16, .h = 16,
-        .hitbox_x = 2, .hitbox_y = 2,
-        .hitbox_w = 12, .hitbox_h = 12,
+        .w = 16,
+        .h = 16,
+        .hitbox_x = 2,
+        .hitbox_y = 2,
+        .hitbox_w = 12,
+        .hitbox_h = 12,
         .img_name = "circle.bin",
         .is_alpha = true,
     };
 
     // APR_BULLET_TRIANGLE - 三角弹（碰撞框内缩，匹配实际三角形可见区域）
     apr_list[APR_BULLET_TRIANGLE] = (apr_t){
-        .w = 15, .h = 16,
-        .hitbox_x = 2, .hitbox_y = 2,
-        .hitbox_w = 12, .hitbox_h = 12,
+        .w = 15,
+        .h = 16,
+        .hitbox_x = 2,
+        .hitbox_y = 2,
+        .hitbox_w = 12,
+        .hitbox_h = 12,
         .img_name = "triangle.bin",
         .is_alpha = true,
+    };
+
+    // APR_BULLET_MARKSMANROUND - 子弹样式 来自 灾厄 神射手弹 用于三连射技能
+    apr_list[APR_BULLET_MARKSMANROUND] = (apr_t){
+        .w = 12,
+        .h = 26,
+        .hitbox_x = 0,
+        .hitbox_y = 0,
+        .hitbox_w = 12,
+        .hitbox_h = 26,
+        .img_name = "MarksmanRound.bin",
+        .is_alpha = false,
     };
 
     // ==================== 敌人 ====================
 
     // APR_ENEMY_DEFAULT
     apr_list[APR_ENEMY_DEFAULT] = (apr_t){
-        .w = 64, .h = 50,
-        .hitbox_x = 2, .hitbox_y = 22,
-        .hitbox_w = 60, .hitbox_h = 20,
+        .w = 64,
+        .h = 50,
+        .hitbox_x = 2,
+        .hitbox_y = 22,
+        .hitbox_w = 60,
+        .hitbox_h = 20,
         .img_name = "enemy2.bin",
         .is_alpha = false,
     };
     // APR_ENEMY_BOSS
     apr_list[APR_ENEMY_BOSS] = (apr_t){
-        .w = 64, .h = 48,
-        .hitbox_x = 3, .hitbox_y = 33,
-        .hitbox_w = 60, .hitbox_h = 20,
+        .w = 64,
+        .h = 48,
+        .hitbox_x = 3,
+        .hitbox_y = 24,
+        .hitbox_w = 60,
+        .hitbox_h = 20,
         .img_name = "boss.bin",
         .is_alpha = false,
     };
@@ -167,34 +215,39 @@ void apr_init()
 
     // APR_COIN_DEFAULT
     apr_list[APR_COIN_DEFAULT] = (apr_t){
-        .w = 18, .h = 18,
-        .hitbox_x = 0, .hitbox_y = 0,
-        .hitbox_w = 20, .hitbox_h = 20,
+        .w = 18,
+        .h = 18,
+        .hitbox_x = 0,
+        .hitbox_y = 0,
+        .hitbox_w = 20,
+        .hitbox_h = 20,
         .img_name = "coin.bin",
         .is_alpha = true,
     };
 
-    
     // APR_FLAME_WALL - 火墙
     apr_list[APR_FLAME_WALL] = (apr_t){
-        .w = 64, .h = 10,
-        .hitbox_x = 0, .hitbox_y = 0,
-        .hitbox_w = 64, .hitbox_h = 10,
+        .w = 64,
+        .h = 10,
+        .hitbox_x = 0,
+        .hitbox_y = 0,
+        .hitbox_w = 64,
+        .hitbox_h = 10,
         .img_name = "flame.bin",
         .is_alpha = false,
     };
 
-    for (int i = 0; i < APR_MAX; i++) {
-        if (apr_list[i].img_name == NULL) continue;
+    for (int i = 0; i < APR_MAX; i++)
+    {
+        if (apr_list[i].img_name == NULL)
+            continue;
         load_img_dsc(img_path(apr_list[i].img_name, path, 128),
                      &apr_list[i].img_dsc,
                      apr_list[i].w, apr_list[i].h,
                      apr_list[i].is_alpha);
         CONSOLE_INFO("APR %d loaded: %s (%dx%d)", i, apr_list[i].img_name, apr_list[i].w, apr_list[i].h);
     }
-
 }
-
 
 /**
  * @brief 根据枚举值获取外观模板指针
@@ -203,7 +256,8 @@ void apr_init()
  */
 apr_t *apr_get(apr_id_t id)
 {
-    if (id >= APR_MAX) {
+    if (id >= APR_MAX)
+    {
         CONSOLE_WARNING("Invalid APR id: %d, returning default", id);
         LOG_WARNING("Invalid APR id: %d, returning default", id);
         return &apr_list[APR_PLAYER_DEFAULT];
@@ -218,17 +272,20 @@ apr_t *apr_get(apr_id_t id)
  */
 void apr_apply(game_obj_t *obj, apr_id_t id)
 {
-    if (obj == NULL) return;
+    if (obj == NULL)
+        return;
 
     apr_t *apr = apr_get(id);
     obj->apr = (const apr_t *)apr;
 
-    if (obj->obj == NULL) return;
+    if (obj->obj == NULL)
+        return;
 
     lv_img_set_src(obj->obj, &apr->img_dsc);
 
     // 更新碰撞框调试显示（尺寸和位置随外观变化）
-    if (obj->hitbox_obj != NULL) {
+    if (obj->hitbox_obj != NULL)
+    {
         lv_obj_set_pos(obj->hitbox_obj, apr->hitbox_x, apr->hitbox_y);
         lv_obj_set_size(obj->hitbox_obj, apr->hitbox_w, apr->hitbox_h);
     }

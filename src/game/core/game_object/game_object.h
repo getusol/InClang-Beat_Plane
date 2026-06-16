@@ -51,7 +51,7 @@ typedef enum
 typedef struct game_obj
 {
     lv_coord_t x, y;      // position
-    int8_t speed;         // @deprecated movement speed (dx/dt)
+    int8_t speed;         // movement speed (dx/dt)
     int16_t vx, vy;       // velocity
     const apr_t *apr;     // 外观指针（共享）
     lv_obj_t *obj;        // LVGL 图像控件（每个对象私有）

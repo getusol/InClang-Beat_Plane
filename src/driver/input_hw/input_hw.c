@@ -50,10 +50,11 @@ static non_blocking_timer_t comm_send_timer;
  * @brief 按键硬件初始化入口
  * @note 需要调用一次
  */
-void input_hw_init()
+void input_hw_init(void)
 {
   key_init();
   joystick_init();
+  rkey_init();
 
   comm_send_timer = (non_blocking_timer_t){
     .func = input_remote_send,
@@ -75,6 +76,7 @@ void input_hw_scan(void)
   if (!sdl_key) sdl_key = SDL_GetKeyboardState(NULL);
   #endif
   key_scan(sdl_key);
+  rkey_scan();
   joystick_scan(sdl_key);
   non_blocking_delay(&comm_send_timer); // COMM_SEND_RATE_MS ms 一次
 }

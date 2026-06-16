@@ -7,6 +7,8 @@
  *********************/
 #include "input_hw.h"
 #include "input_sw.h"
+#include "input_device.h"
+#include "rkey.h"
 
 #include "tools.h"
 #include "lvgl.h"
@@ -16,15 +18,15 @@
  *      MACROS
  **********************/
 
-#define KEY_EVENT_MAX 2                    //最大单个按键事件数量
+#define KEY_EVENT_MAX 2 // 最大单个按键事件数量
 
 /**********************
  *      TYPEDEFS
  **********************/
 
- /**********************
-  *  STATIC PROTOTYPES
-  **********************/
+/**********************
+ *  STATIC PROTOTYPES
+ **********************/
 
 static void input_sw_dispatch();
 #ifdef SIMULATOR
@@ -50,15 +52,15 @@ static key_event_callback_t long_press_callbacks[KEY_EVENT_COUNT][KEY_EVENT_MAX]
 // 按下回调函数数组 支持多个按键事件的按下回调注册 每个事件最多支持 `KEY_EVENT_MAX` 个回调函数
 static key_event_callback_t key_down_callbacks[KEY_EVENT_COUNT][KEY_EVENT_MAX] = {NULL};
 
-
- /**********************
+/**********************
  *   GLOBAL FUNCTIONS
  **********************/
 
 /**
  * @brief 输入分发函数，包含按键扫描和按键分发
  */
-void input_dispatch() {
+void input_dispatch()
+{
     input_hw_scan();
     input_sw_dispatch();
 }
@@ -66,8 +68,10 @@ void input_dispatch() {
 /**
  * @brief 输入系统初始化函数，负责初始化输入相关的资源和状态
  */
-void input_init() {
+void input_init()
+{
     input_hw_init();
+    input_device_init();
 }
 
 /**
@@ -80,16 +84,19 @@ void input_init() {
  */
 void input_sw_register_press_callback(key_event_t event, key_event_callback_t callback)
 {
-    if (event >= KEY_EVENT_COUNT) {
+    if (event >= KEY_EVENT_COUNT)
+    {
         CONSOLE_WARNING("Invalid event type: %d", event);
         LOG_WARNING("Invalid event type: %d", event);
-        return ;
+        return;
     }
-    for (int i = 0; i < KEY_EVENT_MAX; i++) {
-        if (press_callbacks[event][i] == NULL) {
+    for (int i = 0; i < KEY_EVENT_MAX; i++)
+    {
+        if (press_callbacks[event][i] == NULL)
+        {
             press_callbacks[event][i] = callback;
             CONSOLE_INFO("Callback registered for event %d at index %d", event, i);
-            return ;
+            return;
         }
     }
     CONSOLE_WARNING("No available slot to register callback for event: %d", event);
@@ -105,15 +112,18 @@ void input_sw_register_press_callback(key_event_t event, key_event_callback_t ca
  *       长按一段时间后 才会开始循环触发
  *       不会修改 v,v常驻
  */
-void input_sw_register_long_press_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms)
+void input_sw_register_long_press_callback(key_event_t event, key_event_callback_t callback, uint32_t cycle_delay_ms)
 {
-    if (event >= KEY_EVENT_COUNT) {
+    if (event >= KEY_EVENT_COUNT)
+    {
         CONSOLE_WARNING("Invalid event type: %d", event);
         LOG_WARNING("Invalid event type: %d", event);
-        return ;
+        return;
     }
-    for (int i = 0; i < KEY_EVENT_MAX; i++) {
-        if (long_press_callbacks[event][i] == NULL) {
+    for (int i = 0; i < KEY_EVENT_MAX; i++)
+    {
+        if (long_press_callbacks[event][i] == NULL)
+        {
             long_press_callbacks[event][i] = callback;
             long_press_timers[event][i].func = callback;
             long_press_timers[event][i].tick_get = play_tick_get;
@@ -121,7 +131,7 @@ void input_sw_register_long_press_callback(key_event_t event, key_event_callback
             // 设置 last_tick 使得首次长按立即触发
             long_press_timers[event][i].last_tick = play_tick_get() - cycle_delay_ms - 1;
             console_out("[input_sw_register_long_press_callback] Long press callback registered for event %d at index %d with cycle delay %d ms\n", event, i, cycle_delay_ms);
-            return ;
+            return;
         }
     }
     CONSOLE_WARNING("No available slot to register long press callback for event: %d", event);
@@ -137,15 +147,18 @@ void input_sw_register_long_press_callback(key_event_t event, key_event_callback
  *       直接开始循环触发
  *       不会修改 v,v常驻
  */
-void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms)
+void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t callback, uint32_t cycle_delay_ms)
 {
-    if (event >= KEY_EVENT_COUNT) {
+    if (event >= KEY_EVENT_COUNT)
+    {
         CONSOLE_WARNING("Invalid event type: %d", event);
         LOG_WARNING("Invalid event type: %d", event);
-        return ;
+        return;
     }
-    for (int i = 0; i < KEY_EVENT_MAX; i++) {
-        if (key_down_callbacks[event][i] == NULL) {
+    for (int i = 0; i < KEY_EVENT_MAX; i++)
+    {
+        if (key_down_callbacks[event][i] == NULL)
+        {
             key_down_callbacks[event][i] = callback;
             key_down_timers[event][i].func = callback;
             key_down_timers[event][i].tick_get = play_tick_get;
@@ -153,33 +166,114 @@ void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t
             // 设置 last_tick 使得首次按下立即触发
             key_down_timers[event][i].last_tick = play_tick_get() - cycle_delay_ms - 1;
             CONSOLE_INFO("key down callback registered for event %d at index %d with cycle delay %d ms", event, i, cycle_delay_ms);
-            return ;
+            return;
         }
     }
     CONSOLE_WARNING("No available slot to register long press callback for event: %d", event);
     LOG_WARNING("No available slot to register long press callback for event: %d", event);
 }
 
- /**********************
+/**
+ * @brief 注销按键按下回调函数
+ */
+void input_sw_unregister_key_down_callback(key_event_t event, key_event_callback_t callback)
+{
+    if (event >= KEY_EVENT_COUNT)
+        return;
+    for (int i = 0; i < KEY_EVENT_MAX; i++)
+    {
+        if (key_down_callbacks[event][i] == callback)
+        {
+            key_down_callbacks[event][i] = NULL;
+            memset(&key_down_timers[event][i], 0, sizeof(non_blocking_timer_t));
+        }
+    }
+}
+
+/**
+ * @brief 注销按键长按回调函数
+ */
+void input_sw_unregister_long_press_callback(key_event_t event, key_event_callback_t callback)
+{
+    if (event >= KEY_EVENT_COUNT)
+        return;
+    for (int i = 0; i < KEY_EVENT_MAX; i++)
+    {
+        if (long_press_callbacks[event][i] == callback)
+        {
+            long_press_callbacks[event][i] = NULL;
+            memset(&long_press_timers[event][i], 0, sizeof(non_blocking_timer_t));
+        }
+    }
+}
+
+/**
+ * @brief 注销按键短按回调函数
+ */
+void input_sw_unregister_press_callback(key_event_t event, key_event_callback_t callback)
+{
+    if (event >= KEY_EVENT_COUNT)
+        return;
+    for (int i = 0; i < KEY_EVENT_MAX; i++)
+    {
+        if (press_callbacks[event][i] == callback)
+        {
+            press_callbacks[event][i] = NULL;
+        }
+    }
+}
+
+/**********************
  *   STATIC FUNCTIONS
  **********************/
 
 /**
- * @brief 将 key_event_t 映射为 key_code_t
- * @note RKEY 值从 0x80 开始，需要特殊处理
+ * @brief 将 key_event_t 映射为 key_code_t (统一映射到 KEY_A..KEY_Y)
+ * @note RKEY 事件映射到同样的 KEY_A..KEY_Y, 由调用方选择 key_* 或 rkey_*
  */
-static key_code_t event_to_key_code(key_event_t event) {
+static key_code_t event_to_key_code(key_event_t event)
+{
 #ifdef SIMULATOR
     if (event >= KEY_EVENT_RKEY_A)
-        return (key_code_t)(RKEY_A + (event - KEY_EVENT_RKEY_A));
+        return (key_code_t)(KEY_A + (event - KEY_EVENT_RKEY_A));
 #endif
     return (key_code_t)(event + 1);
 }
 
+#ifdef SIMULATOR
+static bool is_remote_event(key_event_t event)
+{
+    return event >= KEY_EVENT_RKEY_A && event <= KEY_EVENT_RKEY_Y;
+}
+
+static bool event_key_pressed(key_event_t event)
+{
+    key_code_t k = event_to_key_code(event);
+    return is_remote_event(event) ? rkey_pressed(k) : key_pressed(k);
+}
+
+static bool event_key_long_press(key_event_t event)
+{
+    key_code_t k = event_to_key_code(event);
+    return is_remote_event(event) ? rkey_long_press(k) : key_long_press(k);
+}
+
+static bool event_key_down(key_event_t event)
+{
+    key_code_t k = event_to_key_code(event);
+    return is_remote_event(event) ? rkey_down(k) : key_down(k);
+}
+#else
+#define event_key_pressed(e) key_pressed(event_to_key_code(e))
+#define event_key_long_press(e) key_long_press(event_to_key_code(e))
+#define event_key_down(e) key_down(event_to_key_code(e))
+#endif
+
 /**
  * @brief 按键分发函数，负责将扫描到的按键事件分发给相应的处理函数
  */
-static void input_sw_dispatch() {
+static void input_sw_dispatch()
+{
 
     /*NOTE:
     typedef enum                    typedef enum
@@ -196,10 +290,14 @@ static void input_sw_dispatch() {
 
     // 处理短按事件
 
-    for (int i = 0; i < KEY_EVENT_COUNT; i++) {
-        if (!key_pressed(event_to_key_code(i))) continue;
-        for (int j = 0; j < KEY_EVENT_MAX; j++) {
-            if (press_callbacks[i][j] != NULL) {
+    for (int i = 0; i < KEY_EVENT_COUNT; i++)
+    {
+        if (!event_key_pressed(i))
+            continue;
+        for (int j = 0; j < KEY_EVENT_MAX; j++)
+        {
+            if (press_callbacks[i][j] != NULL)
+            {
                 press_callbacks[i][j]();
             }
         }
@@ -207,10 +305,14 @@ static void input_sw_dispatch() {
 
     // 处理长按事件
 
-    for (int i = 0; i < KEY_EVENT_COUNT; i++) {
-        if (!key_long_press(event_to_key_code(i))) continue;
-        for (int j = 0; j < KEY_EVENT_MAX; j++) {
-            if (long_press_callbacks[i][j] != NULL) {
+    for (int i = 0; i < KEY_EVENT_COUNT; i++)
+    {
+        if (!event_key_long_press(i))
+            continue;
+        for (int j = 0; j < KEY_EVENT_MAX; j++)
+        {
+            if (long_press_callbacks[i][j] != NULL)
+            {
                 non_blocking_delay(&long_press_timers[i][j]);
             }
         }
@@ -219,80 +321,34 @@ static void input_sw_dispatch() {
     // 处理按下事件
     // X键诊断
     static int x_key_check_count = 0;
-    if (x_key_check_count < 5 && key_down(event_to_key_code(KEY_EVENT_X))) {
+    if (x_key_check_count < 5 && event_key_down(KEY_EVENT_X))
+    {
         CONSOLE_INFO("key_down(KEY_X)=true, callbacks[0]=%p callbacks[1]=%p",
-                (void *)key_down_callbacks[KEY_EVENT_X][0],
-                (void *)key_down_callbacks[KEY_EVENT_X][1]);
+                     (void *)key_down_callbacks[KEY_EVENT_X][0],
+                     (void *)key_down_callbacks[KEY_EVENT_X][1]);
         x_key_check_count++;
     }
 
-    for (int i = 0; i < KEY_EVENT_COUNT; i++) {
-    if (!key_down(event_to_key_code(i))) continue;
-    for (int j = 0; j < KEY_EVENT_MAX; j++) {
-        if (key_down_callbacks[i][j] != NULL) {
+    for (int i = 0; i < KEY_EVENT_COUNT; i++)
+    {
+        if (!event_key_down(i))
+            continue;
+        for (int j = 0; j < KEY_EVENT_MAX; j++)
+        {
+            if (key_down_callbacks[i][j] != NULL)
+            {
                 non_blocking_delay(&key_down_timers[i][j]);
-            } else if (i == KEY_EVENT_X) {
+            }
+            else if (i == KEY_EVENT_X)
+            {
                 // 仅X键: 检测到按下但无回调注册
                 static int x_no_cb_log = 0;
-                if (x_no_cb_log < 3) {
-                    
+                if (x_no_cb_log < 3)
+                {
+
                     x_no_cb_log++;
                 }
             }
         }
     }
-}
-
-/**
- * @brief 注销按键按下回调函数
- */
-void input_sw_unregister_key_down_callback(key_event_t event, key_event_callback_t callback)
-{
-    if (event >= KEY_EVENT_COUNT) return;
-    for (int i = 0; i < KEY_EVENT_MAX; i++) {
-        if (key_down_callbacks[event][i] == callback) {
-            key_down_callbacks[event][i] = NULL;
-            memset(&key_down_timers[event][i], 0, sizeof(non_blocking_timer_t));
-        }
-    }
-}
-
-/**
- * @brief 注销按键长按回调函数
- */
-void input_sw_unregister_long_press_callback(key_event_t event, key_event_callback_t callback)
-{
-    if (event >= KEY_EVENT_COUNT) return;
-    for (int i = 0; i < KEY_EVENT_MAX; i++) {
-        if (long_press_callbacks[event][i] == callback) {
-            long_press_callbacks[event][i] = NULL;
-            memset(&long_press_timers[event][i], 0, sizeof(non_blocking_timer_t));
-        }
-    }
-}
-
-/**
- * @brief 注销按键短按回调函数
- */
-void input_sw_unregister_press_callback(key_event_t event, key_event_callback_t callback)
-{
-    if (event >= KEY_EVENT_COUNT) return;
-    for (int i = 0; i < KEY_EVENT_MAX; i++) {
-        if (press_callbacks[event][i] == callback) {
-            press_callbacks[event][i] = NULL;
-        }
-    }
-}
-
-/**
- * @brief 查询按键是否处于按下状态
- */
-bool input_sw_is_key_down(key_event_t event)
-{
-    return key_down(event_to_key_code(event));
-}
-
-bool input_sw_is_key_long_press(key_event_t event)
-{
-    return key_long_press(event_to_key_code(event));
 }
