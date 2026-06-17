@@ -16,8 +16,8 @@
  **********************/
 
 // 不建议太大 否则UI需要重新设置布局
-#define MAX_MODULE_NAME_LEN 15  // (实际数组大小为这个宏+1)
-#define MAX_SETTING_NAME_LEN 15 // (实际数组大小为这个宏+1)
+#define MAX_MODULE_NAME_LEN 18  // (实际数组大小为这个宏+1)
+#define MAX_SETTING_NAME_LEN 18 // (实际数组大小为这个宏+1)
 
 /**********************
  *      TYPEDEFS

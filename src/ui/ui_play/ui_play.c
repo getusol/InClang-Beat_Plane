@@ -16,27 +16,22 @@
 #include "lvgl_utils.h"
 #include "game_object.h"
 
-#include "coin.h"
 #include "event.h"
 #include "perf_monitor.h"
 #include "ui_setting.h"
 #include "audio.h"
 #include "player.h"
+#include "character.h"
 #include "multiplayer.h"
-#include "comm_tx.h"
 #include "settings.h"
+#include "debug.h"
 
 /**********************
  * MACROS
  **********************/
 
-#define HUD_BLUE_IMG_NAME "hud_blue.bin"
-#define COIN_BAR_IMG_NAME "coin_bar.bin"
-#define SETTING_ICON_NAME "setting_icon.bin"
-
-#ifdef SIMULATOR
-#define HUD_RED_IMG_NAME "hud_red.bin"
-#endif
+#define CD_BASE_Y 99 // black_x 基准 Y
+#define CD_GAP 108   // X-Y 圆形间距
 
 /**********************
  * TYPEDEFS
@@ -50,7 +45,6 @@ static void pause_exit_btn_event_cb(lv_event_t *e);
 static void pause_continue_btn_event_cb(lv_event_t *e);
 static void pause_btn_event_cb(lv_event_t *e);
 static void over_exit_btn_event_cb(lv_event_t *e);
-static void over_restart_btn_event_cb(lv_event_t *e);
 
 static void opa_anim_cb(void *obj, int32_t opa);
 static void y_anim_cb(void *obj, int32_t y);
@@ -84,47 +78,50 @@ static uint8_t settings_count = sizeof(settings) / sizeof(settings[0]);
 static lv_group_t *pause_group;
 static lv_group_t *over_group;
 
-// dp_play 是 play的根容器 负责绘制玩家、金币、子弹、跟随的血条等
+// dp_play 是 play的根容器
 static lv_obj_t *dp_play;
-// hud_layer 是 play的ui容器 负责绘制暂停弹窗、设置弹窗、游戏结束弹窗 和 全屏特效 hud等
+// hud_layer 是 play的ui容器
 static lv_obj_t *hud_layer;
 
 static lv_obj_t *pause_popup;
 static lv_obj_t *over_popup;
 static lv_obj_t *over_score_label;
-static lv_obj_t *coin_label;
-static lv_obj_t *pause_icon_btn;  // 右上角暂停/设置图标按钮
-static int coin_at_run_start = 0; // 当局开始时的金币数，用于计算得分
-#ifdef SIMULATOR
-static int coin_p2_at_run_start = 0;
-static lv_obj_t *coin_p2_bar = NULL;
-static lv_obj_t *coin_p2_label = NULL;
-static lv_obj_t *cd_arc_x2 = NULL;
-static lv_obj_t *cd_arc_y2 = NULL;
-static lv_obj_t *cd_ready_x2 = NULL;
-static lv_obj_t *cd_ready_y2 = NULL;
-static lv_obj_t *cd_bg_x2 = NULL;
-static lv_obj_t *cd_bg_y2 = NULL;
-static lv_obj_t *hud_red_img = NULL;
-#endif
+static lv_obj_t *pause_icon_btn;
+
+// ---- 多玩家 HUD 数组 ----
+static lv_obj_t *hud_imgs[MAX_PLAYER_COUNT];
+static lv_obj_t *cd_arc_x[MAX_PLAYER_COUNT];
+static lv_obj_t *cd_arc_y[MAX_PLAYER_COUNT];
+static lv_obj_t *cd_bg_x[MAX_PLAYER_COUNT];
+static lv_obj_t *cd_bg_y[MAX_PLAYER_COUNT];
+static lv_obj_t *cd_ready_x[MAX_PLAYER_COUNT];
+static lv_obj_t *cd_ready_y[MAX_PLAYER_COUNT];
+static lv_obj_t *coin_bars[MAX_PLAYER_COUNT];
+static lv_obj_t *coin_labels[MAX_PLAYER_COUNT];
+
+// HUD 背景图 — 按玩家索引手动指定, NULL 跳过
+static const char *hud_img_names[MAX_PLAYER_COUNT] = {
+    "hud_blue.bin",  // P1
+    "hud_red.bin",   // P2
+    "hud_green.bin", // P3
+};
+// 金币条背景图
+static const char *coin_bar_names[MAX_PLAYER_COUNT] = {
+    "coin_bar.bin",       // P1
+    "coin_red_bar.bin",   // P2
+    "coin_green_bar.bin", // P3
+};
 
 #ifdef SIMULATOR
-static lv_img_dsc_t coin_img_dsc;
+static lv_img_dsc_t hud_img_dsc[MAX_PLAYER_COUNT];
+static lv_img_dsc_t coin_img_dsc[MAX_PLAYER_COUNT];
 static lv_img_dsc_t hurt_img_dsc;
-static lv_img_dsc_t hud_img_dsc;
 static lv_img_dsc_t setting_icon_dsc;
-static lv_img_dsc_t coin_red_bar_img_dsc;
-static lv_img_dsc_t hud_red_img_dsc;
 #endif
 static lv_obj_t *hurt_img = NULL;
 static lv_timer_t *hurt_timer = NULL;
 static lv_obj_t *freeze_overlay = NULL;
 
-// 技能CD可视化
-static lv_obj_t *cd_arc_x = NULL;          // X技能(E键) CD弧
-static lv_obj_t *cd_arc_y = NULL;          // Y技能(F键) CD弧
-static lv_obj_t *cd_ready_x = NULL;        // X技能 Ready! 文字
-static lv_obj_t *cd_ready_y = NULL;        // Y技能 Ready! 文字
 static lv_timer_t *cd_update_timer = NULL; // CD更新定时器
 
 /**********************
@@ -196,55 +193,64 @@ void ui_play_init_stage2()
     }
 
     static char img_path_buf[64];
-    lv_obj_t *hud_img = NULL;
-    lv_obj_t *coin_img = NULL;
 
-#ifdef SIMULATOR
-    // CONSOLE_DEBUG("Creating hud_img from dsc...");
-    hud_img = img_create_from_dsc(hud_layer, img_path(HUD_BLUE_IMG_NAME, img_path_buf, 64), 200, 42, NULL, &hud_img_dsc, true);
-    if (hud_img != NULL)
+    /* ---- HUD 背景装饰 (左上角) ---- */
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++)
     {
-        lv_obj_set_pos(hud_img, 2, 5);
-        lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
-    }
+        if (hud_img_names[i] == NULL)
+        {
+            CONSOLE_WARNING("hud_img_names[%d] is NULL, skipping HUD bg", i);
+            hud_imgs[i] = NULL;
+            continue;
+        }
+#ifdef SIMULATOR
+        hud_imgs[i] = img_create_from_dsc(hud_layer,
+                                          img_path(hud_img_names[i], img_path_buf, 64),
+                                          200, 42, NULL, &hud_img_dsc[i], true);
 #else
-    // CONSOLE_DEBUG("Creating standard hud_img...");
-    hud_img = lv_img_create(hud_layer);
-    if (hud_img != NULL)
-    {
-        lv_img_set_src(hud_img, img_path(HUD_BLUE_IMG_NAME, img_path_buf, 64));
-        lv_obj_set_pos(hud_img, 2, 5);
-        lv_obj_set_align(hud_img, LV_ALIGN_TOP_LEFT);
-    }
+        hud_imgs[i] = lv_img_create(hud_layer);
+        lv_img_set_src(hud_imgs[i], img_path(hud_img_names[i], img_path_buf, 64));
 #endif
-
-#ifdef SIMULATOR
-    // CONSOLE_DEBUG("Creating hud_img from dsc...");
-    hud_red_img = img_create_from_dsc(hud_layer, img_path(HUD_RED_IMG_NAME, img_path_buf, 64), 200, 42, NULL, &hud_red_img_dsc, true);
-    if (hud_red_img != NULL)
-    {
-        lv_obj_set_align(hud_red_img, LV_ALIGN_TOP_LEFT);
-        lv_obj_set_pos(hud_red_img, 2, 84);
-        lv_obj_add_flag(hud_red_img, LV_OBJ_FLAG_HIDDEN);
+        if (hud_imgs[i] != NULL)
+        {
+            lv_obj_set_pos(hud_imgs[i], 2, 5 + i * 79);
+            lv_obj_set_align(hud_imgs[i], LV_ALIGN_TOP_LEFT);
+            lv_obj_add_flag(hud_imgs[i], LV_OBJ_FLAG_HIDDEN);
+            CONSOLE_DEBUG("hud img %d hidden", i);
+        }
     }
 
-#endif
-
-// coin_img initialize
+    /* ---- 金币条 (左下角, 向上堆叠) ---- */
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++)
+    {
+        const char *bar_name = (i < MAX_PLAYER_COUNT) ? coin_bar_names[i] : NULL;
+        if (bar_name == NULL)
+        {
+            CONSOLE_WARNING("coin_bar_names[%d] is NULL, skipping coin bar", i);
+            coin_bars[i] = NULL;
+            coin_labels[i] = NULL;
+            continue;
+        }
 #ifdef SIMULATOR
-    coin_img = img_create_from_dsc(hud_layer, img_path(COIN_BAR_IMG_NAME, img_path_buf, 64), 166, 46, NULL, &coin_img_dsc, true);
-    lv_obj_set_align(coin_img, LV_ALIGN_BOTTOM_LEFT);
+        coin_bars[i] = img_create_from_dsc(hud_layer,
+                                           img_path(bar_name, img_path_buf, 64),
+                                           166, 46, NULL, &coin_img_dsc[i], true);
 #else
-    coin_img = lv_img_create(hud_layer);
-    lv_img_set_src(coin_img, img_path(COIN_BAR_IMG_NAME, img_path_buf, 64));
-    lv_obj_set_align(coin_img, LV_ALIGN_BOTTOM_LEFT);
+        coin_bars[i] = lv_img_create(hud_layer);
+        lv_img_set_src(coin_bars[i], img_path(bar_name, img_path_buf, 64));
 #endif
+        if (coin_bars[i] != NULL)
+        {
+            lv_obj_set_align(coin_bars[i], LV_ALIGN_BOTTOM_LEFT);
+            lv_obj_set_pos(coin_bars[i], 0, -i * 46);
+            lv_obj_add_flag(coin_bars[i], LV_OBJ_FLAG_HIDDEN);
 
-    if (coin_img == NULL)
-    {
-        CONSOLE_WARNING("coin_img is NULL! coin_label might bound to invalid parent.");
-        LOG_WARNING("coin_img is NULL! coin_label might bound to invalid parent.");
-        return;
+            coin_labels[i] = lv_label_create(coin_bars[i]);
+            lv_obj_set_pos(coin_labels[i], 120, 23);
+            lv_label_set_text(coin_labels[i], "0");
+            lv_obj_set_style_text_font(coin_labels[i], &lv_font_montserrat_16, LV_STATE_DEFAULT);
+            lv_obj_set_style_text_color(coin_labels[i], lv_color_white(), LV_STATE_DEFAULT);
+        }
     }
 
     // Popups initialization
@@ -276,11 +282,11 @@ void ui_play_init_stage2()
 
 #ifdef SIMULATOR
     lv_obj_t *pause_icon_img = img_create_from_dsc(pause_icon_btn,
-                                                   img_path(SETTING_ICON_NAME, img_path_buf, sizeof(img_path_buf)),
+                                                   img_path("setting_icon.bin", img_path_buf, sizeof(img_path_buf)),
                                                    64, 64, NULL, &setting_icon_dsc, true);
 #else
     lv_obj_t *pause_icon_img = lv_img_create(pause_icon_btn);
-    lv_img_set_src(pause_icon_img, img_path(SETTING_ICON_NAME, img_path_buf, sizeof(img_path_buf)));
+    lv_img_set_src(pause_icon_img, img_path("setting_icon.bin", img_path_buf, sizeof(img_path_buf)));
 #endif
     lv_obj_center(pause_icon_img);
 
@@ -328,19 +334,6 @@ void ui_play_init_stage2()
     lv_obj_set_style_text_font(over_score_label, &lv_font_montserrat_24, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(over_score_label, lv_color_hex(0xFFD152), LV_STATE_DEFAULT);
 
-    // restart btn for over popup
-    lv_obj_t *over_restart_btn = lv_btn_create(over_popup);
-    lv_obj_set_size(over_restart_btn, 300, 60);
-    lv_obj_set_pos(over_restart_btn, 25, 240);
-    lv_obj_add_event_cb(over_restart_btn, over_restart_btn_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_group_add_obj(over_group, over_restart_btn);
-
-    // label for over_restart_btn
-    lv_obj_t *over_restart_btn_label = lv_label_create(over_restart_btn);
-    lv_obj_set_align(over_restart_btn_label, LV_ALIGN_CENTER);
-    lv_label_set_text(over_restart_btn_label, "Restart");
-    lv_obj_set_style_text_font(over_restart_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
-
     // back to menu btn for over popup
     lv_obj_t *over_exit_btn = lv_btn_create(over_popup);
     lv_obj_set_size(over_exit_btn, 300, 60);
@@ -353,31 +346,6 @@ void ui_play_init_stage2()
     lv_obj_set_align(over_exit_btn_label, LV_ALIGN_CENTER);
     lv_label_set_text(over_exit_btn_label, "Back to menu");
     lv_obj_set_style_text_font(over_exit_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
-
-    // label for coin
-    coin_label = lv_label_create(coin_img);
-    lv_obj_set_pos(coin_label, 120, 23);
-    lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
-    lv_obj_set_style_text_font(coin_label, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(coin_label, lv_color_white(), LV_STATE_DEFAULT);
-
-#ifdef SIMULATOR
-    // P2 金币栏（红色，左下角 P1 金币栏上方）
-    {
-        static char p2_path[64];
-        coin_p2_bar = img_create_from_dsc(hud_layer, img_path("coin_red_bar.bin", p2_path, 64),
-                                          166, 46, NULL, &coin_red_bar_img_dsc, true);
-        lv_obj_set_align(coin_p2_bar, LV_ALIGN_BOTTOM_LEFT);
-        lv_obj_set_pos(coin_p2_bar, 0, -46);
-        lv_obj_add_flag(coin_p2_bar, LV_OBJ_FLAG_HIDDEN);
-
-        coin_p2_label = lv_label_create(coin_p2_bar);
-        lv_obj_set_pos(coin_p2_label, 120, 23);
-        lv_label_set_text_fmt(coin_p2_label, "%d", coin_get_p2_num());
-        lv_obj_set_style_text_font(coin_p2_label, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-        lv_obj_set_style_text_color(coin_p2_label, lv_color_white(), LV_STATE_DEFAULT);
-    }
-#endif
 
     // 性能检测UI初始化
     perf_monitor_init(hud_layer);
@@ -411,173 +379,107 @@ void ui_play_init_stage2()
         lv_obj_move_foreground(freeze_overlay);
     }
 
-    // 技能CD可视化 — 右侧两个CD圆圈 (X/E 和 Y/F)
+    /* ---- 技能 CD 圆形 (右侧, X/Y 每玩家两个) ---- */
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++)
     {
-        // —— X技能 (E键) CD指示器 ——
-        lv_obj_t *black_x = lv_obj_create(hud_layer);
-        lv_obj_set_size(black_x, 38, 38);
-        lv_obj_set_pos(black_x, 949, 99);
-        lv_obj_set_style_bg_color(black_x, lv_color_black(), 0);
-        lv_obj_set_style_bg_opa(black_x, LV_OPA_COVER, 0);
-        lv_obj_set_style_border_width(black_x, 0, 0);
-        lv_obj_set_style_radius(black_x, LV_RADIUS_CIRCLE, 0);
-        lv_obj_clear_flag(black_x, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(black_x, LV_OBJ_FLAG_SCROLLABLE);
+        int base_y = CD_BASE_Y + i * CD_GAP * 2; // 99, 315, ...
 
-        cd_arc_x = lv_arc_create(hud_layer);
-        lv_obj_set_size(cd_arc_x, 56, 56);
-        lv_obj_set_pos(cd_arc_x, 940, 90);
-        lv_obj_clear_flag(cd_arc_x, LV_OBJ_FLAG_SCROLLABLE);
-        lv_arc_set_mode(cd_arc_x, LV_ARC_MODE_NORMAL);
-        lv_arc_set_bg_angles(cd_arc_x, 0, 360);
-        lv_arc_set_rotation(cd_arc_x, 270);
-        lv_arc_set_range(cd_arc_x, 0, 100);
-        lv_arc_set_value(cd_arc_x, 100);
-        lv_obj_set_style_arc_color(cd_arc_x, lv_color_hex(0x333344), LV_PART_MAIN);
-        lv_obj_set_style_arc_color(cd_arc_x, lv_color_hex(0x4488CC), LV_PART_INDICATOR);
-        lv_obj_set_style_arc_width(cd_arc_x, 5, LV_PART_MAIN);
-        lv_obj_set_style_arc_width(cd_arc_x, 5, LV_PART_INDICATOR);
-        lv_obj_set_style_bg_opa(cd_arc_x, LV_OPA_TRANSP, LV_PART_KNOB);
-        lv_obj_set_style_pad_all(cd_arc_x, 0, LV_PART_KNOB);
+        // X 技能
+        int y_x = base_y;
+        cd_bg_x[i] = lv_obj_create(hud_layer);
+        lv_obj_set_size(cd_bg_x[i], 38, 38);
+        lv_obj_set_pos(cd_bg_x[i], 949, y_x);
+        lv_obj_set_style_bg_color(cd_bg_x[i], lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(cd_bg_x[i], LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(cd_bg_x[i], 0, 0);
+        lv_obj_set_style_radius(cd_bg_x[i], LV_RADIUS_CIRCLE, 0);
+        lv_obj_clear_flag(cd_bg_x[i], LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(cd_bg_x[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(cd_bg_x[i], LV_OBJ_FLAG_HIDDEN);
 
-        lv_obj_t *label_e = lv_label_create(black_x);
-        lv_label_set_text(label_e, "E");
-        lv_obj_set_style_text_font(label_e, &lv_font_montserrat_16, 0);
-        lv_obj_set_style_text_color(label_e, lv_color_white(), 0);
-        lv_obj_center(label_e);
+        lv_obj_t *lx = lv_label_create(cd_bg_x[i]);
+        lv_label_set_text(lx, "X");
+        lv_obj_set_style_text_font(lx, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_color(lx, lv_color_white(), 0);
+        lv_obj_center(lx);
 
-        cd_ready_x = lv_label_create(hud_layer);
-        lv_label_set_text(cd_ready_x, "Ready!");
-        lv_obj_set_style_text_font(cd_ready_x, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(cd_ready_x, lv_color_hex(0x44FF44), 0);
-        lv_obj_align_to(cd_ready_x, cd_arc_x, LV_ALIGN_OUT_BOTTOM_MID, 0, 4);
+        cd_arc_x[i] = lv_arc_create(hud_layer);
+        lv_obj_set_size(cd_arc_x[i], 56, 56);
+        lv_obj_set_pos(cd_arc_x[i], 940, y_x - 9);
+        lv_obj_clear_flag(cd_arc_x[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_arc_set_mode(cd_arc_x[i], LV_ARC_MODE_NORMAL);
+        lv_arc_set_bg_angles(cd_arc_x[i], 0, 360);
+        lv_arc_set_rotation(cd_arc_x[i], 270);
+        lv_arc_set_range(cd_arc_x[i], 0, 100);
+        lv_arc_set_value(cd_arc_x[i], 100);
+        lv_obj_set_style_arc_color(cd_arc_x[i], lv_color_hex(0x333344), LV_PART_MAIN);
+        lv_obj_set_style_arc_color(cd_arc_x[i], lv_color_hex(0x4488CC), LV_PART_INDICATOR);
+        lv_obj_set_style_arc_width(cd_arc_x[i], 5, LV_PART_MAIN);
+        lv_obj_set_style_arc_width(cd_arc_x[i], 5, LV_PART_INDICATOR);
+        lv_obj_set_style_bg_opa(cd_arc_x[i], LV_OPA_TRANSP, LV_PART_KNOB);
+        lv_obj_set_style_pad_all(cd_arc_x[i], 0, LV_PART_KNOB);
+        lv_obj_add_flag(cd_arc_x[i], LV_OBJ_FLAG_HIDDEN);
 
-        // —— Y技能 (F键) CD指示器 ——
-        lv_obj_t *black_y = lv_obj_create(hud_layer);
-        lv_obj_set_size(black_y, 38, 38);
-        lv_obj_set_pos(black_y, 949, 207);
-        lv_obj_set_style_bg_color(black_y, lv_color_black(), 0);
-        lv_obj_set_style_bg_opa(black_y, LV_OPA_COVER, 0);
-        lv_obj_set_style_border_width(black_y, 0, 0);
-        lv_obj_set_style_radius(black_y, LV_RADIUS_CIRCLE, 0);
-        lv_obj_clear_flag(black_y, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(black_y, LV_OBJ_FLAG_SCROLLABLE);
+        cd_ready_x[i] = lv_label_create(hud_layer);
+        lv_label_set_text(cd_ready_x[i], "Ready!");
+        lv_obj_set_style_text_font(cd_ready_x[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(cd_ready_x[i], lv_color_hex(0x44FF44), 0);
+        lv_obj_align_to(cd_ready_x[i], cd_arc_x[i], LV_ALIGN_OUT_BOTTOM_MID, 0, 4);
+        lv_obj_add_flag(cd_ready_x[i], LV_OBJ_FLAG_HIDDEN);
 
-        cd_arc_y = lv_arc_create(hud_layer);
-        lv_obj_set_size(cd_arc_y, 56, 56);
-        lv_obj_set_pos(cd_arc_y, 940, 198);
-        lv_obj_clear_flag(cd_arc_y, LV_OBJ_FLAG_SCROLLABLE);
-        lv_arc_set_mode(cd_arc_y, LV_ARC_MODE_NORMAL);
-        lv_arc_set_bg_angles(cd_arc_y, 0, 360);
-        lv_arc_set_rotation(cd_arc_y, 270);
-        lv_arc_set_range(cd_arc_y, 0, 100);
-        lv_arc_set_value(cd_arc_y, 100);
-        lv_obj_set_style_arc_color(cd_arc_y, lv_color_hex(0x333344), LV_PART_MAIN);
-        lv_obj_set_style_arc_color(cd_arc_y, lv_color_hex(0x4488CC), LV_PART_INDICATOR);
-        lv_obj_set_style_arc_width(cd_arc_y, 5, LV_PART_MAIN);
-        lv_obj_set_style_arc_width(cd_arc_y, 5, LV_PART_INDICATOR);
-        lv_obj_set_style_bg_opa(cd_arc_y, LV_OPA_TRANSP, LV_PART_KNOB);
-        lv_obj_set_style_pad_all(cd_arc_y, 0, LV_PART_KNOB);
+        // Y 技能
+        int y_y = base_y + CD_GAP;
+        cd_bg_y[i] = lv_obj_create(hud_layer);
+        lv_obj_set_size(cd_bg_y[i], 38, 38);
+        lv_obj_set_pos(cd_bg_y[i], 949, y_y);
+        lv_obj_set_style_bg_color(cd_bg_y[i], lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(cd_bg_y[i], LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(cd_bg_y[i], 0, 0);
+        lv_obj_set_style_radius(cd_bg_y[i], LV_RADIUS_CIRCLE, 0);
+        lv_obj_clear_flag(cd_bg_y[i], LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(cd_bg_y[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(cd_bg_y[i], LV_OBJ_FLAG_HIDDEN);
 
-        lv_obj_t *label_f = lv_label_create(black_y);
-        lv_label_set_text(label_f, "F");
-        lv_obj_set_style_text_font(label_f, &lv_font_montserrat_16, 0);
-        lv_obj_set_style_text_color(label_f, lv_color_white(), 0);
-        lv_obj_center(label_f);
+        lv_obj_t *ly = lv_label_create(cd_bg_y[i]);
+        lv_label_set_text(ly, "Y");
+        lv_obj_set_style_text_font(ly, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_color(ly, lv_color_white(), 0);
+        lv_obj_center(ly);
 
-        cd_ready_y = lv_label_create(hud_layer);
-        lv_label_set_text(cd_ready_y, "Ready!");
-        lv_obj_set_style_text_font(cd_ready_y, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(cd_ready_y, lv_color_hex(0x44FF44), 0);
-        lv_obj_align_to(cd_ready_y, cd_arc_y, LV_ALIGN_OUT_BOTTOM_MID, 0, 4);
+        cd_arc_y[i] = lv_arc_create(hud_layer);
+        lv_obj_set_size(cd_arc_y[i], 56, 56);
+        lv_obj_set_pos(cd_arc_y[i], 940, y_y - 9);
+        lv_obj_clear_flag(cd_arc_y[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_arc_set_mode(cd_arc_y[i], LV_ARC_MODE_NORMAL);
+        lv_arc_set_bg_angles(cd_arc_y[i], 0, 360);
+        lv_arc_set_rotation(cd_arc_y[i], 270);
+        lv_arc_set_range(cd_arc_y[i], 0, 100);
+        lv_arc_set_value(cd_arc_y[i], 100);
+        lv_obj_set_style_arc_color(cd_arc_y[i], lv_color_hex(0x333344), LV_PART_MAIN);
+        lv_obj_set_style_arc_color(cd_arc_y[i], lv_color_hex(0x4488CC), LV_PART_INDICATOR);
+        lv_obj_set_style_arc_width(cd_arc_y[i], 5, LV_PART_MAIN);
+        lv_obj_set_style_arc_width(cd_arc_y[i], 5, LV_PART_INDICATOR);
+        lv_obj_set_style_bg_opa(cd_arc_y[i], LV_OPA_TRANSP, LV_PART_KNOB);
+        lv_obj_set_style_pad_all(cd_arc_y[i], 0, LV_PART_KNOB);
+        lv_obj_add_flag(cd_arc_y[i], LV_OBJ_FLAG_HIDDEN);
+
+        cd_ready_y[i] = lv_label_create(hud_layer);
+        lv_label_set_text(cd_ready_y[i], "Ready!");
+        lv_obj_set_style_text_font(cd_ready_y[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(cd_ready_y[i], lv_color_hex(0x44FF44), 0);
+        lv_obj_align_to(cd_ready_y[i], cd_arc_y[i], LV_ALIGN_OUT_BOTTOM_MID, 0, 4);
+        lv_obj_add_flag(cd_ready_y[i], LV_OBJ_FLAG_HIDDEN);
     }
-
-#ifdef SIMULATOR
-    // P2 技能冷却圆弧（联机时可见，在 P1 下方垂直排列）
-    {
-        cd_bg_x2 = lv_obj_create(hud_layer);
-        lv_obj_set_size(cd_bg_x2, 38, 38);
-        lv_obj_set_pos(cd_bg_x2, 949, 306);
-        lv_obj_set_style_radius(cd_bg_x2, LV_RADIUS_CIRCLE, 0);
-        lv_obj_set_style_bg_color(cd_bg_x2, lv_color_black(), 0);
-        lv_obj_set_style_border_width(cd_bg_x2, 0, 0);
-        lv_obj_add_flag(cd_bg_x2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(cd_bg_x2, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(cd_bg_x2, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_t *el2 = lv_label_create(cd_bg_x2);
-        lv_label_set_text(el2, "X");
-        lv_obj_center(el2);
-        lv_obj_set_style_text_color(el2, lv_color_hex(0xFF8888), 0);
-
-        cd_arc_x2 = lv_arc_create(hud_layer);
-        lv_obj_set_size(cd_arc_x2, 56, 56);
-        lv_obj_set_pos(cd_arc_x2, 940, 297);
-        lv_arc_set_mode(cd_arc_x2, LV_ARC_MODE_NORMAL);
-        lv_arc_set_bg_angles(cd_arc_x2, 0, 360);
-        lv_arc_set_rotation(cd_arc_x2, 270);
-        lv_arc_set_range(cd_arc_x2, 0, 100);
-        lv_arc_set_value(cd_arc_x2, 100);
-        lv_obj_set_style_arc_color(cd_arc_x2, lv_color_hex(0x553344), 0);
-        lv_obj_set_style_arc_color(cd_arc_x2, lv_color_hex(0xCC4488), LV_PART_INDICATOR);
-        lv_obj_set_style_arc_width(cd_arc_x2, 5, 0);
-        lv_obj_set_style_arc_width(cd_arc_x2, 5, LV_PART_INDICATOR);
-        lv_obj_set_style_bg_opa(cd_arc_x2, LV_OPA_TRANSP, LV_PART_KNOB);
-        lv_obj_set_style_pad_all(cd_arc_x2, 0, LV_PART_KNOB);
-        lv_obj_add_flag(cd_arc_x2, LV_OBJ_FLAG_HIDDEN);
-
-        cd_ready_x2 = lv_label_create(hud_layer);
-        lv_label_set_text(cd_ready_x2, "Ready!");
-        lv_obj_set_style_text_font(cd_ready_x2, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(cd_ready_x2, lv_color_hex(0xFF88FF), 0);
-        lv_obj_align_to(cd_ready_x2, cd_arc_x2, LV_ALIGN_OUT_BOTTOM_MID, 0, 4);
-        lv_obj_add_flag(cd_ready_x2, LV_OBJ_FLAG_HIDDEN);
-    }
-    {
-        cd_bg_y2 = lv_obj_create(hud_layer);
-        lv_obj_set_size(cd_bg_y2, 38, 38);
-        lv_obj_set_pos(cd_bg_y2, 949, 414);
-        lv_obj_set_style_radius(cd_bg_y2, LV_RADIUS_CIRCLE, 0);
-        lv_obj_set_style_bg_color(cd_bg_y2, lv_color_black(), 0);
-        lv_obj_set_style_border_width(cd_bg_y2, 0, 0);
-        lv_obj_add_flag(cd_bg_y2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(cd_bg_y2, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(cd_bg_y2, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_t *fl2 = lv_label_create(cd_bg_y2);
-        lv_label_set_text(fl2, "Y");
-        lv_obj_center(fl2);
-        lv_obj_set_style_text_color(fl2, lv_color_hex(0xFF8888), 0);
-
-        cd_arc_y2 = lv_arc_create(hud_layer);
-        lv_obj_set_size(cd_arc_y2, 56, 56);
-        lv_obj_set_pos(cd_arc_y2, 940, 405);
-        lv_arc_set_mode(cd_arc_y2, LV_ARC_MODE_NORMAL);
-        lv_arc_set_bg_angles(cd_arc_y2, 0, 360);
-        lv_arc_set_rotation(cd_arc_y2, 270);
-        lv_arc_set_range(cd_arc_y2, 0, 100);
-        lv_arc_set_value(cd_arc_y2, 100);
-        lv_obj_set_style_arc_color(cd_arc_y2, lv_color_hex(0x553344), 0);
-        lv_obj_set_style_arc_color(cd_arc_y2, lv_color_hex(0xCC4488), LV_PART_INDICATOR);
-        lv_obj_set_style_arc_width(cd_arc_y2, 5, 0);
-        lv_obj_set_style_arc_width(cd_arc_y2, 5, LV_PART_INDICATOR);
-        lv_obj_set_style_bg_opa(cd_arc_y2, LV_OPA_TRANSP, LV_PART_KNOB);
-        lv_obj_set_style_pad_all(cd_arc_y2, 0, LV_PART_KNOB);
-        lv_obj_add_flag(cd_arc_y2, LV_OBJ_FLAG_HIDDEN);
-
-        cd_ready_y2 = lv_label_create(hud_layer);
-        lv_label_set_text(cd_ready_y2, "Ready!");
-        lv_obj_set_style_text_font(cd_ready_y2, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(cd_ready_y2, lv_color_hex(0xFF88FF), 0);
-        lv_obj_align_to(cd_ready_y2, cd_arc_y2, LV_ALIGN_OUT_BOTTOM_MID, 0, 4);
-        lv_obj_add_flag(cd_ready_y2, LV_OBJ_FLAG_HIDDEN);
-    }
-#endif
 
     // 遮挡关系
     lv_obj_move_foreground(hud_layer);
-    lv_obj_move_background(hud_img);
-    lv_obj_move_background(hud_red_img);
-    lv_obj_move_background(coin_img);
-    lv_obj_move_background(coin_p2_bar);
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++)
+    {
+        if (hud_imgs[i])
+            lv_obj_move_background(hud_imgs[i]);
+        if (coin_bars[i])
+            lv_obj_move_background(coin_bars[i]);
+    }
 
     // 事件注册
     event_register(EVENT_GAME_START, ui_play_event_game_start_cb);
@@ -615,22 +517,41 @@ void ui_play_run()
     {
         if (pause_icon_btn)
             lv_obj_add_flag(pause_icon_btn, LV_OBJ_FLAG_HIDDEN);
-        // 更新得分显示: (当局获得金币数) * 10
-        int score = (coin_get_num() - coin_at_run_start) * 10;
-        if (score < 0)
-            score = 0;
-#ifdef SIMULATOR
-        if (mp_get_state() == MP_STATE_GAME_PLAY)
+        // 更新得分显示: 当局获得金币数 * 10 (per-player)
+        // 更新得分显示: 当局获得金币数 * 10 (per-player)
         {
-            int p2score = (coin_get_p2_num() - coin_p2_at_run_start) * 10;
-            if (p2score < 0)
-                p2score = 0;
-            lv_label_set_text_fmt(over_score_label, "P1: %d  P2: %d", score, p2score);
-        }
-        else
-#endif
-        {
-            lv_label_set_text_fmt(over_score_label, "Score: %d", score);
+            char buf[128] = {0};
+            char tmp[32];
+
+            for (int i = 0; i < MAX_PLAYER_COUNT; i++)
+            {
+                game_obj_t *p = player_get(i);
+                if (p && player_was_active_get(p))
+                {
+                    int score = player_coin_count_get(p) * 10;
+                    if (score < 0)
+                        score = 0;
+                    snprintf(tmp, sizeof(tmp), "P%d: %d ", i + 1, score);
+                    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
+                }
+            }
+
+            // 去掉末尾多余的空格
+            size_t len = strlen(buf);
+            if (len > 0 && buf[len - 1] == ' ')
+            {
+                buf[len - 1] = '\0';
+            }
+
+            // 如果没有活跃玩家，显示默认文本
+            if (strlen(buf) == 0)
+            {
+                lv_label_set_text(over_score_label, "Score: 0");
+            }
+            else
+            {
+                lv_label_set_text(over_score_label, buf);
+            }
         }
         popup_show(over_popup);
         set_group(over_group);
@@ -752,18 +673,13 @@ lv_obj_t *ui_play_get_hud_layer(void)
  * STATIC FUNCTIONS
  **********************/
 /**
- * @brief 玩家拾取金币事件回调：实时更新金币标签显示
+ * @brief 玩家拾取金币事件回调 (金币标签由 cd_update_timer 轮询更新)
  */
 static void ui_play_event_hit_coin_cb(game_obj_t *src, game_obj_t *trg)
 {
     (void)src;
     (void)trg;
-    if (coin_label != NULL)
-        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
-#ifdef SIMULATOR
-    if (coin_p2_label != NULL)
-        lv_label_set_text_fmt(coin_p2_label, "%d", coin_get_p2_num());
-#endif
+    // 金币标签由 cd_update_timer_cb 每 100ms 轮询更新
 }
 
 /**
@@ -774,6 +690,7 @@ static void pause_exit_btn_event_cb(lv_event_t *e)
     LV_UNUSED(e);
     audio_load(AUDIO_MOUSECLOSE, AUDIO_CHAN_AUTO, false);
     event_dispatch(EVENT_GAME_OVER, NULL, NULL);
+    CONSOLE_DEBUG("Game over by exit button.");
     fsm_switch_state(GS_MENU);
     CONSOLE_INFO("State has been switched to %d", fsm_get_state());
 }
@@ -828,15 +745,6 @@ static void pause_setting_btn_event_cb(lv_event_t *e)
 /**
  * @brief 重新开始 — 保留金币，重新初始化关卡
  */
-static void over_restart_btn_event_cb(lv_event_t *e)
-{
-    LV_UNUSED(e);
-    mp_exit_game();
-    fsm_switch_state(GS_PLAY);
-    event_dispatch(EVENT_GAME_OVER, NULL, NULL);
-    event_dispatch(EVENT_GAME_START, NULL, NULL);
-}
-
 static void over_exit_btn_event_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
@@ -891,120 +799,165 @@ static void level_anim_finish(lv_anim_t *anim)
     // CONSOLE_INFO("Fade out animation scheduled");
 }
 
+/**
+ * @brief 游戏开始事件回调 — 显示活跃玩家的 HUD
+ * @note 必须在 player 模块之后注册事件, 保证 player_spawn 已完成。
+ *       game_init() 先调用 player_init() 再调用 ui_play_init_stage2(),
+ *       因此 player_on_start (EVENT_GAME_START) 先于此回调执行。
+ */
+/**
+ * @brief 游戏开始事件回调 — 显示活跃玩家的 HUD, 初始化 was_active 快照
+ * @note 必须在 player 模块之后注册事件, 保证 player_spawn 已完成。
+ *       game_init() 先调用 player_init() 再调用 ui_play_init_stage2(),
+ *       因此 player_on_start (EVENT_GAME_START) 先于此回调执行。
+ */
 static void ui_play_event_game_start_cb(game_obj_t *a, game_obj_t *b)
 {
-    coin_at_run_start = coin_get_num();
-#ifdef SIMULATOR
-    coin_p2_at_run_start = coin_get_p2_num();
-    if (mp_get_state() == MP_STATE_GAME_PLAY || mp_get_state() == MP_STATE_CONNECTED)
-    {
-        lv_obj_clear_flag(coin_p2_bar, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(cd_bg_x2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(cd_arc_x2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(cd_bg_y2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(cd_arc_y2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(cd_ready_x2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(cd_ready_y2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(hud_red_img, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text_fmt(coin_p2_label, "%d", coin_get_p2_num());
+    (void)a, (void)b;
+
+    /* 初始化 was_active 快照: 活跃玩家保持 true, 未生成的设为 false */
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++) {
+        game_obj_t *p = player_get(i);
+        if (p == NULL || !p->active)
+            player_was_active_set(p, false);
     }
-    else
+
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++)
     {
-        lv_obj_add_flag(coin_p2_bar, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(cd_bg_x2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(cd_arc_x2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(cd_bg_y2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(cd_arc_y2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(cd_ready_x2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(cd_ready_y2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(hud_red_img, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text_fmt(coin_p2_label, "%d", coin_get_p2_num());
+        game_obj_t *p = player_get(i);
+        bool active = (p != NULL && p->active);
+        CONSOLE_DEBUG("player %d active: %d", i, active);
+
+        if (hud_imgs[i])
+        {
+            if (active)
+                lv_obj_clear_flag(hud_imgs[i], LV_OBJ_FLAG_HIDDEN);
+            else
+            {
+                CONSOLE_DEBUG("hud img %d hidden", i);
+                lv_obj_add_flag(hud_imgs[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+        if (coin_bars[i])
+        {
+            if (active)
+                lv_obj_clear_flag(coin_bars[i], LV_OBJ_FLAG_HIDDEN);
+            else
+                lv_obj_add_flag(coin_bars[i], LV_OBJ_FLAG_HIDDEN);
+        }
+        if (cd_bg_x[i])
+        {
+            if (active)
+                lv_obj_clear_flag(cd_bg_x[i], LV_OBJ_FLAG_HIDDEN);
+            else
+                lv_obj_add_flag(cd_bg_x[i], LV_OBJ_FLAG_HIDDEN);
+        }
+        if (cd_arc_x[i])
+        {
+            if (active)
+                lv_obj_clear_flag(cd_arc_x[i], LV_OBJ_FLAG_HIDDEN);
+            else
+                lv_obj_add_flag(cd_arc_x[i], LV_OBJ_FLAG_HIDDEN);
+        }
+        if (cd_bg_y[i])
+        {
+            if (active)
+                lv_obj_clear_flag(cd_bg_y[i], LV_OBJ_FLAG_HIDDEN);
+            else
+                lv_obj_add_flag(cd_bg_y[i], LV_OBJ_FLAG_HIDDEN);
+        }
+        if (cd_arc_y[i])
+        {
+            if (active)
+                lv_obj_clear_flag(cd_arc_y[i], LV_OBJ_FLAG_HIDDEN);
+            else
+                lv_obj_add_flag(cd_arc_y[i], LV_OBJ_FLAG_HIDDEN);
+        }
+        // "Ready!" 标签由 cd_update_timer 根据 CD 百分比管理
     }
-#endif
+
     CONSOLE_INFO("Level 1 Animation Start.");
     ui_play_level_enter_anim("Level 1");
-    lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
 }
 
 /**
- * @brief 技能CD可视化定时器回调：更新CD弧和Ready文本
+ * @brief 技能CD可视化 + 金币标签轮询定时器回调 (每100ms)
  */
 static void cd_update_timer_cb(lv_timer_t *timer)
 {
     LV_UNUSED(timer);
     if (fsm_get_state() != GS_PLAY)
         return;
-    if (cd_arc_x == NULL || cd_arc_y == NULL)
-        return;
 
-    // —— X技能(E键) CD更新 ——
-    uint32_t cd_x = player_get_skill_x_cd();
-    uint32_t elapsed_x = player_get_skill_x_elapsed();
-    int pct_x;
-    if (cd_x == 0)
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++)
     {
-        pct_x = 100; // 无CD技能，始终就绪
-    }
-    else
-    {
-        pct_x = (elapsed_x >= cd_x) ? 100 : (int)(elapsed_x * 100 / cd_x);
-    }
-    lv_arc_set_value(cd_arc_x, pct_x);
-    if (pct_x >= 100)
-    {
-        lv_obj_clear_flag(cd_ready_x, LV_OBJ_FLAG_HIDDEN);
-    }
-    else
-    {
-        lv_obj_add_flag(cd_ready_x, LV_OBJ_FLAG_HIDDEN);
-    }
+        game_obj_t *p = player_get(i);
+        if (p == NULL || !p->active)
+        {
+            if (cd_arc_x[i])
+                lv_obj_add_flag(cd_arc_x[i], LV_OBJ_FLAG_HIDDEN);
+            if (cd_arc_y[i])
+                lv_obj_add_flag(cd_arc_y[i], LV_OBJ_FLAG_HIDDEN);
+            if (cd_bg_x[i])
+                lv_obj_add_flag(cd_bg_x[i], LV_OBJ_FLAG_HIDDEN);
+            if (cd_bg_y[i])
+                lv_obj_add_flag(cd_bg_y[i], LV_OBJ_FLAG_HIDDEN);
+            if (cd_ready_x[i])
+                lv_obj_add_flag(cd_ready_x[i], LV_OBJ_FLAG_HIDDEN);
+            if (cd_ready_y[i])
+                lv_obj_add_flag(cd_ready_y[i], LV_OBJ_FLAG_HIDDEN);
+            if (coin_bars[i])
+                lv_obj_add_flag(coin_bars[i], LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
 
-    // —— Y技能(F键) CD更新 ——
-    uint32_t cd_y = player_get_skill_y_cd();
-    uint32_t elapsed_y = player_get_skill_y_elapsed();
-    int pct_y;
-    if (cd_y == 0)
-    {
-        pct_y = 100;
-    }
-    else
-    {
-        pct_y = (elapsed_y >= cd_y) ? 100 : (int)(elapsed_y * 100 / cd_y);
-    }
-    lv_arc_set_value(cd_arc_y, pct_y);
-    if (pct_y >= 100)
-    {
-        lv_obj_clear_flag(cd_ready_y, LV_OBJ_FLAG_HIDDEN);
-    }
-    else
-    {
-        lv_obj_add_flag(cd_ready_y, LV_OBJ_FLAG_HIDDEN);
-    }
+        const character_config_t *cfg = player_character_get(p);
+        uint32_t now = play_tick_get();
 
-#ifdef SIMULATOR
-    if (mp_get_state() == MP_STATE_GAME_PLAY && cd_arc_x2)
-    {
-        // P2 X技能 CD
-        uint32_t cd_x2 = player_get_p2_skill_x_cd();
-        uint32_t ex2 = player_get_p2_skill_x_elapsed();
-        int p2x = (cd_x2 == 0) ? 100 : ((ex2 >= cd_x2) ? 100 : (int)(ex2 * 100 / cd_x2));
-        lv_arc_set_value(cd_arc_x2, p2x);
-        if (p2x >= 100)
-            lv_obj_clear_flag(cd_ready_x2, LV_OBJ_FLAG_HIDDEN);
-        else
-            lv_obj_add_flag(cd_ready_x2, LV_OBJ_FLAG_HIDDEN);
+        // X 技能 CD
+        if (cd_arc_x[i])
+        {
+            uint32_t elapsed_x = now - player_skill_x_last_use_get(p);
+            int pct_x = (cfg->skill_x_cd > 0)
+                            ? (int)(elapsed_x * 100 / cfg->skill_x_cd)
+                            : 100;
+            if (pct_x > 100)
+                pct_x = 100;
+            lv_arc_set_value(cd_arc_x[i], pct_x);
+            if (cd_ready_x[i])
+            {
+                if (pct_x >= 100)
+                    lv_obj_clear_flag(cd_ready_x[i], LV_OBJ_FLAG_HIDDEN);
+                else
+                    lv_obj_add_flag(cd_ready_x[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
 
-        // P2 Y技能 CD
-        uint32_t cd_y2 = player_get_p2_skill_y_cd();
-        uint32_t ey2 = player_get_p2_skill_y_elapsed();
-        int p2y = (cd_y2 == 0) ? 100 : ((ey2 >= cd_y2) ? 100 : (int)(ey2 * 100 / cd_y2));
-        lv_arc_set_value(cd_arc_y2, p2y);
-        if (p2y >= 100)
-            lv_obj_clear_flag(cd_ready_y2, LV_OBJ_FLAG_HIDDEN);
-        else
-            lv_obj_add_flag(cd_ready_y2, LV_OBJ_FLAG_HIDDEN);
+        // Y 技能 CD
+        if (cd_arc_y[i])
+        {
+            uint32_t elapsed_y = now - player_skill_y_last_use_get(p);
+            int pct_y = (cfg->skill_y_cd > 0)
+                            ? (int)(elapsed_y * 100 / cfg->skill_y_cd)
+                            : 100;
+            if (pct_y > 100)
+                pct_y = 100;
+            lv_arc_set_value(cd_arc_y[i], pct_y);
+            if (cd_ready_y[i])
+            {
+                if (pct_y >= 100)
+                    lv_obj_clear_flag(cd_ready_y[i], LV_OBJ_FLAG_HIDDEN);
+                else
+                    lv_obj_add_flag(cd_ready_y[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+
+        // 金币标签轮询
+        if (coin_labels[i])
+            lv_label_set_text_fmt(coin_labels[i], "%d", player_coin_count_get(p));
+
+        // CONSOLE_DEBUG("Player %d,coin count: %d", i, player_coin_count_get(p));
     }
-#endif
 }
 
 /**
@@ -1042,31 +995,53 @@ static void ui_play_event_player_hurt_cb(game_obj_t *a, game_obj_t *b)
 static void ui_play_event_game_over_cb(game_obj_t *a, game_obj_t *b)
 {
     (void)a, (void)b;
-#ifdef SIMULATOR
-    lv_obj_add_flag(coin_p2_bar, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_bg_x2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_arc_x2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_bg_y2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_arc_y2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_ready_x2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_ready_y2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(hud_red_img, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text_fmt(coin_p2_label, "%d", coin_get_p2_num());
-#endif
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++)
+    {
+        if (hud_imgs[i])
+        {
+            CONSOLE_DEBUG("hud img %d hidden", i);
+            lv_obj_add_flag(hud_imgs[i], LV_OBJ_FLAG_HIDDEN);
+        }
+        if (coin_bars[i])
+            lv_obj_add_flag(coin_bars[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_bg_x[i])
+            lv_obj_add_flag(cd_bg_x[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_arc_x[i])
+            lv_obj_add_flag(cd_arc_x[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_bg_y[i])
+            lv_obj_add_flag(cd_bg_y[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_arc_y[i])
+            lv_obj_add_flag(cd_arc_y[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_ready_x[i])
+            lv_obj_add_flag(cd_ready_x[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_ready_y[i])
+            lv_obj_add_flag(cd_ready_y[i], LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 static void on_mp_disconnected(mp_event_t e, void *v)
 {
     (void)e, (void)v;
-#ifdef SIMULATOR
-    lv_obj_add_flag(coin_p2_bar, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_bg_x2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_arc_x2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_bg_y2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_arc_y2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_ready_x2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(cd_ready_y2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(hud_red_img, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text_fmt(coin_p2_label, "%d", coin_get_p2_num());
-#endif
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++)
+    {
+        if (hud_imgs[i])
+        {
+            CONSOLE_DEBUG("hud img %d hidden", i);
+            lv_obj_add_flag(hud_imgs[i], LV_OBJ_FLAG_HIDDEN);
+        }
+        if (coin_bars[i])
+            lv_obj_add_flag(coin_bars[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_bg_x[i])
+            lv_obj_add_flag(cd_bg_x[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_arc_x[i])
+            lv_obj_add_flag(cd_arc_x[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_bg_y[i])
+            lv_obj_add_flag(cd_bg_y[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_arc_y[i])
+            lv_obj_add_flag(cd_arc_y[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_ready_x[i])
+            lv_obj_add_flag(cd_ready_x[i], LV_OBJ_FLAG_HIDDEN);
+        if (cd_ready_y[i])
+            lv_obj_add_flag(cd_ready_y[i], LV_OBJ_FLAG_HIDDEN);
+    }
 }

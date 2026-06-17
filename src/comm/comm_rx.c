@@ -72,18 +72,15 @@ static bool if_receive_disconnect = false;
 static bool has_coin_sync = false;
 static int32_t received_coin_count = 0;
 
-#ifdef SIMULATOR // PC
 static uint8_t stored_key_mask = 0;
 static int16_t stored_joystick_x = 0;
 static int16_t stored_joystick_y = 0;
-static char stored_log[256] = {0};
-static uint16_t stored_log_len = 0;
-// 新数据标志
 static bool new_key_data = false;
 static bool new_joystick_data = false;
+#ifdef SIMULATOR // PC
+static char stored_log[256] = {0};
+static uint16_t stored_log_len = 0;
 static bool new_log_data = false;
-#else           // MCU
-
 #endif
 
 /**********************
@@ -262,85 +259,42 @@ void comm_handle_heartbeat(void)
 #endif
 }
 
-// getters
-#ifdef SIMULATOR
-/**
- * @brief 检查是否有新的按键数据
- * @return true=有新数据，false=无新数据
- */
-bool comm_has_new_key_data(void)
-{
-    return new_key_data;
-}
+// getters — key/joystick 两个平台共用, log 仅 PC
 
-/**
- * @brief 获取最新的按键掩码
- * @return 按键掩码
- */
+bool comm_has_new_key_data(void)    { return new_key_data; }
+
 uint8_t comm_get_key_mask(void)
 {
-    new_key_data = false;  // 读取后清除标志
+    new_key_data = false;
     return stored_key_mask;
 }
 
-/**
- * @brief 检查是否有新的摇杆数据
- * @return true=有新数据，false=无新数据
- */
-bool comm_has_new_joystick_data(void)
-{
-    return new_joystick_data;
-}
+bool comm_has_new_joystick_data(void) { return new_joystick_data; }
 
-/**
- * @brief 获取最新的摇杆数据x轴
- * @return 摇杆数据x轴值
- */
 int16_t comm_get_joystick_x(void)
 {
-    new_joystick_data = false;  // 读取后清除标志
+    new_joystick_data = false;
     return stored_joystick_x;
 }
 
-/**
- * @brief 获取最新的摇杆数据y轴
- * @return 摇杆数据y轴值
- */
 int16_t comm_get_joystick_y(void)
 {
-    new_joystick_data = false;  // 读取后清除标志
+    new_joystick_data = false;
     return stored_joystick_y;
 }
 
-/**
- * @brief 检查是否有新的日志数据
- * @return true=有新数据，false=无新数据
- */
-bool comm_has_new_log(void)
-{
-    return new_log_data;
-}
+#ifdef SIMULATOR
+bool comm_has_new_log(void) { return new_log_data; }
 
-/**
- * @brief 获取最新的日志数据
- * @param[out] buffer 存储日志的缓冲区
- * @param[in] buf_size 缓冲区大小
- * @return 实际复制的日志长度
- */
 uint16_t comm_get_log(char *buffer, uint16_t buf_size)
 {
     if (!buffer || buf_size == 0) return 0;
-
     uint16_t copy_len = (stored_log_len < buf_size - 1) ? stored_log_len : buf_size - 1;
     memcpy(buffer, stored_log, copy_len);
     buffer[copy_len] = '\0';
-
-    new_log_data = false;  // 读取后清除标志
+    new_log_data = false;
     return copy_len;
 }
-
-#else // MCU
-
 #endif
 
 /**
@@ -443,34 +397,18 @@ static bool data_process()
 {
     switch (frame_type) {
         case COMM_FRAME_KEY_STATE:
-#ifdef SIMULATOR
-
             if (frame_length >= 1) {
                 stored_key_mask = frame_data[0];
                 new_key_data = true;
-                //CONSOLE_INFO("Success getting MCU key state: 0x%02X", stored_key_mask);
             }
-
-#else
-            CONSOLE_WARNING("Key state frame received in non-simulator mode!");
-            LOG_WARNING("Key state frame received in non-simulator mode!");
-            return false;
-#endif
             break;
 
         case COMM_FRAME_JOYSTICK:
-#ifdef SIMULATOR
             if (frame_length >= 4) {
                 stored_joystick_x = (frame_data[1] << 8) | frame_data[0];
                 stored_joystick_y = (frame_data[3] << 8) | frame_data[2];
                 new_joystick_data = true;
-                //CONSOLE_INFO("Success getting MCU joystick: (%d, %d)", stored_joystick_x, stored_joystick_y);
             }
-#else
-            CONSOLE_WARNING("Joystick frame received in non-simulator mode!");
-            LOG_WARNING("Joystick frame received in non-simulator mode!");
-            return false;
-#endif
             break;
 
         case COMM_FRAME_LOG:

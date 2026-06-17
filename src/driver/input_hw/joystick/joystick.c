@@ -10,10 +10,10 @@
 #include "tools.h"
 #include <stdbool.h>
 #include "config.h"
-#ifdef SIMULATOR
-#include "SDL.h"
 #include "comm_rx.h"
 #include "comm_status.h"
+#ifdef SIMULATOR
+#include "SDL.h"
 #else
 #include "drivers.h"
 #include "gd32h7xx_adc.h"
@@ -186,33 +186,16 @@ int16_t joystick_get_y()
     return joystick.state.y;
 }
 
-/**
- * @brief 获取远程摇杆 x 处理值 (PC: 读 comm_rx, MCU: stub)
- */
 int16_t rjoystick_get_x(void)
 {
-#ifdef SIMULATOR
-    if (comm_get_status() != COMM_STATUS_CONNECTED) {
-        return 0;
-    }
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return 0;
     return comm_get_joystick_x();
-#else
-    return 0;
-#endif
 }
-/**
- * @brief 获取远程摇杆 y 处理值 (PC: 读 comm_rx, MCU: stub)
- */
+
 int16_t rjoystick_get_y(void)
 {
-#ifdef SIMULATOR
-    if (comm_get_status() != COMM_STATUS_CONNECTED) {
-        return 0;
-    }
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return 0;
     return comm_get_joystick_y();
-#else
-    return 0;
-#endif
 }
 
  /**********************

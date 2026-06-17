@@ -12,9 +12,7 @@
 #include "key_core.h"
 #include "config.h"
 #include <string.h>
-#ifdef SIMULATOR
 #include "comm_rx.h"
-#endif
 
 /**********************
  *      MACROS
@@ -68,12 +66,9 @@ void rkey_init(void)
  */
 void rkey_scan(void)
 {
+    uint8_t mask = comm_get_key_mask();
     for (int i = 0; i < RKEY_COUNT; i++) {
-        bool stable = false;
-#ifdef SIMULATOR
-        uint8_t mask = comm_get_key_mask();
-        stable = (mask >> i) & 1;
-#endif
+        bool stable = (mask >> i) & 1;
         key_state_machine(&rkeys[i].state, &rkeys[i].press_tick,
                           &rkeys[i].pressed_reset_cnt, &rkeys[i].released_reset_cnt, stable);
     }

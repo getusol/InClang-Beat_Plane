@@ -17,6 +17,7 @@
 #include "apr.h"
 #include "coin.h"
 #include "audio.h"
+#include "config.h"
 
 /**********************
  *      MACROS
@@ -231,26 +232,22 @@ static void boss_fire_barrage(game_obj_t *g)
  */
 static void boss_fire_tracking(game_obj_t *g)
 {
-    game_obj_t *p1 = player_get_base();
-#ifdef SIMULATOR
-    game_obj_t *p2 = player_get_p2_base();
-    // 选择最近的活跃玩家作为追踪目标
-    game_obj_t *player = p1;
-    if (p2 && p2->active)
+    game_obj_t *p = NULL;
+    int best_len = 0;
+    int cur_len = 0;
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++)
     {
-        if (!p1 || !p1->active)
-            player = p2;
-        else
+        game_obj_t *player = player_get(i);
+        if (player->active == false)
+            continue;
+        cur_len = vec_length(g->x - player->x, g->y - player->y);
+        if (cur_len > best_len)
         {
-            int d1 = abs(g->x - p1->x) + abs(g->y - p1->y);
-            int d2 = abs(g->x - p2->x) + abs(g->y - p2->y);
-            player = (d2 < d1) ? p2 : p1;
+            best_len = cur_len;
+            p = player;
         }
     }
-#else
-    game_obj_t *player = p1;
-#endif
-    if (player == NULL || !player->active)
+    if (p == NULL || !p->active)
         return;
 
     lv_coord_t cx = g->x + g->apr->w / 2;
@@ -258,7 +255,7 @@ static void boss_fire_tracking(game_obj_t *g)
 
     behave_t track_behave = {
         .f = bullet_behave_track_player,
-        .usr_data = (void *)player,
+        .usr_data = (void *)p,
     };
 
     bullet_create(g, cx, cy, 0, 2, 25, track_behave, APR_BULLET_TRIANGLE);

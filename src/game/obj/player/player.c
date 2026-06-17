@@ -19,6 +19,7 @@
 #include "ui_play.h" // for hud layer
 #include "bullet.h"  // for bullet damage calculation
 #include "enemy.h"   // for enemy damage calculation
+#include "coin.h"    // for coin value calculation
 
 /**********************
  *      MACROS
@@ -42,18 +43,21 @@
 typedef struct
 {
     game_obj_t base; // 继承自游戏对象
+    uint16_t pool_index;
     int16_t hp;
     lv_obj_t *hp_bar;                    // 生命值显示的lvgl对象指针
-    const character_config_t *character; // 角色属性 包括生命值、射速、子弹参数、技能CD、技能函数、技能描述等
-    uint16_t pool_index;
+    int coin_count;                      // 玩家当前携带的金币数量
+    const character_config_t *character; // 角色属性 包括最大生命值、射速、子弹参数、技能CD、技能函数、技能描述等
     // 护盾
-    lv_obj_t *shield_overlay;
     bool shield_active;
+    lv_obj_t *shield_overlay;
     // 技能CD可视化用 — 上次使用时刻(play_tick)
     uint32_t skill_x_last_use;
     uint32_t skill_y_last_use;
     // 普攻CD追踪
     uint32_t fire_last_tick;
+    // 是否在本局游戏开始时就已生成 (用于分数显示判断)
+    bool was_active;
 } player_t;
 
 /**********************
@@ -71,6 +75,7 @@ static void player_on_start(game_obj_t *g, game_obj_t *target);
 static void player_on_death(game_obj_t *g, game_obj_t *target);
 static void player_bullet_hit_player_cb(game_obj_t *src, game_obj_t *trg);
 static void player_player_hit_enemy_cb(game_obj_t *src, game_obj_t *trg);
+static void player_player_hit_coin_cb(game_obj_t *src, game_obj_t *trg);
 
 // lvgl组件创建函数
 
@@ -107,9 +112,13 @@ void player_init(lv_obj_t *parent)
         players[i].base.behave = NULL_BEHAVE;
         players[i].base.type = GAME_OBJ_TYPE_PLAYER;
         players[i].base.obj = lv_img_create(parent);
-        players[i].hp_bar = player_hp_bar_create(&players[i], ui_play_get_hud_layer(), i);
+        CONSOLE_DEBUG("Created player obj %d", i);
+        players[i].hp_bar = player_hp_bar_create(&(players[i].base), ui_play_get_hud_layer(), i);
+        CONSOLE_DEBUG("Created player hp bar %d", i);
         players[i].shield_overlay = player_shield_overlay_create(&(players[i].base), parent);
+        CONSOLE_DEBUG("Created player shield overlay %d", i);
         player_character_set(&(players[i].base), PLAYER);
+        CONSOLE_DEBUG("Set player character %d", i);
         players[i].base.hide = player_hide;
         players[i].base.show = player_show;
         players[i].base.update = player_update;
@@ -124,6 +133,9 @@ void player_init(lv_obj_t *parent)
 
     event_register(EVENT_BULLET_HIT_PLAYER, player_bullet_hit_player_cb);
     event_register(EVENT_PLAYER_HIT_ENEMY, player_player_hit_enemy_cb);
+    event_register(EVENT_PLAYER_HIT_COIN, player_player_hit_coin_cb);
+
+    CONSOLE_DEBUG("Player init done");
 }
 
 /**
@@ -155,15 +167,29 @@ game_obj_t *player_spawn(lv_coord_t x, lv_coord_t y,
     p->base.vy = 0;
     lv_obj_set_pos(p->base.obj, x, y);
     p->base.behave = behave;
-    p->base.speed = 7;
+    p->base.speed = 14;
+    p->coin_count = 0;
     player_character_set(&(p->base), character_id);
     p->shield_active = false;
     p->skill_x_last_use = 0;
     p->skill_y_last_use = 0;
     p->fire_last_tick = 0;
+    p->was_active = true;
     active_player_count++;
     p->base.show(&(p->base));
     return &(p->base);
+}
+
+/**
+ * @brief 获取玩家基类指针根据对象池索引
+ * @param pool_index 玩家对象池索引
+ * @return game_obj_t* 玩家对象指针
+ */
+game_obj_t *player_get(uint16_t pool_index)
+{
+    if (pool_index >= MAX_PLAYER_COUNT)
+        return NULL;
+    return &players[pool_index].base;
 }
 
 /**
@@ -194,6 +220,21 @@ const character_config_t *player_character_get(game_obj_t *player)
 }
 
 /**
+ * @brief 获取玩家金币数量
+ * @param player 玩家对象
+ * @return int 金币数量
+ */
+int player_coin_count_get(game_obj_t *player)
+{
+    if (player == NULL)
+    {
+        CONSOLE_WARNING("Player is NULL,coin count is 0");
+        return 0;
+    }
+    return AS_PLAYER(player)->coin_count;
+}
+
+/**
  * @brief 设置玩家生命值
  * @param player 玩家对象
  * @param hp 生命值
@@ -202,10 +243,10 @@ void player_hp_set(game_obj_t *player, int hp)
 {
     if (player == NULL)
         return;
-    int16_t target_hp = 0;
-    if (hp < 0)
+    int16_t target_hp = (int16_t)hp;
+    if (target_hp < 0)
         target_hp = 0;
-    if (hp > AS_PLAYER(player)->character->hp_max)
+    if (target_hp > AS_PLAYER(player)->character->hp_max)
         target_hp = AS_PLAYER(player)->character->hp_max;
     AS_PLAYER(player)->hp = target_hp;
     if (AS_PLAYER(player)->hp_bar != NULL)
@@ -245,7 +286,8 @@ bool player_shield_is_active(game_obj_t *player)
  */
 void player_shield_set_active(game_obj_t *player, bool active)
 {
-    if (player == NULL) return;
+    if (player == NULL)
+        return;
     AS_PLAYER(player)->shield_active = active;
 }
 
@@ -254,7 +296,8 @@ void player_shield_set_active(game_obj_t *player, bool active)
  */
 uint32_t player_fire_last_tick_get(game_obj_t *player)
 {
-    if (player == NULL) return 0;
+    if (player == NULL)
+        return 0;
     return AS_PLAYER(player)->fire_last_tick;
 }
 
@@ -263,7 +306,8 @@ uint32_t player_fire_last_tick_get(game_obj_t *player)
  */
 void player_fire_last_tick_set(game_obj_t *player, uint32_t tick)
 {
-    if (player == NULL) return;
+    if (player == NULL)
+        return;
     AS_PLAYER(player)->fire_last_tick = tick;
 }
 
@@ -272,7 +316,8 @@ void player_fire_last_tick_set(game_obj_t *player, uint32_t tick)
  */
 uint32_t player_skill_x_last_use_get(game_obj_t *player)
 {
-    if (player == NULL) return 0;
+    if (player == NULL)
+        return 0;
     return AS_PLAYER(player)->skill_x_last_use;
 }
 
@@ -281,7 +326,8 @@ uint32_t player_skill_x_last_use_get(game_obj_t *player)
  */
 void player_skill_x_last_use_set(game_obj_t *player, uint32_t tick)
 {
-    if (player == NULL) return;
+    if (player == NULL)
+        return;
     AS_PLAYER(player)->skill_x_last_use = tick;
 }
 
@@ -290,7 +336,8 @@ void player_skill_x_last_use_set(game_obj_t *player, uint32_t tick)
  */
 uint32_t player_skill_y_last_use_get(game_obj_t *player)
 {
-    if (player == NULL) return 0;
+    if (player == NULL)
+        return 0;
     return AS_PLAYER(player)->skill_y_last_use;
 }
 
@@ -299,8 +346,21 @@ uint32_t player_skill_y_last_use_get(game_obj_t *player)
  */
 void player_skill_y_last_use_set(game_obj_t *player, uint32_t tick)
 {
-    if (player == NULL) return;
+    if (player == NULL)
+        return;
     AS_PLAYER(player)->skill_y_last_use = tick;
+}
+
+bool player_was_active_get(game_obj_t *player)
+{
+    if (player == NULL) return false;
+    return AS_PLAYER(player)->was_active;
+}
+
+void player_was_active_set(game_obj_t *player, bool val)
+{
+    if (player == NULL) return;
+    AS_PLAYER(player)->was_active = val;
 }
 
 /**********************
@@ -328,7 +388,8 @@ static void player_update(game_obj_t *g)
     }
 
     // 显示由创建负责管理(即show)
-    if (AS_PLAYER(g)->hp <= 0)
+
+    if (AS_PLAYER(g)->hp <= 0 && g->active)
         event_dispatch(EVENT_PLAYER_DIE, g, NULL);
     player_move(g);
 }
@@ -417,7 +478,11 @@ static void player_on_death(game_obj_t *g, game_obj_t *target)
     if (active_player_count > 0)
         active_player_count--;
     if (active_player_count == 0)
+    {
+        fsm_switch_state(GS_OVER);
         event_dispatch(EVENT_GAME_OVER, NULL, NULL);
+        CONSOLE_DEBUG("Game over by player death.");
+    }
 }
 
 /**
@@ -456,12 +521,37 @@ static void player_bullet_hit_player_cb(game_obj_t *src, game_obj_t *trg)
  * @param src 玩家对象
  * @param trg 敌人对象
  */
+/**
+ * @brief 玩家被敌人碰撞事件回调
+ * @param src 玩家对象 (EVENT_PLAYER_HIT_ENEMY: src=玩家, trg=敌人)
+ * @param trg 敌人对象
+ */
 static void player_player_hit_enemy_cb(game_obj_t *src, game_obj_t *trg)
 {
     if (src == NULL || trg == NULL)
         return;
-    int16_t damage = enemy_get_damage(src);
-    player_hp_modify(trg, -damage);
+    int16_t damage = enemy_get_damage(trg);
+    player_hp_modify(src, -damage);
+}
+
+/**
+ * @brief 玩家被金币击中事件处理
+ * @param src 玩家对象
+ * @param trg 金币对象
+ */
+/**
+ * @brief 玩家拾取金币事件回调
+ * @param src 玩家对象 (EVENT_PLAYER_HIT_COIN: src=玩家, trg=金币)
+ * @param trg 金币对象
+ */
+static void player_player_hit_coin_cb(game_obj_t *src, game_obj_t *trg)
+{
+    if (src == NULL || trg == NULL)
+        return;
+    int value = coin_get_value(trg);
+    AS_PLAYER(src)->coin_count += value;
+    CONSOLE_DEBUG("Player %p hit coin, add %d coins, now: %d",
+                  src, value, AS_PLAYER(src)->coin_count);
 }
 
 /**
@@ -473,12 +563,14 @@ static void player_player_hit_enemy_cb(game_obj_t *src, game_obj_t *trg)
  */
 static lv_obj_t *player_hp_bar_create(game_obj_t *g, lv_obj_t *parent, int index)
 {
+    CONSOLE_DEBUG("Created player hp bar %d,parent: %p,game_obj:%p", index, parent, g);
     lv_obj_t *hp_bar = lv_bar_create(parent);
     lv_obj_set_size(hp_bar, 162, 18);
     lv_obj_set_align(hp_bar, LV_ALIGN_TOP_LEFT);
     lv_obj_set_pos(hp_bar, 21, 18 + 78 * index);
-    lv_bar_set_range(hp_bar, 0, ((player_t *)g)->character->hp_max);
-    lv_bar_set_value(hp_bar, ((player_t *)g)->hp, LV_ANIM_OFF);
+    // 由character_set负责设置
+    // lv_bar_set_range(hp_bar, 0, AS_PLAYER(g)->character->hp_max);
+    // lv_bar_set_value(hp_bar, AS_PLAYER(g)->hp, LV_ANIM_OFF);
     lv_obj_set_style_bg_color(hp_bar, lv_palette_main(LV_PALETTE_RED), LV_PART_INDICATOR);
     lv_obj_add_flag(hp_bar, LV_OBJ_FLAG_HIDDEN);
     return hp_bar;

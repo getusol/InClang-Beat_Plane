@@ -26,7 +26,7 @@
 
 #define CONSOLE_ENABLE 1         // 主开关
 #define CONSOLE_DEBUG_ENABLE 1   // [DEBUG] 详细信息，默认关闭
-#define CONSOLE_INFO_ENABLE 0    // [INFO]
+#define CONSOLE_INFO_ENABLE 1    // [INFO]
 #define CONSOLE_WARNING_ENABLE 1 // [WARNING]
 #define CONSOLE_ERROR_ENABLE 1   // [ERROR]
 
@@ -92,7 +92,7 @@
 
 #endif // #ifdef SIMULATOR
 
-#define JS_THRESHOLD 20 // 控制手柄输入上推阈值(UI交互)
+#define JS_THRESHOLD 100 // 控制手柄输入上推阈值(UI交互)
 
 /*-------------
  * KEYBOARD
@@ -136,7 +136,7 @@
  * PLAYER
  *-----------*/
 
-#define MAX_PLAYER_COUNT 2 // 最大玩家数量
+#define MAX_PLAYER_COUNT 3 // 最大玩家数量
 
 /*-------------
  * BULLET

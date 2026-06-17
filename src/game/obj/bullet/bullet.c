@@ -15,6 +15,7 @@
 #include "fsm.h"
 #include "game.h"
 #include "event.h"
+#include "player.h"
 
 /**********************
  *      MACROS
@@ -53,6 +54,8 @@ static void bullet_move(game_obj_t *g);
 static void bullet_event_hit_enemy_cb(game_obj_t *scr, game_obj_t *trg);
 static void bullet_event_hit_player_cb(game_obj_t *scr, game_obj_t *trg);
 static void bullet_event_hit_flame_wall_cb(game_obj_t *scr, game_obj_t *trg);
+
+static void bullet_apply_slow_visual(bullet_t *b, bool enable);
 
 /***********************
  *   GLOBAL PROTOTYPES

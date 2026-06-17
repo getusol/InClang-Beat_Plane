@@ -40,12 +40,12 @@ void comm_rx_update(void);
 
 // getters get received and stored data
 
-#ifdef SIMULATOR // PC
 bool comm_has_new_key_data(void);
 uint8_t comm_get_key_mask(void);
 bool comm_has_new_joystick_data(void);
 int16_t comm_get_joystick_x(void);
 int16_t comm_get_joystick_y(void);
+#ifdef SIMULATOR // PC
 bool comm_has_new_log(void);
 uint16_t comm_get_log(char *buffer, uint16_t buf_size);
 #endif

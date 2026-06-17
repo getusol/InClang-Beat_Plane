@@ -1,5 +1,6 @@
 /**
  * @file ui_base.h
+ * @brief 基地/机库 — 飞机选择 & 解锁状态查询
  */
 
 #ifndef __UI_BASE_H__
@@ -9,6 +10,8 @@
  *      INCLUDES
  *********************/
 
+#include "character.h"
+
 /**********************
  *      MACROS
  **********************/
@@ -17,17 +20,6 @@
  *      TYPEDEFS
  **********************/
 
-/** 飞机 ID 枚举 —— 用于查询解锁状态、选择飞机等 */
-typedef enum
-{
-    PLANE_ID_DEFAULT = 0,
-    PLANE_ID_EMBER = 1,
-    PLANE_ID_STREAM = 2,
-    PLANE_ID_VERDANT = 3,
-
-    PLANE_ID_MAX,
-} plane_id_t;
-
 /***********************
  *   GLOBAL PROTOTYPES
  ***********************/
@@ -35,15 +27,10 @@ typedef enum
 void ui_base_init_stage1(void);
 void ui_base_init_stage2(void);
 void ui_base_run(void);
-plane_id_t ui_base_get_selected_plane_id(void);
-void ui_base_set_selected_plane_id(plane_id_t id);
-plane_id_t ui_base_get_p1_selected_plane_id(void);
-plane_id_t ui_base_get_p2_selected_plane_id(void);
-void ui_base_set_p1_selected_plane_id(plane_id_t id);
-void ui_base_set_p2_selected_plane_id(plane_id_t id);
-bool ui_base_plane_is_unlocked(plane_id_t plane_id);
-void ui_base_plane_unlock(plane_id_t plane_id);
-int ui_base_get_unlocked_mask(void);
-void ui_base_set_unlocked_mask(int mask);
 
-#endif // #ifndef __UI_BASE_H__
+character_id_t ui_base_get_selected_character_id(void);
+void           ui_base_set_selected_character_id(character_id_t id);
+bool           ui_base_character_is_unlocked(character_id_t id);
+void           ui_base_character_unlock(character_id_t id);
+
+#endif /* __UI_BASE_H__ */

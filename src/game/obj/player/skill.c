@@ -103,9 +103,9 @@ void skill_triple_shot(game_obj_t *obj)
 
     bullet_create(obj, cx, cy, 0, -20,
                   45, NULL_BEHAVE, APR_BULLET_MARKSMANROUND);
-    bullet_create(obj, cx, cy, -1, -12,
+    bullet_create(obj, cx, cy, -2, -19,
                   55, NULL_BEHAVE, APR_BULLET_MARKSMANROUND);
-    bullet_create(obj, cx, cy, 1, -12,
+    bullet_create(obj, cx, cy, 2, -19,
                   55, NULL_BEHAVE, APR_BULLET_MARKSMANROUND);
 }
 

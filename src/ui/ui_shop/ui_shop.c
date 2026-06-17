@@ -354,13 +354,13 @@ void ui_shop_init_stage2(void)
 
     coin_label = lv_label_create(coin_img);
     lv_obj_set_pos(coin_label, 120, 23);
-    lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+    lv_label_set_text_fmt(coin_label, "%d", 0);
     lv_obj_set_style_text_font(coin_label, &lv_font_montserrat_16, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(coin_label, lv_color_white(), LV_STATE_DEFAULT);
 
     if (coin_label != NULL)
     {
-        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+        lv_label_set_text_fmt(coin_label, "%d", 0);
     }
 }
 
@@ -375,7 +375,7 @@ void ui_shop_run(void)
 
     if (coin_label != NULL)
     {
-        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+        lv_label_set_text_fmt(coin_label, "%d", 0);
     }
 
     // 每次切回界面时重置隐藏状态
@@ -463,17 +463,15 @@ static void draw_btn_event_cb(lv_event_t *e)
         return; // 退出窗口显示时无法抽奖
 
     // 检查金币是否足够
-    if (coin_get_num() < DRAW_COST)
+    if (true) // coin_get_num() < DRAW_COST)
     {
         CONSOLE_INFO("Coins insufficient");
         return;
     }
 
-    coin_add_num(-DRAW_COST);
-
     if (coin_label != NULL)
     {
-        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+        lv_label_set_text_fmt(coin_label, "%d", 0); // coin_get_num());
     }
 
     target_slot = get_random_reward_slot();
@@ -632,27 +630,27 @@ static void give_reward(int slot)
     switch (slot)
     {
     case 1:
-        coin_add_num(5);
+        // coin_add_num(5);
         break;
     case 3:
-        coin_add_num(10);
+        // coin_add_num(10);
         break;
     case 5:
-        coin_add_num(20);
+        // coin_add_num(20);
         break;
     case 7:
-        coin_add_num(200);
+        // coin_add_num(200);
         break;
     case 0:
-        ui_base_plane_unlock(PLANE_ID_EMBER);
+        ui_base_character_unlock(EMBER);
         CONSOLE_INFO("Unlocked Ember Plane!");
         break;
     case 2:
-        ui_base_plane_unlock(PLANE_ID_STREAM);
+        ui_base_character_unlock(STREAM);
         CONSOLE_INFO("Unlocked Stream Plane!");
         break;
     case 4:
-        ui_base_plane_unlock(PLANE_ID_VERDANT);
+        ui_base_character_unlock(VERDANT);
         CONSOLE_INFO("Unlocked Verdant Plane!");
         break;
     }
@@ -660,6 +658,6 @@ static void give_reward(int slot)
     // 更新金币显示
     if (coin_label != NULL)
     {
-        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+        lv_label_set_text_fmt(coin_label, "%d", 0); // coin_get_num());
     }
 }

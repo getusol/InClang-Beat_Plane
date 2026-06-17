@@ -50,51 +50,48 @@ static void send_escaped_byte(uint8_t byte);
  *                 0000 0100 -> X
  *                 0000 1000 -> Y
  */
-void comm_mcu_send_key_state(uint8_t key_mask)
+void comm_send_key_state(uint8_t key_mask)
 {
-#ifndef SIMULATOR
+#ifdef SIMULATOR
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return;
+#else
 #if DO_MCU_SEND_INPUT
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return;
+#endif
+#endif
     uart_send_byte(COMM_SOF);
     send_escaped_byte(COMM_FRAME_KEY_STATE);
-    send_escaped_byte(0x00); //长度高字节
-    send_escaped_byte(0x01); //长度低字节（1字节）
-    send_escaped_byte(key_mask); // 发送掩码
+    send_escaped_byte(0x00);
+    send_escaped_byte(0x01);
+    send_escaped_byte(key_mask);
     uint8_t checksum = calculate_checksum(&key_mask, 1);
     send_escaped_byte(checksum);
     uart_send_byte(COMM_EOF);
-#endif
-#endif
 }
 
-/**
- * @brief 发送摇杆状态
- * @param x 摇杆X轴位置（-JOY_MAX_VALUE-JOY_MAX_VALUE）
- * @param y 摇杆Y轴位置（-JOY_MAX_VALUE-JOY_MAX_VALUE）
- */
-void comm_mcu_send_joystick(int16_t x, int16_t y)
+void comm_send_joystick(int16_t x, int16_t y)
 {
-#ifndef SIMULATOR
+#ifdef SIMULATOR
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return;
+#else
 #if DO_MCU_SEND_INPUT
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return;
+#endif
+#endif
     uint8_t data[4];
-    data[0] = x & 0xFF;           // X 低字节
-    data[1] = (x >> 8) & 0xFF;    // X 高字节
-    data[2] = y & 0xFF;           // Y 低字节
-    data[3] = (y >> 8) & 0xFF;    // Y 高字节
+    data[0] = x & 0xFF;
+    data[1] = (x >> 8) & 0xFF;
+    data[2] = y & 0xFF;
+    data[3] = (y >> 8) & 0xFF;
 
     uart_send_byte(COMM_SOF);
     send_escaped_byte(COMM_FRAME_JOYSTICK);
-    send_escaped_byte(0x00); //长度高字节
-    send_escaped_byte(0x04); //长度低字节（4字节）
-
-    for (int i = 0; i < 4; i++) {
-        send_escaped_byte(data[i]);
-    }
-
+    send_escaped_byte(0x00);
+    send_escaped_byte(0x04);
+    for (int i = 0; i < 4; i++) send_escaped_byte(data[i]);
     uint8_t checksum = calculate_checksum(data, 4);
     send_escaped_byte(checksum);
     uart_send_byte(COMM_EOF);
-#endif
-#endif
 }
 
 /**

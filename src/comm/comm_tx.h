@@ -27,8 +27,8 @@
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void comm_mcu_send_key_state(uint8_t key_mask);
-void comm_mcu_send_joystick(int16_t x, int16_t y);
+void comm_send_key_state(uint8_t key_mask);
+void comm_send_joystick(int16_t x, int16_t y);
 void comm_mcu_send_log(const char *log_txt);
 void comm_pc_send_heart_beat();
 void comm_mcu_send_heart_beat_ack();

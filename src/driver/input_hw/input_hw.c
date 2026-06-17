@@ -7,13 +7,12 @@
  *********************/
 #include "input_hw.h"
 #include "tools.h"
-#include "lvgl.h" // for lvgl tick get
-#ifdef SIMULATOR
-#include "SDL.h"
-#else
+#include "lvgl.h"
 #include "protocol.h"
 #include "comm_tx.h"
 #include "comm_status.h"
+#ifdef SIMULATOR
+#include "SDL.h"
 #endif
 
 /**********************
@@ -55,6 +54,7 @@ void input_hw_init(void)
   key_init();
   joystick_init();
   rkey_init();
+  ckey_init();
 
   comm_send_timer = (non_blocking_timer_t){
     .func = input_remote_send,
@@ -77,6 +77,7 @@ void input_hw_scan(void)
   #endif
   key_scan(sdl_key);
   rkey_scan();
+  ckey_scan();
   joystick_scan(sdl_key);
   non_blocking_delay(&comm_send_timer); // COMM_SEND_RATE_MS ms 一次
 }
@@ -86,43 +87,26 @@ void input_hw_scan(void)
  **********************/
 
 /**
-* @brief 输入远程发送函数，负责将输入状态通过通信模块发送到其他设备
+* @brief 输入远程发送函数 — 双向: PC→MCU, MCU→PC
+* @note PC: 发送本地键盘/摇杆状态给 MCU
+*       MCU: 发送本地硬件按键/摇杆状态给 PC
 */
-static void input_remote_send()
+static void input_remote_send(void)
 {
-#ifdef SIMULATOR
-  return ; //Do nothing in simulator mode
-#else
-  if (comm_get_status() != COMM_STATUS_CONNECTED) return ;
-  // keys
-  uint8_t key_mask = 0x00;
-  for (int i = 1; i < KEY_MAX; i++) {
-    if (key_down(i)) {
-      switch (i) {
-        case KEY_A:
-          key_mask |= COMM_KEY_A_MASK;
-          break;
-        case KEY_B:
-          key_mask |= COMM_KEY_B_MASK;
-          break;
-        case KEY_X:
-          key_mask |= COMM_KEY_X_MASK;
-          break;
-        case KEY_Y:
-          key_mask |= COMM_KEY_Y_MASK;
-          break;
-        default:
-          CONSOLE_WARNING("Unhandled key code: %d\n", i);
-          LOG_WARNING("Unhandled key code: %d", i);
-          break;
-      }
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return;
+
+    uint8_t key_mask = 0x00;
+    for (int i = 1; i < KEY_MAX; i++) {
+        if (key_down(i)) {
+            switch (i) {
+                case KEY_A: key_mask |= COMM_KEY_A_MASK; break;
+                case KEY_B: key_mask |= COMM_KEY_B_MASK; break;
+                case KEY_X: key_mask |= COMM_KEY_X_MASK; break;
+                case KEY_Y: key_mask |= COMM_KEY_Y_MASK; break;
+                default: break;
+            }
+        }
     }
-  }
-  comm_mcu_send_key_state(key_mask);
-
-  // joystick
-  comm_mcu_send_joystick(joystick_get_x(), joystick_get_y());
-
-  return ;
-#endif
+    comm_send_key_state(key_mask);
+    comm_send_joystick(joystick_get_x(), joystick_get_y());
 }

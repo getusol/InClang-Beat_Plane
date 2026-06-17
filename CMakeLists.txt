@@ -252,7 +252,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 # 链接依赖（LVGL 核心库、驱动库、SDL2）
-target_link_libraries(${PROJECT_NAME} PRIVATE 
+target_link_libraries(${PROJECT_NAME} PRIVATE
     lvgl
     lv_drivers
     SDL2::SDL2

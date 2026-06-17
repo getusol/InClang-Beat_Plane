@@ -226,7 +226,7 @@ void settings_load()
 
     while (fgets(line, sizeof(line), fp))
     {
-        line[strcspn(line, "\n")] = '\0'; // 去掉换行符
+        line[strcspn(line, "\r\n")] = '\0'; // 去掉换行符
         if (sscanf(line, SETTING_FMT, module, name, &value) != 3)
         {
             CONSOLE_WARNING("Invalid setting format: %s", line);
@@ -254,7 +254,7 @@ void settings_load()
 
     while (f_gets(line, sizeof(line), &fs_file))
     {
-        line[strcspn(line, "\n")] = '\0'; // 去掉换行符
+        line[strcspn(line, "\r\n")] = '\0'; // 去掉换行符
         if (sscanf(line, SETTING_FMT, module, name, &value) != 3)
         {
             CONSOLE_WARNING("Invalid setting format: %s", line);

@@ -7,8 +7,10 @@
 /*********************
  *      INCLUDES
  *********************/
+
 #include "lkey.h"
 #include "rkey.h"
+#include "controller.h"
 #include "joystick.h"
 
 /**********************

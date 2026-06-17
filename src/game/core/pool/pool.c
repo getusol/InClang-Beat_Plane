@@ -33,9 +33,9 @@ void pool_init(pool_t *pool, uint16_t *free_stack, uint16_t capacity)
     pool->capacity   = capacity;
     pool->stack_top  = capacity;          /* 初始时全部槽位都空闲 */
 
-    /* 将索引 0, 1, 2, ..., capacity-1 依次压入栈 */
+    /* 将索引 capacity-1, ..., 1, 0 依次压入栈 (LIFO: 先弹出 0) */
     for (uint16_t i = 0; i < capacity; i++) {
-        free_stack[i] = i;
+        free_stack[i] = capacity - 1 - i;
     }
 
     CONSOLE_INFO("init ok, capacity=%d", capacity);
