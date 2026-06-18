@@ -28,5 +28,7 @@
 
 void enemy_behave_normal(game_obj_t * g,void * v);
 void enemy_behave_boss(game_obj_t * g,void * v);
+void enemy_behave_enemy4(game_obj_t * g,void * v);
+void enemy_behave_endboss(game_obj_t * g,void * v);
 
 #endif // #ifndef __ENEMY_BEHAVIORS_H__

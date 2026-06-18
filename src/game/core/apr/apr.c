@@ -162,6 +162,23 @@ void apr_init()
         .img_name = "boss.bin",
         .is_alpha = false,
     };
+    // APR_ENEMY4 - 第3关起新敌人（圆形分裂弹）
+    apr_list[APR_ENEMY4] = (apr_t){
+        .w = 64, .h = 50,
+        .hitbox_x = 2, .hitbox_y = 22,
+        .hitbox_w = 60, .hitbox_h = 20,
+        .img_name = "enemy4.bin",
+        .is_alpha = false,
+    };
+
+    // APR_ENEMY_ENDBOSS - THE END 最终Boss
+    apr_list[APR_ENEMY_ENDBOSS] = (apr_t){
+        .w = 64, .h = 48,
+        .hitbox_x = 3, .hitbox_y = 33,
+        .hitbox_w = 60, .hitbox_h = 20,
+        .img_name = "end.bin",
+        .is_alpha = false,
+    };
 
     // ==================== 金币 ====================
 

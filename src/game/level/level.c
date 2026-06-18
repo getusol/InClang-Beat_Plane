@@ -24,6 +24,7 @@
 #include "enemy.h"
 #include "enemy_behaviors.h"
 #include "apr.h"
+#include "audio.h"
 
 #include <stdint.h>
 
@@ -31,7 +32,7 @@
  *      MACROS
  **********************/
 
-#define LEVEL_COUNT         5       // 总共 5 个关卡
+#define LEVEL_COUNT         6       // 5 个常规关卡 + 1 个 THE END 最终关卡
 #define CLEAN_UP_DELAY_MS   1500    // 普通波次生成完毕后，等 1.5 秒再进下一波
 
 /**********************
@@ -63,6 +64,10 @@ typedef struct
     // —— Boss 参数 ——
     uint16_t boss_hp;           // Boss 血量
     int16_t boss_damage;        // Boss 伤害
+
+    // —— enemy4 参数 ——
+    uint16_t enemy4_count;      // 这一波要生成几个 enemy4
+    uint16_t enemy4_spawned;    // 已经生成了几个 enemy4
 
     // —— 运行时计数 ——
     uint16_t enemy_spawned;     // 已经生成了几个
@@ -113,37 +118,43 @@ static wave_t level2_waves[] = {
     { .type = WAVE_TYPE_BOSS,   .boss_hp = 800,    .boss_damage = 30 },
 };
 
-// Level 3: 3 波普通敌人 + 1 波 Boss
+// Level 3: 3 波普通敌人 + 1 波 Boss，每波加入 1 个 enemy4
 static wave_t level3_waves[] = {
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 3, .spawn_interval = 900  },
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 4, .spawn_interval = 700  },
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 600  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 3, .spawn_interval = 900,  .enemy4_count = 1 },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 4, .spawn_interval = 700,  .enemy4_count = 1 },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 600,  .enemy4_count = 1 },
     { .type = WAVE_TYPE_BOSS,   .boss_hp = 1500,   .boss_damage = 40 },
 };
 
-// Level 4: 4 波普通敌人 + 1 波 Boss
+// Level 4: 4 波普通敌人 + 1 波 Boss，每波加入 1~2 个 enemy4
 static wave_t level4_waves[] = {
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 4, .spawn_interval = 800  },
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 700  },
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 600  },
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 6, .spawn_interval = 500  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 4, .spawn_interval = 800,  .enemy4_count = 1 },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 700,  .enemy4_count = 2 },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 600,  .enemy4_count = 2 },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 6, .spawn_interval = 500,  .enemy4_count = 1 },
     { .type = WAVE_TYPE_BOSS,   .boss_hp = 2500,   .boss_damage = 50 },
 };
 
-// Level 5: 4 波普通敌人 + 1 波 Boss（噩梦难度）
+// Level 5: 4 波普通敌人 + 1 波 Boss（噩梦难度），每波加入 2 个 enemy4
 static wave_t level5_waves[] = {
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 700  },
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 6, .spawn_interval = 600  },
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 7, .spawn_interval = 500  },
-    { .type = WAVE_TYPE_NORMAL, .enemy_total = 8, .spawn_interval = 400  },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 5, .spawn_interval = 700,  .enemy4_count = 2 },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 6, .spawn_interval = 600,  .enemy4_count = 2 },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 7, .spawn_interval = 500,  .enemy4_count = 2 },
+    { .type = WAVE_TYPE_NORMAL, .enemy_total = 8, .spawn_interval = 400,  .enemy4_count = 2 },
     { .type = WAVE_TYPE_BOSS,   .boss_hp = 4000,   .boss_damage = 60 },
+};
+
+// THE END: 最终Boss决战 单一Boss波次
+static wave_t end_level_waves[] = {
+    { .type = WAVE_TYPE_BOSS,   .boss_hp = 2000,   .boss_damage = 50 },
 };
 
 
 static uint8_t current_level = 0;           // 玩家当前在第几关(0-based)
 static level_t level;                       // 当前正在玩的关卡(从 levels 数组拷贝出来)
-static level_t levels[LEVEL_COUNT];         // 5 个关卡的模板数组
+static level_t levels[LEVEL_COUNT];         // 6 个关卡的模板数组
 static game_obj_t *current_boss = NULL;     // 当前 Boss 对象指针，用于检测 Boss 是否还活着
+static bool end_level_pending = false;      // true = 第5关通关后等待清场进入 THE END
 
 /**********************
  *   GLOBAL FUNCTIONS
@@ -186,6 +197,12 @@ void level_init()
     levels[4].wave_delay = 1000;
     levels[4].waves = level5_waves;
 
+    // THE END: 最终Boss决战
+    levels[5].total_waves = sizeof(end_level_waves) / sizeof(wave_t);
+    levels[5].current_wave = 0;
+    levels[5].wave_delay = 2000;
+    levels[5].waves = end_level_waves;
+
     // 游戏开始时自动加载第一关
     event_register(EVENT_GAME_START, on_game_start);
 
@@ -203,6 +220,16 @@ void level_update(void)
 {
     // 只在游戏进行中运行
     if (fsm_get_state() != GS_PLAY) return;
+
+    // 第5关通关后等待清场，再接入 THE END 关卡
+    if (end_level_pending) {
+        if (enemy_count_active() == 0) {
+            end_level_pending = false;
+            current_level = 5;
+            load_level(current_level);
+        }
+        return;
+    }
 
     // 所有波次已完成，不再处理
     if (level.current_wave >= level.total_waves) {
@@ -235,14 +262,26 @@ void level_update(void)
                 // —— Boss 波次 ——
                 // 只生成一次 Boss，然后等它被打死
                 if (wave->enemy_spawned == 0) {
-                    behave_t boss_behave = { .f = enemy_behave_boss, .usr_data = NULL };
+                    behave_t boss_behave;
+                    apr_id_t boss_apr;
+                    if (current_level == 5) {
+                        // THE END 最终Boss
+                        boss_behave.f = enemy_behave_endboss;
+                        boss_behave.usr_data = NULL;
+                        boss_apr = APR_ENEMY_ENDBOSS;
+                    } else {
+                        // 常规Boss
+                        boss_behave.f = enemy_behave_boss;
+                        boss_behave.usr_data = NULL;
+                        boss_apr = APR_ENEMY_BOSS;
+                    }
                     current_boss = enemy_spawn(
                         SCREEN_WIDTH / 2, 70,    // 屏幕顶部中间
                         0, 0,                     // 不移动
                         wave->boss_hp,
                         2000,                      // 高伤害 = 触碰秒杀
                         boss_behave,
-                        APR_ENEMY_BOSS
+                        boss_apr
                     );
                     wave->enemy_spawned = 1;
                 }
@@ -255,10 +294,21 @@ void level_update(void)
 
             } else {
                 // —— 普通敌人波次 ——
-                // 逐个生成敌人，前 N-1 个是小怪，最后 1 个是大怪
+                // 生成顺序：enemy4 优先，然后小怪，最后大怪
 
-                // 前 N-1 个：小怪 (HP 100)
-                if (wave->enemy_spawned < wave->enemy_total - 1) {
+                // 1. 生成 enemy4（第3关起的新敌人，HP=120，发射分裂弹）
+                if (wave->enemy4_spawned < wave->enemy4_count) {
+                    if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval) {
+                        lv_coord_t x = lv_rand(250, 774);
+                        lv_coord_t y = -64;
+                        behave_t behave = { .f = enemy_behave_enemy4, .usr_data = NULL };
+                        enemy_spawn(x, y, 0, 0, 120, 20, behave, APR_ENEMY4);
+                        wave->enemy4_spawned++;
+                        wave->last_spawn = lv_tick_get();
+                    }
+                }
+                // 2. 前 N-1 个：小怪 (HP 100)
+                else if (wave->enemy_spawned < wave->enemy_total - 1) {
                     if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval) {
                         lv_coord_t x = lv_rand(250, 774);  // 随机 X 位置
                         lv_coord_t y = -64;                 // 从屏幕上方飞入
@@ -268,7 +318,7 @@ void level_update(void)
                         wave->last_spawn = lv_tick_get();
                     }
                 }
-                // 最后一个：大怪 (HP 1000)，间隔 ×2 给玩家喘息时间
+                // 3. 最后一个：大怪 (HP 1000)，间隔 ×2 给玩家喘息时间
                 else if (wave->enemy_spawned == wave->enemy_total - 1) {
                     if (lv_tick_elaps(wave->last_spawn) >= wave->spawn_interval * 2) {
                         lv_coord_t x = lv_rand(250, 774);
@@ -280,8 +330,10 @@ void level_update(void)
                     }
                 }
 
-                // 全部生成完毕，开始清场等待
-                if (wave->enemy_spawned >= wave->enemy_total && !level.waiting_cleanup) {
+                // 全部生成完毕（enemy4 + 小怪 + 大怪），开始清场等待
+                if (wave->enemy_spawned >= wave->enemy_total
+                    && wave->enemy4_spawned >= wave->enemy4_count
+                    && !level.waiting_cleanup) {
                     level.waiting_cleanup = true;
                     level.cleanup_delay_ms = CLEAN_UP_DELAY_MS;   // 1.5 秒
                     level.cleanup_start_tick = lv_tick_get();
@@ -362,12 +414,21 @@ static void load_level(uint8_t level_id)
     // 清空所有波次的生成计数器
     for (int i = 0; i < level.total_waves; i++) {
         level.waves[i].enemy_spawned = 0;
+        level.waves[i].enemy4_spawned = 0;
         level.waves[i].last_spawn = 0;
     }
 
     // 播放关卡标题入场动画
     char level_name[32];
-    snprintf(level_name, sizeof(level_name), "Level %d", level_id + 1);
+    if (level_id == 5) {
+        // THE END 最终关卡
+        snprintf(level_name, sizeof(level_name), "THE END");
+        // 切换BGM到最终Boss背景音乐
+        audio_load(AUDIO_BGM2, AUDIO_CHAN_BGM, true);
+        CONSOLE_INFO("THE END level loaded! Final boss incoming!");
+    } else {
+        snprintf(level_name, sizeof(level_name), "Level %d", level_id + 1);
+    }
     ui_play_level_enter_anim(level_name);
 
     CONSOLE_INFO("Level %d loaded, %d waves.", level_id + 1, level.total_waves);
@@ -379,12 +440,20 @@ static void load_level(uint8_t level_id)
 static void on_level_complete(void)
 {
     if (current_level + 1 < LEVEL_COUNT) {
-        // 还有下一关 → 继续
+        // 还有下一关
+        if (current_level == 4) {
+            // 第5关通关 → 设置等待标志，清场后接入 THE END
+            CONSOLE_INFO("Level 5 complete! Waiting for field clear before THE END...");
+            end_level_pending = true;
+            return;
+        }
+        // 正常进下一关
         current_level++;
         load_level(current_level);
     } else {
-        // 5 关全通 → 循环最后一关
-        CONSOLE_INFO("All %d levels finished! You win!", LEVEL_COUNT);
-        load_level(LEVEL_COUNT - 1);
+        // THE END 关卡通关 → 胜利！
+        CONSOLE_INFO("=== THE END! Congratulations! You beat the final boss! ===");
+        event_dispatch(EVENT_GAME_WIN, NULL, NULL);
+        fsm_switch_state(GS_OVER);
     }
 }

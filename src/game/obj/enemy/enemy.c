@@ -299,6 +299,15 @@ static void enemy_move(game_obj_t * g)
   g->x += dx;
   g->y += dy;
 
+  // X 轴边界限制，防止敌人跑出屏幕
+  if (g->x < ENEMY_MIN_X) {
+    g->x = ENEMY_MIN_X;
+    g->vx = 0;
+  } else if (g->x > ENEMY_MAX_X - (int16_t)g->apr->w) {
+    g->x = ENEMY_MAX_X - (int16_t)g->apr->w;
+    g->vx = 0;
+  }
+
   lv_obj_set_pos(g->obj, g->x, g->y);
   enemy_t * e = (enemy_t *)g;
   lv_obj_set_pos(e->health_bar,g->x - 10,g->y - 10);
@@ -480,4 +489,16 @@ void enemy_apply_damage(game_obj_t *g, int16_t damage)
 {
     if (g == NULL || !g->active) return;
     enemy_modify_hp(g, -damage);
+}
+
+/**
+ * @brief 获取当前活跃敌人数量
+ */
+uint16_t enemy_count_active(void)
+{
+    uint16_t count = 0;
+    for (int i = 0; i < MAX_ENEMY_COUNT; i++) {
+        if (enemies[i].base.active) count++;
+    }
+    return count;
 }

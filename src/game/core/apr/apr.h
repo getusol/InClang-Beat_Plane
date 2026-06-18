@@ -40,6 +40,8 @@ typedef enum {
     // 敌人
     APR_ENEMY_DEFAULT,
     APR_ENEMY_BOSS,
+    APR_ENEMY4,         // 第3关起新敌人（圆形分裂弹）
+    APR_ENEMY_ENDBOSS,  // THE END 最终Boss
     // 金币
     APR_COIN_DEFAULT,
     // 火墙

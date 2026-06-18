@@ -112,6 +112,7 @@ static const audio_asset_t audio_assets[AUDIO_MAX] = {
     [AUDIO_PLAYERFIREP2] = {.path = AUDIO_PATH("player_fire_p2.pcm"), .size = 50666},
     [AUDIO_COINPICKED] = {.path = AUDIO_PATH("coin_picked.pcm"), .size = 67712},
     [AUDIO_SKILLSHIELD] = {.path = AUDIO_PATH("Skill_shield.pcm"), .size = 132300},
+    [AUDIO_BGM2]        = {.path = AUDIO_PATH("bgm2.pcm"),        .size = 4308992},
 };
 
 // 音频频道实例

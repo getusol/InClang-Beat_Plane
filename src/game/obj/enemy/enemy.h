@@ -38,5 +38,6 @@ void enemy_apply_burn(game_obj_t *g);
 void enemy_apply_freeze(game_obj_t *g);
 bool enemy_is_frozen(game_obj_t *g);
 void enemy_apply_damage(game_obj_t *g, int16_t damage);
+uint16_t enemy_count_active(void);
 
 #endif // #ifndef __ENEMY_H__

@@ -59,6 +59,7 @@ static void level_anim_finish(lv_anim_t * anim);
 
 static void ui_play_event_game_start_cb(game_obj_t * a,game_obj_t * b);
 static void ui_play_event_game_over_cb(game_obj_t * a,game_obj_t * b);
+static void ui_play_event_game_win_cb(game_obj_t * a,game_obj_t * b);
 
 static void hurt_flash_timer_cb(lv_timer_t * timer);
 static void ui_play_event_player_hurt_cb(game_obj_t * a, game_obj_t * b);
@@ -83,9 +84,12 @@ static lv_obj_t * dp_play;
 static lv_obj_t * pause_popup;
 static lv_obj_t * over_popup;
 static lv_obj_t * over_score_label;
+static lv_obj_t * over_label = NULL;         // GAME OVER / You Are The WINNER! 标签
+static lv_obj_t * over_restart_btn_label = NULL; // Restart / Play Again 按钮标签
 static lv_obj_t * coin_label;
 static lv_obj_t * pause_icon_btn;   // 右上角暂停/设置图标按钮
 static int coin_at_run_start = 0;   // 当局开始时的金币数，用于计算得分
+static bool is_win = false;          // true = 胜利通关, false = 死亡失败
 #ifdef SIMULATOR
 static int coin_p2_at_run_start = 0;
 static lv_obj_t * coin_p2_bar = NULL;
@@ -259,8 +263,8 @@ void ui_play_init()
     lv_obj_set_style_text_font(pause_label, &lv_font_montserrat_44, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(pause_label, lv_color_hex(0x13AEFB), LV_STATE_DEFAULT);
     
-    //label for over popup
-    lv_obj_t * over_label = lv_label_create(over_popup);
+    //label for over/win popup
+    over_label = lv_label_create(over_popup);
     lv_obj_set_pos(over_label, 40, 50);
     lv_label_set_text(over_label, "GAME OVER");
     lv_obj_set_style_text_font(over_label, &lv_font_montserrat_44, LV_STATE_DEFAULT);
@@ -280,8 +284,8 @@ void ui_play_init()
     lv_obj_add_event_cb(over_restart_btn, over_restart_btn_event_cb, LV_EVENT_CLICKED, NULL);
     lv_group_add_obj(over_group, over_restart_btn);
 
-    //label for over_restart_btn
-    lv_obj_t * over_restart_btn_label = lv_label_create(over_restart_btn);
+    //label for over_restart_btn (reused for "Play Again" on win)
+    over_restart_btn_label = lv_label_create(over_restart_btn);
     lv_obj_set_align(over_restart_btn_label, LV_ALIGN_CENTER);
     lv_label_set_text(over_restart_btn_label, "Restart");
     lv_obj_set_style_text_font(over_restart_btn_label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
@@ -516,6 +520,7 @@ void ui_play_init()
     // 事件注册
     event_register(EVENT_GAME_START,ui_play_event_game_start_cb);
     event_register(EVENT_GAME_OVER,ui_play_event_game_over_cb);
+    event_register(EVENT_GAME_WIN, ui_play_event_game_win_cb);
     mp_event_register(MP_EVENT_DISCONNECTED,on_mp_disconnected);
 
     // 技能CD可视化更新定时器 (每100ms更新一次)
@@ -562,6 +567,16 @@ void ui_play_run()
 #endif
         {
             lv_label_set_text_fmt(over_score_label, "Score: %d", score);
+        }
+        // 根据 is_win 切换弹窗文字
+        if (is_win) {
+            lv_label_set_text(over_label, "You Are The WINNER!");
+            lv_obj_set_style_text_color(over_label, lv_color_hex(0xFFD700), LV_STATE_DEFAULT);
+            if (over_restart_btn_label) lv_label_set_text(over_restart_btn_label, "Play Again");
+        } else {
+            lv_label_set_text(over_label, "GAME OVER");
+            lv_obj_set_style_text_color(over_label, lv_palette_main(LV_PALETTE_RED), LV_STATE_DEFAULT);
+            if (over_restart_btn_label) lv_label_set_text(over_restart_btn_label, "Restart");
         }
         popup_show(over_popup);
         set_group(over_group);
@@ -788,6 +803,7 @@ static void level_anim_finish(lv_anim_t * anim)
 
 static void ui_play_event_game_start_cb(game_obj_t * a, game_obj_t * b)
 {
+    is_win = false;  // 重置胜利标志
     coin_at_run_start = coin_get_num();
 #ifdef SIMULATOR
     coin_p2_at_run_start = coin_get_p2_num();
@@ -922,6 +938,17 @@ static void ui_play_event_game_over_cb(game_obj_t * a,game_obj_t * b)
     lv_obj_add_flag(hud_red_img, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text_fmt(coin_p2_label, "%d", coin_get_p2_num());
 #endif
+}
+
+/**
+ * @brief 通关胜利事件回调：设置胜利标志并切换到 GS_OVER 弹窗
+ */
+static void ui_play_event_game_win_cb(game_obj_t * a, game_obj_t * b)
+{
+    (void)a; (void)b;
+    is_win = true;
+    fsm_switch_state(GS_OVER);
+    CONSOLE_INFO("Victory! Switching to win screen.");
 }
 
 static void on_mp_disconnected(mp_event_t e,void * v)

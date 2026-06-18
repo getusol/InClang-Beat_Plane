@@ -4,7 +4,7 @@
 $ErrorActionPreference = "Stop"
 $mingwBin = "T:\C_environment\CksSim\mingw64\bin"
 $objcopy  = "$mingwBin\objcopy.exe"
-$outDir   = "src\embedded"
+$outDir   = "assets\embedded"
 
 if (-not (Test-Path $objcopy)) {
     Write-Error "objcopy not found: $objcopy"

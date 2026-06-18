@@ -41,6 +41,7 @@ typedef enum audio_id_t
     AUDIO_PLAYERFIREP2,
     AUDIO_COINPICKED,
     AUDIO_SKILLSHIELD,
+    AUDIO_BGM2,         // THE END 最终Boss背景音乐
 
     AUDIO_MAX,
 } audio_id_t;
