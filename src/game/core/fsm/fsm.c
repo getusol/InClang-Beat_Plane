@@ -6,8 +6,10 @@
 /*********************
  *      INCLUDES
  *********************/
+
 #include "fsm.h"
 #include "debug.h"
+#include "ui.h"
 
 /**********************
  *      MACROS
@@ -18,7 +20,7 @@
  **********************/
 static game_state_t current_state;
 
- /**********************
+/**********************
  *   GLOBAL FUNCTIONS
  **********************/
 
@@ -28,7 +30,7 @@ static game_state_t current_state;
  */
 void fsm_init(void)
 {
-  current_state = GS_CG;
+  fsm_switch_state(GS_CG);
 }
 
 /**
@@ -40,16 +42,18 @@ game_state_t fsm_get_state(void)
 }
 
 /**
- * @brief 切换游戏状态
+ * @brief 切换游戏状态,同时更新UI 界面
  * @param new_state 目标状态/新游戏状态
  */
 void fsm_switch_state(game_state_t new_state)
 {
-  if (new_state >= GS_MAX) {
+  if (new_state >= GS_MAX)
+  {
     CONSOLE_ERROR("Unknown state!");
     LOG_ERROR("Unknown state!");
     sys_halt();
-    return ;
+    return;
   }
   current_state = new_state;
+  ui_run(); // 更新UI 界面,而非轮询
 }

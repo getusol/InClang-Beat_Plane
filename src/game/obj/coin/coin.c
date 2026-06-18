@@ -32,28 +32,27 @@
  * TYPEDEFS
  **********************/
 
-typedef struct {
-    game_obj_t base;       // 继承自游戏基类
-    uint16_t value;        // 该金币携带的金币值
-    uint16_t pool_index;   // 对象池索引
+typedef struct
+{
+    game_obj_t base;     // 继承自游戏基类
+    uint16_t value;      // 该金币携带的金币值
+    uint16_t pool_index; // 对象池索引
 } coin_t;
 
 /**********************
  * STATIC PROTOTYPES
  **********************/
 
-static void coin_update(game_obj_t * g);
-static void coin_hide(game_obj_t * g);
-static void coin_show(game_obj_t * g);
-static void coin_event_hit_player_cb(game_obj_t * src, game_obj_t * trg);
-static void coin_disappear_timer_cb(game_obj_t * owner, void * usr_data);
-static void coin_on_mp_connected(mp_event_t event, void *data);
-static void coin_on_mp_disconnected(mp_event_t event, void *data);
+static void coin_update(game_obj_t *g);
+static void coin_hide(game_obj_t *g);
+static void coin_show(game_obj_t *g);
+static void coin_event_hit_player_cb(game_obj_t *src, game_obj_t *trg);
+static void coin_disappear_timer_cb(game_obj_t *owner, void *usr_data);
 
 // 金币消失闪烁动画
 
-static void coin_anim_opa_cb(void * var, int32_t value);
-static void coin_anim_ready_cb(lv_anim_t * a);
+static void coin_anim_opa_cb(void *var, int32_t value);
+static void coin_anim_ready_cb(lv_anim_t *a);
 
 /**********************
  * STATIC VARIABLES
@@ -64,12 +63,6 @@ static pool_t coin_pool;
 static uint16_t coin_free_indices[MAX_COIN_COUNT];
 static coin_t coins[MAX_COIN_COUNT];
 
-// 金币总数（模块内部维护）
-static int coin_num = 0;
-#ifdef SIMULATOR
-static int coin_p2_num = 0;
-#endif
-
 /**********************
  * GLOBAL FUNCTIONS
  **********************/
@@ -77,14 +70,15 @@ static int coin_p2_num = 0;
 /**
  * @brief 金币初始化
  */
-void coin_init(lv_obj_t * parent)
+void coin_init(lv_obj_t *parent)
 {
     memset(coins, 0, sizeof(coins));
     pool_init(&coin_pool, coin_free_indices, MAX_COIN_COUNT);
 
     apr_t *coin_apr = apr_get(APR_COIN_DEFAULT);
 
-    for (int i = 0; i < MAX_COIN_COUNT; i++) {
+    for (int i = 0; i < MAX_COIN_COUNT; i++)
+    {
         // base init
         coins[i].base.active = false;
         coins[i].base.type = GAME_OBJ_TYPE_COIN;
@@ -98,7 +92,7 @@ void coin_init(lv_obj_t * parent)
 
         coins[i].base.obj = lv_img_create(parent);
 
-        apr_apply(&(coins[i].base),APR_COIN_DEFAULT);
+        apr_apply(&(coins[i].base), APR_COIN_DEFAULT);
 
         // special init
         coins[i].value = 0;
@@ -117,10 +111,6 @@ void coin_init(lv_obj_t * parent)
     // 注册事件回调
     event_register(EVENT_PLAYER_HIT_COIN, coin_event_hit_player_cb);
 
-    // 多人联机金币同步
-    mp_event_register(MP_EVENT_CONNECTED, coin_on_mp_connected);
-    mp_event_register(MP_EVENT_DISCONNECTED, coin_on_mp_disconnected);
-
     CONSOLE_INFO("Coin system initialized with max count: %d.", MAX_COIN_COUNT);
 }
 
@@ -133,19 +123,21 @@ void coin_init(lv_obj_t * parent)
  * @return game_obj_t*      返回金币的游戏对象基类指针；若对象池已满则返回 NULL
  * @note 消失事件到后 还有一个持续时间1s的闪烁动画 之后才会消失
  */
-game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
-                        uint16_t value, uint8_t disappear_time_s,
-                        apr_id_t apr_id)
+game_obj_t *coin_spawn(lv_coord_t x, lv_coord_t y,
+                       uint16_t value, uint8_t disappear_time_s,
+                       apr_id_t apr_id)
 {
-    if (fsm_get_state() != GS_PLAY) return NULL;
+    if (fsm_get_state() != GS_PLAY)
+        return NULL;
 
     uint16_t id = pool_alloc(&coin_pool);
-    if (id == POOL_INVALID_ID) {
+    if (id == POOL_INVALID_ID)
+    {
         CONSOLE_WARNING("No available coin slots! Max coin count reached.");
         return NULL;
     }
 
-    coin_t * c = &coins[id];
+    coin_t *c = &coins[id];
     c->pool_index = id;
     c->value = value;
     c->base.x = x;
@@ -163,10 +155,12 @@ game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
     lv_obj_set_style_opa(c->base.obj, LV_OPA_COVER, 0);
 
     // 自动消失定时器 (0 表示永不消失)
-    if (disappear_time_s > 0) {
+    if (disappear_time_s > 0)
+    {
         uint32_t interval_ms = (uint32_t)disappear_time_s * 1000;
         if (timer_create(&c->base, interval_ms, TIMER_MODE_ONCE,
-                         coin_disappear_timer_cb, NULL) != NULL) {
+                         coin_disappear_timer_cb, NULL) != NULL)
+        {
             c->base.timered = true;
         }
     }
@@ -175,65 +169,33 @@ game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
 }
 
 /**
- * @brief 获取当前总金币数
+ * @brief 获取金币携带的金币值
+ * @param g 金币的游戏对象基类指针
+ * @return int 金币携带的金币值
  */
-int coin_get_num(void)
+int coin_get_value(game_obj_t *g)
 {
-    return coin_num;
+    if (g == NULL)
+        return 0;
+    return ((coin_t *)g)->value;
 }
-
-/**
- * @brief 相对增减金币数（正=拾取，负=花费），下限为 0(目前如此)
- * @param delta 变化量
- */
-void coin_add_num(int delta)
-{
-    coin_num += delta;
-    if (coin_num < 0) coin_num = 0;
-}
-
-/**
- * @brief 设置金币数为绝对值（若为负则设为 0）
- * @param value 目标值
- */
-void coin_set_num(int value)
-{
-    coin_num = (value < 0) ? 0 : value;
-}
-
-int coin_get_p2_num(void)
-{
-#ifdef SIMULATOR
-    return coin_p2_num;
-#else
-    return 0;
-#endif
-}
-void coin_set_p2_num(int value)
-{
-#ifdef SIMULATOR
-    coin_p2_num = (value < 0) ? 0 : value;
-#else
-    (void)value;
-#endif
-}
-#ifdef SIMULATOR
-void coin_add_p2_num(int delta) { coin_p2_num += delta; if (coin_p2_num < 0) coin_p2_num = 0; }
-#endif
 
 /**********************
  * STATIC FUNCTIONS
  **********************/
 
-static void coin_update(game_obj_t * g)
+static void coin_update(game_obj_t *g)
 {
     game_state_t game_state = fsm_get_state();
-    if (game_state != GS_PLAY && game_state != GS_PAUSE && game_state != GS_SETTING) {
+    if (game_state != GS_PLAY && game_state != GS_PAUSE && game_state != GS_SETTING)
+    {
         g->hide(g);
         return;
     }
-    if (game_state == GS_PAUSE || game_state == GS_SETTING) return;
-    if (g->active == false) return;
+    if (game_state == GS_PAUSE || game_state == GS_SETTING)
+        return;
+    if (g->active == false)
+        return;
 
     // 碰撞检测已交给底层游戏主循环统一分发处理
     // 若未来需要金币移动效果（如下落、磁铁吸附），在此处添加位移逻辑
@@ -244,31 +206,25 @@ static void coin_update(game_obj_t * g)
  * @param src 触发源对象指针（通常为玩家）
  * @param trg 目标对象指针（即被吃掉的金币）
  */
-static void coin_event_hit_player_cb(game_obj_t * src, game_obj_t * trg)
+static void coin_event_hit_player_cb(game_obj_t *src, game_obj_t *trg)
 {
-    if (trg == NULL) return;
-    if (trg->active == false) return;
-
-    coin_t * c = (coin_t *)trg;
-#ifdef SIMULATOR
-    if (src == player_get_p2_base())
-        coin_add_p2_num(c->value);
-    else
-#endif
-    coin_add_num(c->value);
+    if (trg == NULL || src == NULL)
+        return;
+    if (trg->active == false)
+        return;
     // 音效
-    audio_load(AUDIO_COINPICKED,AUDIO_CHAN_AUTO,false);
-
+    audio_load(AUDIO_COINPICKED, AUDIO_CHAN_AUTO, false);
     trg->hide(trg);
 }
 
 /**
  * @brief 金币自动消失定时器回调 动画持续1s
  */
-static void coin_disappear_timer_cb(game_obj_t * owner, void * usr_data)
+static void coin_disappear_timer_cb(game_obj_t *owner, void *usr_data)
 {
     (void)usr_data;
-    if (owner == NULL || !owner->active || owner->obj == NULL) return;
+    if (owner == NULL || !owner->active || owner->obj == NULL)
+        return;
 
     // 创建金币闪烁并消失的动画
     // 持续 1s (1000ms)，闪烁 4 次。
@@ -280,9 +236,9 @@ static void coin_disappear_timer_cb(game_obj_t * owner, void * usr_data)
     lv_anim_set_var(&a, owner);
     lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP); // 从不透明到全透明
 
-    lv_anim_set_time(&a, 125);               // 单向（淡出）耗时 125ms
-    lv_anim_set_playback_time(&a, 125);      // 开启往返播放（淡入）耗时 125ms，组合为一个 250ms 周期
-    lv_anim_set_repeat_count(&a, 4);         // 循环 4 次，总共刚好 1000ms (1秒)
+    lv_anim_set_time(&a, 125);          // 单向（淡出）耗时 125ms
+    lv_anim_set_playback_time(&a, 125); // 开启往返播放（淡入）耗时 125ms，组合为一个 250ms 周期
+    lv_anim_set_repeat_count(&a, 4);    // 循环 4 次，总共刚好 1000ms (1秒)
 
     lv_anim_set_exec_cb(&a, coin_anim_opa_cb);
     lv_anim_set_ready_cb(&a, coin_anim_ready_cb);
@@ -293,11 +249,12 @@ static void coin_disappear_timer_cb(game_obj_t * owner, void * usr_data)
 /**
  * @brief 金币消失动画透明度修改
  */
-static void coin_anim_opa_cb(void * var, int32_t value)
+static void coin_anim_opa_cb(void *var, int32_t value)
 {
-    game_obj_t * owner = (game_obj_t *)var;
+    game_obj_t *owner = (game_obj_t *)var;
     // 增加防御性防空检查，防止动画执行期间对象已被意外销毁
-    if (owner != NULL && owner->obj != NULL) {
+    if (owner != NULL && owner->obj != NULL)
+    {
         lv_obj_set_style_opa(owner->obj, (lv_opa_t)value, 0);
     }
 }
@@ -305,10 +262,11 @@ static void coin_anim_opa_cb(void * var, int32_t value)
 /**
  * @brief 金币闪烁动画结束回调 触发隐藏
  */
-static void coin_anim_ready_cb(lv_anim_t * a)
+static void coin_anim_ready_cb(lv_anim_t *a)
 {
-    game_obj_t * owner = (game_obj_t *)a->var;
-    if (owner != NULL && owner->active) {
+    game_obj_t *owner = (game_obj_t *)a->var;
+    if (owner != NULL && owner->active)
+    {
         // 闪烁 4 次结束后，真正让金币从地图上消失并回收
         owner->hide(owner);
     }
@@ -317,53 +275,31 @@ static void coin_anim_ready_cb(lv_anim_t * a)
 /**
  * @brief 金币消失逻辑
  */
-static void coin_hide(game_obj_t * g)
+static void coin_hide(game_obj_t *g)
 {
     g->active = false;
     g->timered = false;
     lv_obj_add_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
 
-    coin_t * c = (coin_t *)g;
-    if (c->pool_index != POOL_INVALID_ID) {
+    coin_t *c = (coin_t *)g;
+    if (c->pool_index != POOL_INVALID_ID)
+    {
         pool_free(&coin_pool, c->pool_index);
         c->pool_index = POOL_INVALID_ID;
     }
 
     // 停止可能的lvgl动画
-    lv_anim_del(g,NULL);
+    lv_anim_del(g, NULL);
 }
 
 /**
  * @brief 金币显示
  */
-static void coin_show(game_obj_t * g)
+static void coin_show(game_obj_t *g)
 {
-    coin_t * c = (coin_t *)g;
-    if (c->pool_index == POOL_INVALID_ID) return;
+    coin_t *c = (coin_t *)g;
+    if (c->pool_index == POOL_INVALID_ID)
+        return;
     g->active = true;
     lv_obj_clear_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
-}
-
-/**
- * @brief MP_CONNECTED: MCU 发送自己金币给 PC → PC 设为 P2 余额
- */
-static void coin_on_mp_connected(mp_event_t event, void *data)
-{
-    (void)event; (void)data;
-#ifndef SIMULATOR
-    comm_send_coin_sync(coin_get_num());  // MCU → PC
-    CONSOLE_INFO("Coin sync: MCU sent %d to PC", coin_get_num());
-#endif
-}
-
-/**
- * @brief MP_DISCONNECTED: PC 发送 P2 金币给 MCU → MCU 保存
- */
-static void coin_on_mp_disconnected(mp_event_t event, void *data)
-{
-    (void)event; (void)data;
-#ifdef SIMULATOR
-    comm_send_coin_sync(coin_get_p2_num());  // PC → MCU
-    CONSOLE_INFO("Coin sync: PC sent P2=%d to MCU", coin_get_p2_num());
-#endif
 }

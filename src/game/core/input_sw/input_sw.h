@@ -1,6 +1,7 @@
 /**
  * @file input_sw.h
  * @brief 这个文件管按键分发 同时集成了按键扫描
+ * @note 现在这里的按键注册只给UI负责，不负责游戏逻辑
  */
 
 #ifndef __INPUT_SW_H__
@@ -10,9 +11,13 @@
  *      INCLUDES
  *********************/
 
+#include "input_device.h"
+
 /**********************
  *      MACROS
  **********************/
+
+#define INPUT_DEVICE_ANY INPUT_DEVICE_COUNT // 任意设备
 
 /**********************
  *      TYPEDEFS
@@ -21,24 +26,29 @@
 /**
  * @brief 按键事件枚举
  */
-typedef enum {
+typedef enum
+{
     KEY_EVENT_A,
     KEY_EVENT_B,
     KEY_EVENT_X,
     KEY_EVENT_Y,
-#ifdef SIMULATOR
-    KEY_EVENT_RKEY_A,
-    KEY_EVENT_RKEY_B,
-    KEY_EVENT_RKEY_X,
-    KEY_EVENT_RKEY_Y,
-#endif
-    KEY_EVENT_COUNT        //最大按键个数
+    KEY_EVENT_COUNT // 最大按键个数
 } key_event_t;
+
+/**
+ * @brief 事件结构体
+ */
+typedef struct
+{
+    input_device_type_t dev_type;
+    key_code_t key_code;
+    void *usr_data;
+} input_event_t;
 
 /**
  * @brief 按键回调函数类型
  */
-typedef void (*key_event_callback_t)(void);
+typedef void (*input_event_callback_t)(input_event_t *event);
 
 /**********************
  *  STATIC PROTOTYPES
@@ -51,15 +61,7 @@ typedef void (*key_event_callback_t)(void);
 void input_dispatch();
 void input_init();
 
-void input_sw_register_press_callback(key_event_t event, key_event_callback_t callback);
-void input_sw_register_long_press_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms);
-void input_sw_register_key_down_callback(key_event_t event, key_event_callback_t callback,uint32_t cycle_delay_ms);
-
-void input_sw_unregister_key_down_callback(key_event_t event, key_event_callback_t callback);
-void input_sw_unregister_long_press_callback(key_event_t event, key_event_callback_t callback);
-void input_sw_unregister_press_callback(key_event_t event, key_event_callback_t callback);
-
-bool input_sw_is_key_down(key_event_t event);
-bool input_sw_is_key_long_press(key_event_t event);
+void input_sw_register_press_callback(input_device_type_t dev_type, key_event_t event, input_event_callback_t callback, void *usr_data);
+void input_sw_unregister_press_callback(input_device_type_t dev_type, key_event_t event, input_event_callback_t callback);
 
 #endif // #ifndef __INPUT_SW_H__

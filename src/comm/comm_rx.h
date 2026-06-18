@@ -40,12 +40,12 @@ void comm_rx_update(void);
 
 // getters get received and stored data
 
-#ifdef SIMULATOR // PC
 bool comm_has_new_key_data(void);
 uint8_t comm_get_key_mask(void);
 bool comm_has_new_joystick_data(void);
 int16_t comm_get_joystick_x(void);
 int16_t comm_get_joystick_y(void);
+#ifdef SIMULATOR // PC
 bool comm_has_new_log(void);
 uint16_t comm_get_log(char *buffer, uint16_t buf_size);
 #endif
@@ -60,6 +60,12 @@ bool comm_has_invite_cancel(void);
 bool comm_has_disconnect(void);
 bool comm_has_coin_sync(void);
 int32_t comm_get_coin_sync(void);
+uint8_t comm_get_lobby_state(void);
+#ifndef SIMULATOR /* MCU only: 接收 PC 发来的手柄数据 */
+uint8_t comm_get_controller_key_mask(void);
+int16_t comm_get_controller_joystick_x(void);
+int16_t comm_get_controller_joystick_y(void);
+#endif
 
 /**********************
  *   STATIC FUNCTIONS

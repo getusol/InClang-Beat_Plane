@@ -1,0 +1,3 @@
+Shop.CoinWallet:0
+Shop.DrawCount:0
+Base.UnlockedMask:15

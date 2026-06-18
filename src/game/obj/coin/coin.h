@@ -9,8 +9,8 @@
  *      INCLUDES
  *********************/
 
-#include "lvgl.h"          // 提供 lv_obj_t 和 lv_coord_t 类型定义
-#include "game_object.h"   // 提供 game_obj_t 基类定义
+#include "lvgl.h"        // 提供 lv_obj_t 和 lv_coord_t 类型定义
+#include "game_object.h" // 提供 game_obj_t 基类定义
 #include "apr.h"
 #include <stdint.h>
 
@@ -26,17 +26,10 @@
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void coin_init(lv_obj_t * parent);
-game_obj_t * coin_spawn(lv_coord_t x, lv_coord_t y,
-                        uint16_t value, uint8_t disappear_time_s,
-                        apr_id_t apr_id);
-int coin_get_num(void);
-void coin_add_num(int delta);
-void coin_set_num(int value);
-int coin_get_p2_num(void);
-void coin_set_p2_num(int value);
-#ifdef SIMULATOR
-void coin_add_p2_num(int delta);
-#endif
+void coin_init(lv_obj_t *parent);
+game_obj_t *coin_spawn(lv_coord_t x, lv_coord_t y,
+                       uint16_t value, uint8_t disappear_time_s,
+                       apr_id_t apr_id);
+int coin_get_value(game_obj_t *g);
 
 #endif // #ifndef __COIN_H__

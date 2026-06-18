@@ -33,11 +33,7 @@
  *      MACROS
  **********************/
 
-#ifdef SIMULATOR
-#define MAX_GAME_OBJ_COUNT (MAX_BULLET_COUNT + 2 + MAX_ENEMY_COUNT + MAX_COIN_COUNT + MAX_FLAME_WALL_COUNT)
-#else
-#define MAX_GAME_OBJ_COUNT (MAX_BULLET_COUNT + 1 + MAX_ENEMY_COUNT + MAX_COIN_COUNT + MAX_FLAME_WALL_COUNT)
-#endif
+#define MAX_GAME_OBJ_COUNT (MAX_BULLET_COUNT + MAX_PLAYER_COUNT + MAX_ENEMY_COUNT + MAX_COIN_COUNT + MAX_FLAME_WALL_COUNT + 1)
 
 /**********************
  *      TYPEDEFS
@@ -219,140 +215,72 @@ static void check_collisions(void)
                 continue;
 
             //  确保所有的事件派发都在 rec_overlap 成立的大括号内部！
-            if (rec_overlap(a, b))
+            if (!rec_overlap(a, b))
+                continue;
+
+            // 1. 子弹 vs 敌人
+            if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY)
             {
-
-                // 1. 子弹 vs 敌人
-                if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY)
-                {
-                    game_obj_t *src = bullet_get_source(a);
-                    if (src == player_get_base()
-#ifdef SIMULATOR
-                        || src == player_get_p2_base()
-#endif
-                    )
-                    {
-                        event_dispatch(EVENT_BULLET_HIT_ENEMY, a, b);
-                    }
-                }
-                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET)
-                {
-                    game_obj_t *src = bullet_get_source(b);
-                    if (src == player_get_base()
-#ifdef SIMULATOR
-                        || src == player_get_p2_base()
-#endif
-                    )
-                    {
-                        event_dispatch(EVENT_BULLET_HIT_ENEMY, b, a);
-                    }
-                }
-                // 2. 玩家 vs 敌人 (护盾时免疫)
-                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY)
-                {
-                    if (!player_is_shield_active())
-                    {
-                        event_dispatch(EVENT_PLAYER_HIT_ENEMY, a, b);
-                    }
-                }
-                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER)
-                {
-                    if (!player_is_shield_active())
-                    {
-                        event_dispatch(EVENT_PLAYER_HIT_ENEMY, b, a);
-                    }
-                }
-                // 3. 玩家 vs 金币（现在正确嵌套在 if (rec_overlap) 内部了）
-                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN)
-                {
-                    event_dispatch(EVENT_PLAYER_HIT_COIN, a, b);
-                }
-                else if (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER)
-                {
-                    event_dispatch(EVENT_PLAYER_HIT_COIN, b, a);
-                }
-                // 4.子弹 vs 玩家 (护盾反射)
-                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET)
-                {
-                    if (bullet_get_source(b)->type != GAME_OBJ_TYPE_PLAYER)
-                    {
-                        if (player_is_shield_active_for(a))
-                        {
-                            const apr_t *bullet_apr = b->apr;
-                            if (bullet_apr == apr_get(APR_BULLET_CIRCLE) ||
-                                bullet_apr == apr_get(APR_BULLET_TRIANGLE))
-                            {
-                                b->vy = -b->vy;
-                                bullet_set_source(b, a);
-                                bullet_set_flags(b, bullet_get_flags(b) | BULLET_FLAG_REFLECTED);
-                            }
-                        }
-                        else
-                        {
-                            event_dispatch(EVENT_BULLET_HIT_PLAYER, b, a);
-                        }
-                    }
-                }
-                else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER)
-                {
-                    if (bullet_get_source(a)->type != GAME_OBJ_TYPE_PLAYER)
-                    {
-                        if (player_is_shield_active_for(b))
-                        {
-                            const apr_t *bullet_apr = a->apr;
-                            if (bullet_apr == apr_get(APR_BULLET_CIRCLE) ||
-                                bullet_apr == apr_get(APR_BULLET_TRIANGLE))
-                            {
-                                a->vy = -a->vy;
-                                bullet_set_source(a, b);
-                                bullet_set_flags(a, bullet_get_flags(a) | BULLET_FLAG_REFLECTED);
-                            }
-                        }
-                        else
-                        {
-                            event_dispatch(EVENT_BULLET_HIT_PLAYER, a, b);
-                        }
-                    }
-                }
-                // 5. 火墙 vs 敌人
-                else if (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_ENEMY)
-                {
-                    enemy_apply_damage(b, 20);
-                    a->hide(a);
-                }
-                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_FLAME_WALL)
-                {
-                    enemy_apply_damage(a, 20);
-                    b->hide(b);
-                }
-                // 6. 火墙 vs 子弹 (清除敌方子弹，保留 P1/P2 的子弹)
-                else if (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_BULLET)
-                {
-                    game_obj_t *bs = bullet_get_source(b);
-                    if (bs != player_get_base()
-#ifdef SIMULATOR
-                        && bs != player_get_p2_base()
-#endif
-                    )
-                    {
-                        b->hide(b);
-                    }
-                }
-                else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_FLAME_WALL)
-                {
-                    game_obj_t *bs = bullet_get_source(a);
-                    if (bs != player_get_base()
-#ifdef SIMULATOR
-                        && bs != player_get_p2_base()
-#endif
-                    )
-                    {
-                        a->hide(a);
-                    }
-                }
-
-                // CONSOLE_INFO("Collision detected between %d and %d", a->type, b->type);
-            } // 用这个右括号正确闭合 if (rec_overlap(a, b))
+                if (bullet_get_source(a)->type == GAME_OBJ_TYPE_PLAYER)
+                    event_dispatch(EVENT_BULLET_HIT_ENEMY, a, b);
+            }
+            else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET)
+            {
+                if (bullet_get_source(b)->type == GAME_OBJ_TYPE_PLAYER)
+                    event_dispatch(EVENT_BULLET_HIT_ENEMY, b, a);
+            }
+            // 2. 玩家 vs 敌人 (护盾时免疫)
+            else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY)
+            {
+                if (!player_shield_is_active(a))
+                    event_dispatch(EVENT_PLAYER_HIT_ENEMY, a, b);
+            }
+            else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER)
+            {
+                if (!player_shield_is_active(b))
+                    event_dispatch(EVENT_PLAYER_HIT_ENEMY, b, a);
+            }
+            // 3. 玩家 vs 金币
+            else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN)
+            {
+                event_dispatch(EVENT_PLAYER_HIT_COIN, a, b);
+            }
+            else if (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER)
+            {
+                event_dispatch(EVENT_PLAYER_HIT_COIN, b, a);
+            }
+            // 4.子弹 vs 玩家
+            else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET)
+            {
+                if (bullet_get_source(b)->type != GAME_OBJ_TYPE_PLAYER)
+                    event_dispatch(EVENT_BULLET_HIT_PLAYER, b, a);
+            }
+            else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER)
+            {
+                if (bullet_get_source(a)->type != GAME_OBJ_TYPE_PLAYER)
+                    event_dispatch(EVENT_BULLET_HIT_PLAYER, a, b);
+            }
+            // 5. 火墙 vs 敌人
+            else if (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_ENEMY)
+            {
+                event_dispatch(EVENT_FLAME_WALL_HIT_ENEMY, a, b);
+            }
+            else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_FLAME_WALL)
+            {
+                event_dispatch(EVENT_FLAME_WALL_HIT_ENEMY, b, a);
+            }
+            // 6. 火墙 vs 子弹
+            else if (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_BULLET)
+            {
+                if (bullet_get_source(b)->type != GAME_OBJ_TYPE_PLAYER)
+                    event_dispatch(EVENT_FLAME_WALL_HIT_BULLET, a, b);
+            }
+            else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_FLAME_WALL)
+            {
+                if (bullet_get_source(a)->type != GAME_OBJ_TYPE_PLAYER)
+                    event_dispatch(EVENT_FLAME_WALL_HIT_BULLET, b, a);
+            }
+            // CONSOLE_INFO("Collision detected between %d and %d", a->type, b->type);
         } // 闭合 for j
     } // 闭合 for i
 } // 闭合 check_collisions 函数

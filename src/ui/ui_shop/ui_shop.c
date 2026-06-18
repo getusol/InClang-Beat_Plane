@@ -10,13 +10,14 @@
 #include <time.h>
 #include "ui_shop.h"
 #include "ui_base.h"
+#include "user_data.h"
 
 /* 引入基础工具与状态机头文件 */
 #include "tools.h"
 #include "event.h"
 #include "fsm.h"
 #include "lvgl_utils.h"
-#include "ui_templates.h" // 用于 popup_create, popup_show, popup_hide
+#include "ui_templates.h"
 #include "coin.h"
 #include "audio.h"
 
@@ -74,6 +75,7 @@ static int target_slot = 0;
 static int steps_remaining = 0;
 static int current_speed_ms = 40;
 static int draw_count = 0;
+static int s_coin_wallet = 0; /* 局外金币钱包 */
 // 奖池定义（按顺时针排列 0~7）
 static reward_info_t rewards[TOTAL_SLOTS] = {
     {0, "Ember Plane", PLAYER_EMBER_IMG, 150},     // 0-左上
@@ -119,7 +121,11 @@ static void shop_continue_draw_btn_event_cb(lv_event_t *e);
  */
 void ui_shop_init_stage1(void)
 {
-    // 创建独立画布
+    /* 注册持久化数据 */
+    user_data_register("Shop", "CoinWallet", &s_coin_wallet, USER_DATA_INT);
+    user_data_register("Shop", "DrawCount",  &draw_count,    USER_DATA_INT);
+    user_data_load();
+
     dp_shop = lv_obj_create(NULL);
     lv_obj_clear_flag(dp_shop, LV_OBJ_FLAG_SCROLLABLE);
 }
@@ -354,13 +360,13 @@ void ui_shop_init_stage2(void)
 
     coin_label = lv_label_create(coin_img);
     lv_obj_set_pos(coin_label, 120, 23);
-    lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+    lv_label_set_text_fmt(coin_label, "%d", s_coin_wallet);
     lv_obj_set_style_text_font(coin_label, &lv_font_montserrat_16, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(coin_label, lv_color_white(), LV_STATE_DEFAULT);
 
     if (coin_label != NULL)
     {
-        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+        lv_label_set_text_fmt(coin_label, "%d", s_coin_wallet);
     }
 }
 
@@ -375,7 +381,7 @@ void ui_shop_run(void)
 
     if (coin_label != NULL)
     {
-        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
+        lv_label_set_text_fmt(coin_label, "%d", s_coin_wallet);
     }
 
     // 每次切回界面时重置隐藏状态
@@ -411,9 +417,17 @@ int ui_shop_get_draw_cnt(void)
  */
 void ui_shop_set_draw_cnt(int cnt)
 {
-    if (cnt < 0)
-        return;
+    if (cnt < 0) return;
     draw_count = cnt;
+}
+
+int ui_shop_coin_get(void) { return s_coin_wallet; }
+
+void ui_shop_coin_add(int amount)
+{
+    if (amount <= 0) return;
+    s_coin_wallet += amount;
+    user_data_save();
 }
 
 /**********************
@@ -462,19 +476,17 @@ static void draw_btn_event_cb(lv_event_t *e)
     if (!lv_obj_has_flag(shop_exit_popup, LV_OBJ_FLAG_HIDDEN))
         return; // 退出窗口显示时无法抽奖
 
-    // 检查金币是否足够
-    if (coin_get_num() < DRAW_COST)
+    /* 检查金币是否足够 */
+    if (s_coin_wallet < DRAW_COST)
     {
-        CONSOLE_INFO("Coins insufficient");
+        CONSOLE_INFO("Coins insufficient (%d < %d)", s_coin_wallet, DRAW_COST);
         return;
     }
-
-    coin_add_num(-DRAW_COST);
+    s_coin_wallet -= DRAW_COST;
+    user_data_save();
 
     if (coin_label != NULL)
-    {
-        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
-    }
+        lv_label_set_text_fmt(coin_label, "%d", s_coin_wallet);
 
     target_slot = get_random_reward_slot();
 
@@ -631,35 +643,25 @@ static void give_reward(int slot)
 {
     switch (slot)
     {
-    case 1:
-        coin_add_num(5);
-        break;
-    case 3:
-        coin_add_num(10);
-        break;
-    case 5:
-        coin_add_num(20);
-        break;
-    case 7:
-        coin_add_num(200);
-        break;
+    case 1: s_coin_wallet += 5;   break;
+    case 3: s_coin_wallet += 10;  break;
+    case 5: s_coin_wallet += 20;  break;
+    case 7: s_coin_wallet += 200; break;
     case 0:
-        ui_base_plane_unlock(PLANE_ID_EMBER);
+        ui_base_character_unlock(EMBER);
         CONSOLE_INFO("Unlocked Ember Plane!");
         break;
     case 2:
-        ui_base_plane_unlock(PLANE_ID_STREAM);
+        ui_base_character_unlock(STREAM);
         CONSOLE_INFO("Unlocked Stream Plane!");
         break;
     case 4:
-        ui_base_plane_unlock(PLANE_ID_VERDANT);
+        ui_base_character_unlock(VERDANT);
         CONSOLE_INFO("Unlocked Verdant Plane!");
         break;
     }
+    user_data_save();
 
-    // 更新金币显示
     if (coin_label != NULL)
-    {
-        lv_label_set_text_fmt(coin_label, "%d", coin_get_num());
-    }
+        lv_label_set_text_fmt(coin_label, "%d", s_coin_wallet);
 }

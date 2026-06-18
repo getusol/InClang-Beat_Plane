@@ -169,9 +169,7 @@ static void btn_level_event_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
     audio_load(AUDIO_MOUSEOPEN, AUDIO_CHAN_AUTO, false);
-    fsm_switch_state(GS_PLAY);
-    event_dispatch(EVENT_GAME_START, NULL, NULL); // 触发游戏开始逻辑
-    CONSOLE_INFO("Game start.");
+    fsm_switch_state(GS_LOBBY);
 }
 
 /**

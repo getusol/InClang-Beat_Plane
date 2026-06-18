@@ -21,6 +21,7 @@
 #include "apr.h"
 #include "ui_comm.h"
 #include "ui_setting.h"
+#include "ui_lobby.h"
 #include "multiplayer.h"
 
 #include <stdio.h>
@@ -38,7 +39,7 @@
  *  STATIC PROTOTYPES
  **********************/
 
-static void ui_esc_pressed_handler();
+static void ui_esc_pressed_handler(input_event_t *e);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -61,6 +62,7 @@ void ui_init_stage1()
 {
   ui_cg_init_stage1();
   ui_menu_init_stage1();
+  ui_lobby_init_stage1();
   ui_play_init_stage1();
   ui_setting_init_stage1();
   ui_shop_init_stage1();
@@ -77,6 +79,7 @@ void ui_init_stage2()
   // 各界面画图
   ui_cg_init_stage2();
   ui_menu_init_stage2();
+  ui_lobby_init_stage2();
   ui_play_init_stage2();
   ui_setting_init_stage2();
   ui_shop_init_stage2();
@@ -84,13 +87,14 @@ void ui_init_stage2()
   ui_comm_init_stage2();
   ui_sys_halt_init_stage2();
   // 按键注册
-  input_sw_register_press_callback(KEY_EVENT_B, ui_esc_pressed_handler);
+  input_sw_register_press_callback(INPUT_DEVICE_ANY, KEY_EVENT_B, ui_esc_pressed_handler, NULL);
   CONSOLE_INFO("Ui initialization finished");
 }
 
 /**
  * @brief 根据当前游戏状态决定UI加载和音乐加载，
  *        不同加载函数位于相应的文件中 UI渲染已经在init创建完毕
+ *        每次切换游戏状态时调用,更新UI 界面
  */
 void ui_run()
 {
@@ -118,8 +122,11 @@ void ui_run()
     audio_stop(AUDIO_CHAN_BGM);
     ui_comm_run();
     break;
+  case GS_LOBBY:
+    ui_lobby_run();
+    break;
   case GS_PLAY:
-    if (last_game_state == GS_MENU || last_game_state == GS_OVER)
+    if (last_game_state == GS_LOBBY || last_game_state == GS_OVER)
       audio_load(AUDIO_BGM, AUDIO_CHAN_BGM, true);
     if (last_game_state == GS_PAUSE)
       audio_resume_all();
@@ -156,6 +163,14 @@ void ui_run()
   last_game_state = fsm_get_state();
 }
 
+/**
+ * @brief 更新ui元素
+ */
+void ui_update()
+{
+  ui_lobby_flush();
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -163,8 +178,9 @@ void ui_run()
 /**
  * @brief ESC键在UI切换中的作用控制函数
  */
-static void ui_esc_pressed_handler()
+static void ui_esc_pressed_handler(input_event_t *e)
 {
+  LV_UNUSED(e);
   game_state_t game_state = fsm_get_state();
   switch (game_state)
   {
@@ -179,6 +195,9 @@ static void ui_esc_pressed_handler()
     break;
   case GS_SHOP:
     ui_shop_esc_behave();
+    break;
+  case GS_LOBBY:
+    ui_lobby_esc_behave(e->dev_type);
     break;
   case GS_PLAY:
     fsm_switch_state(GS_PAUSE);

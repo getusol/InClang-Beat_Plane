@@ -29,13 +29,19 @@ int main(int argc, char **argv)
     mp_init(); //  Must be ahead of any where mp_event register happens
     input_init();
     audio_init();
-    fsm_init();
     event_init();     //  Must be ahead of any where game_event register happens
     ui_init_stage1(); // 初始化根容器等可能与其它模块共享的资源  先调用
     game_init();
     settings_load();  // 必须在ui创建之前 所有settings项注册之后 将文件加载到内存中
     ui_init_stage2(); // 绘制全部ui元素
+    fsm_init();
 
+    non_blocking_timer_t input_timer = {
+        .func = input_dispatch,
+        .tick_get = lv_tick_get,
+        .delay_ms = SCAN_RATE_MS,
+        .last_tick = 0,
+    };
     non_blocking_timer_t logic_timer = {
         .func = game_update,
         .tick_get = lv_tick_get,
@@ -43,21 +49,15 @@ int main(int argc, char **argv)
         .last_tick = 0,
     };
     non_blocking_timer_t ui_timer = {
-        .func = ui_run,
+        .func = ui_update,
         .tick_get = lv_tick_get,
         .delay_ms = 30,
-        .last_tick = 0,
-    };
-    non_blocking_timer_t input_timer = {
-        .func = input_dispatch,
-        .tick_get = lv_tick_get,
-        .delay_ms = SCAN_RATE_MS,
         .last_tick = 0,
     };
     non_blocking_timer_t comm_timer = {
         .func = comm_update,
         .tick_get = lv_tick_get,
-        .delay_ms = 2,
+        .delay_ms = 10,
         .last_tick = 0,
     };
     non_blocking_timer_t mp_timer = {
@@ -77,18 +77,6 @@ int main(int argc, char **argv)
         non_blocking_delay(&ui_timer);
         non_blocking_delay(&comm_timer);
         non_blocking_delay(&mp_timer);
-
-        /* 金币同步处理（双方） */
-        if (comm_has_coin_sync())
-        {
-            int32_t val = comm_get_coin_sync();
-#ifdef SIMULATOR
-            coin_set_p2_num(val); // PC: 收到 MCU 金币 → 设为 P2 余额
-#else
-            coin_set_num(val); // MCU: 收到 PC 的 P2 金币 → 保存
-            save_write();
-#endif
-        }
 
         uint32_t t_start = lv_tick_get();
         lv_timer_handler();

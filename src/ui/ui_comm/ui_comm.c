@@ -11,7 +11,6 @@
 #include "comm_status.h"
 #include "comm.h"
 #include "debug.h"
-#include "multiplayer.h"
 #include "fsm.h"
 #include "lvgl_utils.h"
 #include "ui_templates.h"
@@ -33,7 +32,6 @@
 
 static void comm_label_update(lv_timer_t *t);
 static void on_label_click(lv_event_t *e);
-static void on_mp_event_cb(mp_event_t event, void *v);
 static void on_mp_btm_click(lv_event_t *e);
 static void on_mp_popup_yes_btn_click(lv_event_t *e);
 static void on_mp_popup_no_btn_click(lv_event_t *e);
@@ -96,7 +94,7 @@ void ui_comm_init_stage2(void)
 
     // 文字提示
     lv_obj_t *mp_label = lv_label_create(dp_comm);
-    lv_label_set_text(mp_label, "MCU now on multiplaying mode");
+    lv_label_set_text(mp_label, "Now on multiplaying mode");
     lv_obj_set_style_text_color(mp_label, lv_color_hex(0x16C559), 0);
     lv_obj_set_style_text_font(mp_label, &lv_font_montserrat_24, LV_PART_MAIN);
     lv_obj_align(mp_label, LV_ALIGN_CENTER, 0, -60);
@@ -150,10 +148,6 @@ void ui_comm_init_stage2(void)
     lv_label_set_text(mp_popup_no_btn_label, "No");
     lv_obj_set_style_text_font(mp_popup_no_btn_label, &lv_font_montserrat_20, LV_PART_MAIN);
     lv_obj_set_style_text_color(mp_popup_no_btn_label, lv_color_white(), 0);
-
-    // 事件注册
-    mp_event_register(MP_EVENT_CONNECTED, on_mp_event_cb);
-    mp_event_register(MP_EVENT_DISCONNECTED, on_mp_event_cb);
 
     CONSOLE_INFO("Communication status UI initialized on overlay");
 }
@@ -233,35 +227,6 @@ static void on_label_click(lv_event_t *e)
 }
 
 /**
- * @brief 多玩家事件回调函数
- */
-static void on_mp_event_cb(mp_event_t event, void *v)
-{
-#ifdef SIMULATOR
-    LV_UNUSED(event);
-    LV_UNUSED(v);
-    // PC上不做事 暂时不做处理
-#else
-    LV_UNUSED(v);
-    switch (event)
-    {
-    case MP_EVENT_CONNECTED:
-        save_write();
-        fsm_switch_state(GS_COMM);
-        break;
-    case MP_EVENT_DISCONNECTED:
-        // 持续同步状态
-        //  然后 存档 回到菜单界面
-        save_write();
-        fsm_switch_state(GS_MENU);
-        break;
-    default:
-        break;
-    }
-#endif
-}
-
-/**
  * @brief 多人图标按钮点击回调
  */
 static void on_mp_btm_click(lv_event_t *e)
@@ -279,7 +244,7 @@ static void on_mp_popup_yes_btn_click(lv_event_t *e)
     LV_UNUSED(e);
     audio_load(AUDIO_MOUSECLOSE, AUDIO_CHAN_AUTO, false);
     popup_hide(mp_popup);
-    mp_disconnect();
+    fsm_switch_state(GS_MENU);
 }
 
 /**

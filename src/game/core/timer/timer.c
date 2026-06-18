@@ -29,13 +29,13 @@ struct timer_t
     timer_mode_t mode;         // 计时模式
     timer_callback_t callback; // 回调函数
     void *usr_data;            // 用户数据
-    game_obj_t * owner;        // 所属游戏对象 便于释放
+    game_obj_t *owner;         // 所属游戏对象 便于释放
     uint16_t pool_index;       // 在对象池中的索引
 };
 
- /**********************
-  *  STATIC PROTOTYPES
-  **********************/
+/**********************
+ *  STATIC PROTOTYPES
+ **********************/
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -45,12 +45,11 @@ struct timer_t
  *  STATIC VARIABLES
  **********************/
 
-static timer_t timers[MAX_TIMER_COUNT] = {{0}}; // 定时器数组
-static pool_t timer_pool = {0}; // 定时器对象池
+static timer_t timers[MAX_TIMER_COUNT] = {{0}};            // 定时器数组
+static pool_t timer_pool = {0};                            // 定时器对象池
 static uint16_t timer_free_indices[MAX_TIMER_COUNT] = {0}; // 空闲定时器索引数组
 
-
- /**********************
+/**********************
  *   GLOBAL FUNCTIONS
  **********************/
 
@@ -59,12 +58,13 @@ static uint16_t timer_free_indices[MAX_TIMER_COUNT] = {0}; // 空闲定时器索
  */
 void timer_pool_init(void)
 {
-    for (int i = 0;i < MAX_TIMER_COUNT;i++) {
+    for (int i = 0; i < MAX_TIMER_COUNT; i++)
+    {
         timers[i].pool_index = POOL_INVALID_ID;
         timers[i].active = false;
     }
     // 初始化定时器对象池
-    pool_init(&timer_pool,timer_free_indices,MAX_TIMER_COUNT);
+    pool_init(&timer_pool, timer_free_indices, MAX_TIMER_COUNT);
 }
 
 /**
@@ -75,14 +75,16 @@ void timer_pool_init(void)
  * @param usr_data 定时器用户数据
  * @return timer_t* 定时器指针 失败返回 NULL
  */
-timer_t * timer_create(game_obj_t * owner,uint32_t interval_ms,timer_mode_t mode,
-                        timer_callback_t callback,void * usr_data)
+timer_t *timer_create(game_obj_t *owner, uint32_t interval_ms, timer_mode_t mode,
+                      timer_callback_t callback, void *usr_data)
 {
     // 参数检查
-    if (callback == NULL) return NULL;
+    if (callback == NULL)
+        return NULL;
 
     uint16_t id = pool_alloc(&timer_pool);
-    if (id == POOL_INVALID_ID) {
+    if (id == POOL_INVALID_ID)
+    {
         CONSOLE_WARNING("Failed to create timer, no free index available.");
         LOG_WARNING("Failed to create timer, no free index available.");
         return NULL;
@@ -106,47 +108,57 @@ timer_t * timer_create(game_obj_t * owner,uint32_t interval_ms,timer_mode_t mode
  */
 void timer_update()
 {
-    if (fsm_get_state() != GS_PLAY) return;
+    if (fsm_get_state() != GS_PLAY)
+        return;
 
     uint32_t current_tick = play_tick_get();
     uint32_t elapsed_tick = 0;
-    timer_t * t = NULL;
+    timer_t *t = NULL;
 
-    for (int i = 0;i < MAX_TIMER_COUNT;i++) {
+    for (int i = 0; i < MAX_TIMER_COUNT; i++)
+    {
 
         t = &timers[i];
-        if (!t->active) continue;
+        if (!t->active)
+            continue;
 
         // 检查所属游戏对象是否存在
-        if (t->owner == NULL) {
+        if (t->owner == NULL)
+        {
             t->active = false;
-            pool_free(&timer_pool,t->pool_index);
+            pool_free(&timer_pool, t->pool_index);
             continue;
         }
         // 检查所属游戏对象是否活跃
-        if (!game_obj_is_active(t->owner)) {
+        if (!game_obj_is_active(t->owner))
+        {
             t->active = false;
-            pool_free(&timer_pool,t->pool_index);
+            pool_free(&timer_pool, t->pool_index);
             continue;
         }
 
         elapsed_tick = current_tick - t->start_tick;
 
-        if (elapsed_tick >= t->interval_ms) {
+        if (elapsed_tick >= t->interval_ms)
+        {
             // 触发回调
-            if (t->callback) t->callback(t->owner,t->usr_data);
+            if (t->callback)
+                t->callback(t->owner, t->usr_data);
             // 单次触发 回收
-            if (t->mode == TIMER_MODE_ONCE) {
+            if (t->mode == TIMER_MODE_ONCE)
+            {
                 t->active = false;
-                pool_free(&timer_pool,t->pool_index);
-            // 重复触发 重置时间
-            } else {
+                pool_free(&timer_pool, t->pool_index);
+                // 重复触发 重置时间
+            }
+            else
+            {
                 t->start_tick = current_tick;
             }
         }
     }
 }
 
- /**********************
+/**********************
  *   STATIC FUNCTIONS
  **********************/

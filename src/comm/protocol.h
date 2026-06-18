@@ -42,7 +42,10 @@ typedef enum
     COMM_FRAME_INVITE_ACK = 0x07,     // 邀请确认帧 MCU<->PC
     COMM_FRAME_INVITE_CANCEL = 0x08,  // 邀请取消帧（双向）
     COMM_FRAME_DISCONNECT = 0x09,     // 断开联机帧（双向）
-    COMM_FRAME_COIN_SYNC = 0x0A,      // P2 金币同步帧 PC→MCU（4字节 int32）
+    COMM_FRAME_COIN_SYNC = 0x0A,            // P2 金币同步帧 PC→MCU
+    COMM_FRAME_CONTROLLER_KEY = 0x0B,       // 手柄按键帧 PC→MCU (1字节)
+    COMM_FRAME_CONTROLLER_JOYSTICK = 0x0C,  // 手柄摇杆帧 PC→MCU (4字节)
+    COMM_FRAME_LOBBY_STATE = 0x0D,          // 大厅状态帧 双向 (1字节)
 } comm_frame_type_t;
 
 /***********************

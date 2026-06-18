@@ -1,9 +1,11 @@
 /**
- * @file key.h
+ * @file lkey.h
+ * @brief 本地按键接口 (local key)
  */
 
-#ifndef __KEY_H__
-#define __KEY_H__
+#ifndef __LKEY_H__
+#define __LKEY_H__
+
 /*********************
  *      INCLUDES
  *********************/
@@ -18,23 +20,17 @@
 /**********************
  *      TYPEDEFS
  **********************/
+
 /**
- * @brief 虚拟按钮枚举注册处
+ * @brief 虚拟按钮枚举
  * @note 添加新虚拟按钮:需要在此处注册对应id号
  */
-typedef enum
-{
+typedef enum {
     KEY_NONE = 0,
     KEY_A,
     KEY_B,
     KEY_X,
     KEY_Y,
-#ifdef SIMULATOR
-    RKEY_A = 0x80,
-    RKEY_B,
-    RKEY_X,
-    RKEY_Y,
-#endif
     KEY_MAX,
 } key_code_t;
 
@@ -46,8 +42,8 @@ typedef enum
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void key_init();
-void key_scan(const uint8_t * ptr);
+void key_init(void);
+void key_scan(const uint8_t *ptr);
 
 bool key_pressed(key_code_t key);
 bool key_released(key_code_t key);
@@ -58,4 +54,4 @@ bool key_long_press(key_code_t key);
  *  STATIC VARIABLES
  **********************/
 
-#endif
+#endif /* __LKEY_H__ */

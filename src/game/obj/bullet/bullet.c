@@ -15,15 +15,16 @@
 #include "fsm.h"
 #include "game.h"
 #include "event.h"
+#include "player.h"
 
 /**********************
  *      MACROS
  **********************/
 
-#define BULLET_MAX_X SCREEN_WIDTH         // 子弹最大X坐标
-#define BULLET_MIN_X 0                    // 子弹最小X坐标
-#define BULLET_MAX_Y SCREEN_HEIGHT        // 子弹最大Y坐标
-#define BULLET_MIN_Y 0                    // 子弹最小Y坐标
+#define BULLET_MAX_X SCREEN_WIDTH  // 子弹最大X坐标
+#define BULLET_MIN_X 0             // 子弹最小X坐标
+#define BULLET_MAX_Y SCREEN_HEIGHT // 子弹最大Y坐标
+#define BULLET_MIN_Y 0             // 子弹最小Y坐标
 
 /**********************
  *      TYPEDEFS
@@ -34,24 +35,27 @@
  */
 typedef struct bullet_t
 {
-    game_obj_t base;    // 基对象
-    int16_t damage;     // 子弹伤害
-    game_obj_t *source; // 子弹发射源
+    game_obj_t base;     // 基对象
+    int16_t damage;      // 子弹伤害
+    game_obj_t *source;  // 子弹发射源
     uint16_t pool_index; // 对象池索引
     uint8_t flags;       // 特殊效果标志 BULLET_FLAG_*
 } bullet_t;
 
- /**********************
-  *  STATIC PROTOTYPES
-  **********************/
+/**********************
+ *  STATIC PROTOTYPES
+ **********************/
 
-static void bullet_update(game_obj_t * g);
-static void bullet_hide(game_obj_t * g);
-static void bullet_show(game_obj_t * g);
-static void bullet_move(game_obj_t * g);
+static void bullet_update(game_obj_t *g);
+static void bullet_hide(game_obj_t *g);
+static void bullet_show(game_obj_t *g);
+static void bullet_move(game_obj_t *g);
 
-static void bullet_event_hit_enemy_cb(game_obj_t * scr,game_obj_t * trg);
-static void bullet_event_hit_player_cb(game_obj_t * scr,game_obj_t * trg);
+static void bullet_event_hit_enemy_cb(game_obj_t *scr, game_obj_t *trg);
+static void bullet_event_hit_player_cb(game_obj_t *scr, game_obj_t *trg);
+static void bullet_event_hit_flame_wall_cb(game_obj_t *scr, game_obj_t *trg);
+
+static void bullet_apply_slow_visual(bullet_t *b, bool enable);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -61,28 +65,28 @@ static void bullet_event_hit_player_cb(game_obj_t * scr,game_obj_t * trg);
  *  STATIC VARIABLES
  **********************/
 
-static bullet_t bullets[MAX_BULLET_COUNT];                      // 子弹对象池
-static pool_t bullet_pool;                                      // 子弹对象池管理器
-static uint16_t bullet_free_indices[MAX_BULLET_COUNT];          // 子弹对象池空闲索引栈
-static bool enemy_slow_active = false;                          // 敌方子弹减速开关
+static bullet_t bullets[MAX_BULLET_COUNT];             // 子弹对象池
+static pool_t bullet_pool;                             // 子弹对象池管理器
+static uint16_t bullet_free_indices[MAX_BULLET_COUNT]; // 子弹对象池空闲索引栈
+static bool enemy_slow_active = false;                 // 敌方子弹减速开关
 
- /**********************
+/**********************
  *   GLOBAL FUNCTIONS
  **********************/
 
 /**
  * @brief 初始化子弹系统
  */
-void bullet_init(lv_obj_t * parent)
+void bullet_init(lv_obj_t *parent)
 {
-    memset(bullets,0,sizeof(bullets));
-    //初始化子弹对象池
+    memset(bullets, 0, sizeof(bullets));
+    // 初始化子弹对象池
     pool_init(&bullet_pool, bullet_free_indices, MAX_BULLET_COUNT);
 
     // 获取默认子弹外观
     apr_t *default_apr = apr_get(APR_BULLET_DEFAULT);
 
-    for (uint16_t i = 0;i < MAX_BULLET_COUNT;i++)
+    for (uint16_t i = 0; i < MAX_BULLET_COUNT; i++)
     {
         bullets[i].base.active = false;
         bullets[i].base.apr = default_apr;
@@ -119,11 +123,12 @@ void bullet_init(lv_obj_t * parent)
     }
 
     // event register
-    event_register(EVENT_BULLET_HIT_ENEMY,bullet_event_hit_enemy_cb);
-    event_register(EVENT_BULLET_HIT_PLAYER,bullet_event_hit_player_cb);
+    event_register(EVENT_BULLET_HIT_ENEMY, bullet_event_hit_enemy_cb);
+    event_register(EVENT_BULLET_HIT_PLAYER, bullet_event_hit_player_cb);
+    event_register(EVENT_FLAME_WALL_HIT_BULLET, bullet_event_hit_flame_wall_cb);
 
     CONSOLE_INFO("Bullet system initialized with max bullet count: %d", MAX_BULLET_COUNT);
-    return ;
+    return;
 }
 
 /**
@@ -138,12 +143,12 @@ void bullet_init(lv_obj_t * parent)
  * @param bullet_apr 子弹外观模板ID
  * @return 创建的子弹指针
  */
-game_obj_t * bullet_create(game_obj_t *source,
-                         lv_coord_t x, lv_coord_t y,
-                         int16_t vx, int16_t vy,
-                         int16_t damage,
-                         behave_t behave,
-                         apr_id_t bullet_apr)
+game_obj_t *bullet_create(game_obj_t *source,
+                          lv_coord_t x, lv_coord_t y,
+                          int16_t vx, int16_t vy,
+                          int16_t damage,
+                          behave_t behave,
+                          apr_id_t bullet_apr)
 {
     uint16_t index = pool_alloc(&bullet_pool);
     if (index == POOL_INVALID_ID)
@@ -173,7 +178,8 @@ game_obj_t * bullet_create(game_obj_t *source,
     bullets[index].base.show((game_obj_t *)&bullets[index]);
 
     // 如果减速激活中且来源是敌人，应用冰冻视觉效果
-    if (enemy_slow_active && source != NULL && source->type == GAME_OBJ_TYPE_ENEMY) {
+    if (enemy_slow_active && source != NULL && source->type == GAME_OBJ_TYPE_ENEMY)
+    {
         lv_obj_set_style_opa(bullets[index].base.obj, LV_OPA_60, 0);
     }
 
@@ -184,7 +190,7 @@ game_obj_t * bullet_create(game_obj_t *source,
 /**
  * @brief 获取子弹伤害
  */
-int16_t bullet_get_damage(game_obj_t * bullet)
+int16_t bullet_get_damage(game_obj_t *bullet)
 {
     return ((bullet_t *)bullet)->damage;
 }
@@ -192,31 +198,89 @@ int16_t bullet_get_damage(game_obj_t * bullet)
 /**
  * @brief 获取子弹发射源
  */
-game_obj_t * bullet_get_source(game_obj_t * g)
+game_obj_t *bullet_get_source(game_obj_t *g)
 {
-    if (g==NULL) return NULL;
-    bullet_t * b = (bullet_t*)g;
+    if (g == NULL)
+        return NULL;
+    bullet_t *b = (bullet_t *)g;
     return (b->source);
 }
 
- /**********************
+/**
+ * @brief 获取敌方子弹减速开关状态
+ */
+bool bullet_get_enemy_slow(void)
+{
+    return enemy_slow_active;
+}
+
+/**
+ * @brief 设置子弹特殊效果标志
+ */
+void bullet_set_flags(game_obj_t *bullet, uint8_t flags)
+{
+    if (bullet == NULL)
+        return;
+    ((bullet_t *)bullet)->flags = flags;
+}
+
+/**
+ * @brief 获取子弹特殊效果标志
+ */
+uint8_t bullet_get_flags(game_obj_t *bullet)
+{
+    if (bullet == NULL)
+        return 0;
+    return ((bullet_t *)bullet)->flags;
+}
+
+/**
+ * @brief 设置子弹发射源（反射弹用）
+ */
+void bullet_set_source(game_obj_t *bullet, game_obj_t *source)
+{
+    if (bullet == NULL)
+        return;
+    ((bullet_t *)bullet)->source = source;
+}
+
+/**
+ * @brief 设置敌方子弹减速开关
+ */
+void bullet_set_enemy_slow(bool enabled)
+{
+    if (enemy_slow_active == enabled)
+        return;
+    enemy_slow_active = enabled;
+
+    // 批量应用/移除冰冻视觉效果到所有活跃敌方子弹
+    for (int i = 0; i < MAX_BULLET_COUNT; i++)
+    {
+        bullet_apply_slow_visual(&bullets[i], enabled);
+    }
+}
+
+/**********************
  *   STATIC FUNCTIONS
  **********************/
 
- /**
-  * @brief 单个子弹更新
-  */
-static void bullet_update(game_obj_t * g)
+/**
+ * @brief 单个子弹更新
+ */
+static void bullet_update(game_obj_t *g)
 {
-    if (fsm_get_state() != GS_PLAY && fsm_get_state() != GS_PAUSE && fsm_get_state() != GS_SETTING) {
+    if (fsm_get_state() != GS_PLAY && fsm_get_state() != GS_PAUSE && fsm_get_state() != GS_SETTING)
+    {
         g->hide(g);
-        return ;
+        return;
     }
-    if (fsm_get_state() == GS_PAUSE || fsm_get_state() == GS_SETTING) {
-        return ;
+    if (fsm_get_state() == GS_PAUSE || fsm_get_state() == GS_SETTING)
+    {
+        return;
     }
-    if (!g->active) {
-        return ;
+    if (!g->active)
+    {
+        return;
     }
     bullet_move(g);
 }
@@ -224,7 +288,7 @@ static void bullet_update(game_obj_t * g)
 /**
  * @brief 子弹隐藏 停止渲染+标记不活跃
  */
-static void bullet_hide(game_obj_t * g)
+static void bullet_hide(game_obj_t *g)
 {
     g->active = false;
     lv_obj_add_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
@@ -232,11 +296,11 @@ static void bullet_hide(game_obj_t * g)
     // 重置旋转（防止追踪弹角度残留到下次复用）
     lv_img_set_angle(g->obj, 0);
     lv_img_set_pivot(g->obj, 0, 0);
-    //归还内存
-    bullet_t * b = (bullet_t *)g;
+    // 归还内存
+    bullet_t *b = (bullet_t *)g;
     if (b->pool_index == POOL_INVALID_ID)
     {
-        return ;
+        return;
     }
     pool_free(&bullet_pool, b->pool_index);
     b->pool_index = POOL_INVALID_ID;
@@ -245,13 +309,13 @@ static void bullet_hide(game_obj_t * g)
 /**
  * @brief 子弹显示 激活对象+渲染 不分配内存
  */
-static void bullet_show(game_obj_t * g)
+static void bullet_show(game_obj_t *g)
 {
     if (((bullet_t *)g)->pool_index == POOL_INVALID_ID)
     {
         CONSOLE_ERROR("Attempting to show a bullet that is not allocated! This should not happen.");
         LOG_ERROR("Attempting to show a bullet that is not allocated! This should not happen.");
-        return ;
+        return;
     }
     g->active = true;
     lv_obj_clear_flag(g->obj, LV_OBJ_FLAG_HIDDEN);
@@ -260,24 +324,29 @@ static void bullet_show(game_obj_t * g)
 /**
  * @brief 子弹移动函数 包括超出边界的处理
  */
-static void bullet_move(game_obj_t * g)
+static void bullet_move(game_obj_t *g)
 {
-    if (g == NULL) return ;
-    if (g->active == false) return ;
+    if (g == NULL)
+        return;
+    if (g->active == false)
+        return;
 
     int16_t effective_vx = g->vx;
     int16_t effective_vy = g->vy;
 
     // 敌方子弹减速: 减速时敌方子弹速度减半
-    if (enemy_slow_active) {
+    if (enemy_slow_active)
+    {
         game_obj_t *src = bullet_get_source(g);
-        if (src != NULL && src->type == GAME_OBJ_TYPE_ENEMY) {
+        if (src != NULL && src->type == GAME_OBJ_TYPE_ENEMY)
+        {
             effective_vx /= 2;
             effective_vy /= 2;
         }
     }
 
-    if (effective_vx == 0 && effective_vy == 0) return ;
+    if (effective_vx == 0 && effective_vy == 0)
+        return;
 
     g->x += effective_vx;
     g->y += effective_vy;
@@ -296,7 +365,7 @@ static void bullet_move(game_obj_t * g)
  * @param scr 子弹对象指针
  * @param trg 敌人对象指针
  */
-static void bullet_event_hit_enemy_cb(game_obj_t * scr,game_obj_t * trg)
+static void bullet_event_hit_enemy_cb(game_obj_t *scr, game_obj_t *trg)
 {
     scr->hide(scr);
 }
@@ -306,36 +375,25 @@ static void bullet_event_hit_enemy_cb(game_obj_t * scr,game_obj_t * trg)
  * @param scr 子弹对象指针
  * @param trg 玩家对象指针
  */
-static void bullet_event_hit_player_cb(game_obj_t * scr,game_obj_t * trg)
+static void bullet_event_hit_player_cb(game_obj_t *scr, game_obj_t *trg)
 {
-    scr->hide(scr);
+    if (!player_shield_is_active(trg))
+    {
+        scr->hide(scr);
+    }
+    // 反射弹
+    scr->vx = -scr->vx;
+    scr->vy = -scr->vy;
+    ((bullet_t *)scr)->source = trg;
+    scr->behave = NULL_BEHAVE;
 }
 
 /**
- * @brief 设置子弹特殊效果标志
+ * @brief 子弹击中火焰墙 子弹回调 子弹销毁
  */
-void bullet_set_flags(game_obj_t *bullet, uint8_t flags)
+static void bullet_event_hit_flame_wall_cb(game_obj_t *scr, game_obj_t *trg)
 {
-    if (bullet == NULL) return;
-    ((bullet_t *)bullet)->flags = flags;
-}
-
-/**
- * @brief 获取子弹特殊效果标志
- */
-uint8_t bullet_get_flags(game_obj_t *bullet)
-{
-    if (bullet == NULL) return 0;
-    return ((bullet_t *)bullet)->flags;
-}
-
-/**
- * @brief 设置子弹发射源（反射弹用）
- */
-void bullet_set_source(game_obj_t *bullet, game_obj_t *source)
-{
-    if (bullet == NULL) return;
-    ((bullet_t *)bullet)->source = source;
+    trg->hide(trg);
 }
 
 /**
@@ -345,35 +403,18 @@ void bullet_set_source(game_obj_t *bullet, game_obj_t *source)
  */
 static void bullet_apply_slow_visual(bullet_t *b, bool apply)
 {
-    if (!b->base.active) return;
+    if (!b->base.active)
+        return;
     game_obj_t *src = b->source;
-    if (src == NULL || src->type != GAME_OBJ_TYPE_ENEMY) return;
+    if (src == NULL || src->type != GAME_OBJ_TYPE_ENEMY)
+        return;
 
-    if (apply) {
+    if (apply)
+    {
         lv_obj_set_style_opa(b->base.obj, LV_OPA_60, 0);
-    } else {
+    }
+    else
+    {
         lv_obj_set_style_opa(b->base.obj, LV_OPA_COVER, 0);
     }
-}
-
-/**
- * @brief 设置敌方子弹减速开关
- */
-void bullet_set_enemy_slow(bool enabled)
-{
-    if (enemy_slow_active == enabled) return;
-    enemy_slow_active = enabled;
-
-    // 批量应用/移除冰冻视觉效果到所有活跃敌方子弹
-    for (int i = 0; i < MAX_BULLET_COUNT; i++) {
-        bullet_apply_slow_visual(&bullets[i], enabled);
-    }
-}
-
-/**
- * @brief 获取敌方子弹减速开关状态
- */
-bool bullet_get_enemy_slow(void)
-{
-    return enemy_slow_active;
 }

@@ -16,32 +16,37 @@
 #include "fsm.h"
 #include "game.h"
 #include "apr.h"
+#include "event.h"
 
 /**********************
  *      MACROS
  **********************/
 
-#define FLAME_WALL_SPEED -8   // 火墙默认向上速度
-#define FLAME_WALL_DAMAGE 20  // 火墙对敌人伤害
+#define FLAME_WALL_SPEED -8  // 火墙默认向上速度
+#define FLAME_WALL_DAMAGE 20 // 火墙对敌人伤害
 
 /**********************
  *      TYPEDEFS
  **********************/
 
-typedef struct {
+typedef struct
+{
     game_obj_t base;
     uint16_t pool_index;
-    int16_t damage;           // 碰撞伤害
+    int16_t damage; // 碰撞伤害
 } flame_wall_t;
 
- /**********************
-  *  STATIC PROTOTYPES
-  **********************/
+/**********************
+ *  STATIC PROTOTYPES
+ **********************/
 
 static void flame_wall_update(game_obj_t *g);
 static void flame_wall_show(game_obj_t *g);
 static void flame_wall_hide(game_obj_t *g);
 static void flame_wall_move(game_obj_t *g);
+
+static void flame_wall_on_hit_by_enemy(game_obj_t *scr, game_obj_t *trg);
+static void flame_wall_on_hit_by_bullet(game_obj_t *scr, game_obj_t *trg);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -55,7 +60,7 @@ static flame_wall_t flame_walls[MAX_FLAME_WALL_COUNT];
 static pool_t fw_pool;
 static uint16_t fw_free_indices[MAX_FLAME_WALL_COUNT];
 
- /**********************
+/**********************
  *   GLOBAL FUNCTIONS
  **********************/
 
@@ -67,7 +72,8 @@ void flame_wall_init(lv_obj_t *parent)
     memset(flame_walls, 0, sizeof(flame_walls));
     pool_init(&fw_pool, fw_free_indices, MAX_FLAME_WALL_COUNT);
 
-    for (int i = 0; i < MAX_FLAME_WALL_COUNT; i++) {
+    for (int i = 0; i < MAX_FLAME_WALL_COUNT; i++)
+    {
         flame_walls[i].base.active = false;
         flame_walls[i].base.type = GAME_OBJ_TYPE_FLAME_WALL;
         flame_walls[i].base.x = 0;
@@ -90,6 +96,9 @@ void flame_wall_init(lv_obj_t *parent)
         game_register_obj(&flame_walls[i].base);
     }
 
+    event_register(EVENT_FLAME_WALL_HIT_BULLET, flame_wall_on_hit_by_bullet);
+    event_register(EVENT_FLAME_WALL_HIT_ENEMY, flame_wall_on_hit_by_enemy);
+
     CONSOLE_INFO("Flame wall system initialized with max count: %d", MAX_FLAME_WALL_COUNT);
     LOG_INFO("Flame wall system initialized with max count: %d", MAX_FLAME_WALL_COUNT);
 }
@@ -101,12 +110,14 @@ void flame_wall_init(lv_obj_t *parent)
  * @param vy Y轴速度（负值为向上）
  * @return 创建的火墙对象指针，失败返回NULL
  */
-game_obj_t * flame_wall_create(lv_coord_t x, lv_coord_t y, int16_t vy)
+game_obj_t *flame_wall_create(lv_coord_t x, lv_coord_t y, int16_t vy)
 {
-    if (fsm_get_state() != GS_PLAY) return NULL;
+    if (fsm_get_state() != GS_PLAY)
+        return NULL;
 
     uint16_t id = pool_alloc(&fw_pool);
-    if (id == POOL_INVALID_ID) {
+    if (id == POOL_INVALID_ID)
+    {
         CONSOLE_WARNING("No available flame wall slots!");
         LOG_WARNING("No available flame wall slots!");
         return NULL;
@@ -124,7 +135,20 @@ game_obj_t * flame_wall_create(lv_coord_t x, lv_coord_t y, int16_t vy)
     return &fw->base;
 }
 
- /**********************
+/**
+ * @brief 获取火墙伤害
+ * @param obj 火墙对象指针
+ * @return 火墙伤害值
+ */
+int flame_wall_get_damage(game_obj_t *obj)
+{
+    if (obj == NULL || obj->type != GAME_OBJ_TYPE_FLAME_WALL)
+        return 0;
+    flame_wall_t *fw = (flame_wall_t *)obj;
+    return fw->damage;
+}
+
+/**********************
  *   STATIC FUNCTIONS
  **********************/
 
@@ -134,12 +158,15 @@ game_obj_t * flame_wall_create(lv_coord_t x, lv_coord_t y, int16_t vy)
 static void flame_wall_update(game_obj_t *g)
 {
     game_state_t gs = fsm_get_state();
-    if (gs != GS_PLAY && gs != GS_PAUSE && gs != GS_SETTING) {
+    if (gs != GS_PLAY && gs != GS_PAUSE && gs != GS_SETTING)
+    {
         g->hide(g);
         return;
     }
-    if (gs == GS_PAUSE || gs == GS_SETTING) return;
-    if (!g->active) return;
+    if (gs == GS_PAUSE || gs == GS_SETTING)
+        return;
+    if (!g->active)
+        return;
     flame_wall_move(g);
 }
 
@@ -149,7 +176,8 @@ static void flame_wall_update(game_obj_t *g)
 static void flame_wall_show(game_obj_t *g)
 {
     flame_wall_t *fw = (flame_wall_t *)g;
-    if (fw->pool_index == POOL_INVALID_ID) {
+    if (fw->pool_index == POOL_INVALID_ID)
+    {
         CONSOLE_WARNING("Flame wall show failed: not allocated");
         LOG_WARNING("Flame wall show failed: not allocated");
         return;
@@ -168,7 +196,8 @@ static void flame_wall_hide(game_obj_t *g)
     g->timered = false;
 
     flame_wall_t *fw = (flame_wall_t *)g;
-    if (fw->pool_index != POOL_INVALID_ID) {
+    if (fw->pool_index != POOL_INVALID_ID)
+    {
         pool_free(&fw_pool, fw->pool_index);
         fw->pool_index = POOL_INVALID_ID;
     }
@@ -179,14 +208,32 @@ static void flame_wall_hide(game_obj_t *g)
  */
 static void flame_wall_move(game_obj_t *g)
 {
-    if (g == NULL || !g->active) return;
+    if (g == NULL || !g->active)
+        return;
 
     g->x += g->vx;
     g->y += g->vy;
     lv_obj_set_pos(g->obj, g->x, g->y);
 
     // 超出屏幕边界销毁
-    if (g->y < -20 || g->y > 620) {
+    if (g->y < -20 || g->y > 620)
+    {
         g->hide(g);
     }
+}
+
+/**
+ * @brief 火墙被敌人击中
+ */
+static void flame_wall_on_hit_by_enemy(game_obj_t *scr, game_obj_t *trg)
+{
+    scr->hide(scr);
+}
+
+/**
+ * @brief 火墙被子弹击中 速度增加
+ */
+static void flame_wall_on_hit_by_bullet(game_obj_t *scr, game_obj_t *trg)
+{
+    scr->vy += -2;
 }

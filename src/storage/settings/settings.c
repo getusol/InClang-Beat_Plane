@@ -25,10 +25,7 @@
 #define SETTINGS_FILE_NAME "settings.dat"
 
 // 工具宏
-#define STR(x) #x
-#define FMT_MODULE "%" STR(MAX_MODULE_NAME_LEN) "[^.]"
-#define FMT_NAME "%" STR(MAX_SETTING_NAME_LEN) "[^:]"
-#define SETTING_FMT FMT_MODULE "." FMT_NAME ":%d"
+#define SETTING_FMT "%18[^.].%18[^:]:%d" // 与config.h中一致
 // eg: "%15[^.].%15[^:]:%d"
 
 /**********************
@@ -226,7 +223,7 @@ void settings_load()
 
     while (fgets(line, sizeof(line), fp))
     {
-        line[strcspn(line, "\n")] = '\0'; // 去掉换行符
+        line[strcspn(line, "\r\n")] = '\0'; // 去掉换行符
         if (sscanf(line, SETTING_FMT, module, name, &value) != 3)
         {
             CONSOLE_WARNING("Invalid setting format: %s", line);
@@ -254,7 +251,7 @@ void settings_load()
 
     while (f_gets(line, sizeof(line), &fs_file))
     {
-        line[strcspn(line, "\n")] = '\0'; // 去掉换行符
+        line[strcspn(line, "\r\n")] = '\0'; // 去掉换行符
         if (sscanf(line, SETTING_FMT, module, name, &value) != 3)
         {
             CONSOLE_WARNING("Invalid setting format: %s", line);
@@ -341,12 +338,15 @@ bool settings_set(const char *module, const char *name, int value)
     switch (settings[index]->type)
     {
     case ST_BOOL:
+    {
         bool *b_ptr = (bool *)settings[index]->data;
         if (b_ptr == NULL)
             return false;
         *b_ptr = (value != 0);
         break;
+    }
     case ST_INT:
+    {
         int *i_ptr = (int *)settings[index]->data;
         if (i_ptr == NULL)
             return false;
@@ -358,11 +358,14 @@ bool settings_set(const char *module, const char *name, int value)
 
         *i_ptr = value;
         break;
+    }
     default:
+    {
         CONSOLE_WARNING("Unknown setting type %d.", settings[index]->type);
         LOG_WARNING("Unknown setting type %d.", settings[index]->type);
         return false;
         break;
+    }
     }
     settings_changed = true;
     return true;
