@@ -37,5 +37,8 @@ void comm_send_invite_ack(bool accept);
 void comm_send_invite_cancel();
 void comm_send_disconnect();
 void comm_send_coin_sync(int32_t coin_num);
+void comm_pc_send_controller_key_state(uint8_t key_mask);
+void comm_pc_send_controller_joystick(int16_t x, int16_t y);
+void comm_send_lobby_state(uint8_t state);
 
 #endif // #ifndef __COMM_TX_H__

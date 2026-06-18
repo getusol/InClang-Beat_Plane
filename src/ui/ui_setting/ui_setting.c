@@ -14,6 +14,7 @@
 #include "tools.h"
 #include "lvgl_utils.h"
 #include "audio.h"
+#include "user_data.h"
 
 /**********************
  * MACROS
@@ -28,8 +29,9 @@
 typedef struct
 {
     lv_obj_t *label;
+    lv_obj_t *ctrl; /* 开关或滑块 */
     const setting_t *setting;
-} setting_ui_t; // 工具结构体 为了修改标签内容
+} setting_ui_t;
 
 /**********************
  * STATIC PROTOTYPES
@@ -37,11 +39,14 @@ typedef struct
 
 static void fetch_tab_names(void);
 static void create_tab_content(lv_obj_t *tab, const char *module);
+static void refresh_all_ui(void);
 
 // callbacks
 static void back_btn_event_cb(lv_event_t *e);
 static void setting_ui_event_cb(lv_event_t *e);
 static void setting_ui_label_event_cb(lv_event_t *e);
+static void danger_reset_settings_cb(lv_event_t *e);
+static void danger_clear_userdata_cb(lv_event_t *e);
 
 /**********************
  * STATIC VARIABLES
@@ -49,6 +54,10 @@ static void setting_ui_label_event_cb(lv_event_t *e);
 
 static const char *tab_names[SETTINGS_MAX] = {NULL};
 static uint8_t tab_names_count = 0;
+
+// UI 控件引用 (用于刷新)
+static setting_ui_t *s_ui_controls[SETTINGS_MAX];
+static int s_ui_count = 0;
 
 // lvgl
 static lv_obj_t *dp_setting = NULL;
@@ -133,7 +142,63 @@ void ui_setting_init_stage2(void)
         create_tab_content(tab, tab_names[i]);
     }
 
-    // 特殊选项卡
+    // 特殊选项卡 — Danger Zone
+    {
+        lv_obj_t *tab_danger = lv_tabview_add_tab(tabview, "Danger Zone");
+        lv_obj_add_flag(tab_danger, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_flex_flow(tab_danger, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(tab_danger, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                              LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_row(tab_danger, 10, LV_STATE_DEFAULT);
+
+        // Row 1: Reset all settings
+        {
+            lv_obj_t *row = lv_obj_create(tab_danger);
+            lv_obj_set_size(row, LV_PCT(90), 50);
+            lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+            lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER,
+                                  LV_FLEX_ALIGN_CENTER);
+            lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, 0);
+            lv_obj_set_style_border_width(row, 0, 0);
+            lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+
+            lv_obj_t *lbl = lv_label_create(row);
+            lv_label_set_text(lbl, "Reset all settings");
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_22, 0);
+
+            lv_obj_t *btn = lv_btn_create(row);
+            lv_obj_set_size(btn, 120, 40);
+            lv_obj_set_style_bg_color(btn, lv_palette_main(LV_PALETTE_RED), 0);
+            lv_obj_add_event_cb(btn, danger_reset_settings_cb, LV_EVENT_CLICKED, NULL);
+            lv_obj_t *bl = lv_label_create(btn);
+            lv_label_set_text(bl, "RESET");
+            lv_obj_center(bl);
+        }
+
+        // Row 2: Clear user data
+        {
+            lv_obj_t *row = lv_obj_create(tab_danger);
+            lv_obj_set_size(row, LV_PCT(90), 50);
+            lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+            lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER,
+                                  LV_FLEX_ALIGN_CENTER);
+            lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, 0);
+            lv_obj_set_style_border_width(row, 0, 0);
+            lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+
+            lv_obj_t *lbl = lv_label_create(row);
+            lv_label_set_text(lbl, "Clear user datas");
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_22, 0);
+
+            lv_obj_t *btn = lv_btn_create(row);
+            lv_obj_set_size(btn, 120, 40);
+            lv_obj_set_style_bg_color(btn, lv_palette_main(LV_PALETTE_RED), 0);
+            lv_obj_add_event_cb(btn, danger_clear_userdata_cb, LV_EVENT_CLICKED, NULL);
+            lv_obj_t *bl = lv_label_create(btn);
+            lv_label_set_text(bl, "CLEAR");
+            lv_obj_center(bl);
+        }
+    }
 
     // tabview样式
     lv_obj_t *tab_cont = lv_tabview_get_content(tabview);
@@ -150,7 +215,6 @@ void ui_setting_run(void)
 {
     if (dp_setting == NULL)
         return;
-
     lv_scr_load(dp_setting);
     set_group(NULL);
 }
@@ -216,6 +280,7 @@ static void create_tab_content(lv_obj_t *tab, const char *module)
         switch (setting->type)
         {
         case ST_BOOL:
+        {
             // 创建布尔选项
             // 水平容器 左侧标签右侧开关
             lv_obj_t *cont_bool = lv_obj_create(tab);
@@ -241,12 +306,15 @@ static void create_tab_content(lv_obj_t *tab, const char *module)
 
             setting_ui->setting = setting;
             setting_ui->label = label_bool;
+            setting_ui->ctrl = sswitch_bool;
 
             lv_obj_add_event_cb(sswitch_bool, setting_ui_event_cb, LV_EVENT_VALUE_CHANGED, (void *)setting);
             lv_obj_add_event_cb(sswitch_bool, setting_ui_label_event_cb, LV_EVENT_VALUE_CHANGED, (void *)setting_ui);
 
             break;
+        }
         case ST_INT:
+        {
             // 创建整数选项
             // 水平容器 左侧标签右侧滑块
             lv_obj_t *cont_int = lv_obj_create(tab);
@@ -270,16 +338,22 @@ static void create_tab_content(lv_obj_t *tab, const char *module)
 
             setting_ui->setting = setting;
             setting_ui->label = label_int;
+            setting_ui->ctrl = slider_int;
 
             lv_obj_add_event_cb(slider_int, setting_ui_event_cb, LV_EVENT_VALUE_CHANGED, (void *)setting);
             lv_obj_add_event_cb(slider_int, setting_ui_label_event_cb, LV_EVENT_VALUE_CHANGED, (void *)setting_ui);
 
             break;
+        }
         default:
+        {
             CONSOLE_WARNING("Unknown setting type: %d,cannot create option.", setting->type);
             LOG_WARNING("Unknown setting type: %d,cannot create option.", setting->type);
             break;
         }
+        }
+        if (setting_ui->setting && s_ui_count < SETTINGS_MAX)
+            s_ui_controls[s_ui_count++] = setting_ui;
     }
 }
 
@@ -310,13 +384,17 @@ static void setting_ui_event_cb(lv_event_t *e)
     switch (setting->type)
     {
     case ST_BOOL:
+    {
         bool state = lv_obj_has_state(target, LV_STATE_CHECKED);
         settings_set(setting->module, setting->name, state);
         break;
+    }
     case ST_INT:
+    {
         int value = lv_slider_get_value(target);
         settings_set(setting->module, setting->name, value);
         break;
+    }
     default:
         break;
     }
@@ -364,4 +442,47 @@ static void setting_ui_label_event_cb(lv_event_t *e)
         CONSOLE_WARNING("Unknown setting type: %p,cannot update label.", lv_obj_get_class(target));
         LOG_WARNING("Unknown setting type: %p,cannot update label.", lv_obj_get_class(target));
     }
+}
+
+static void refresh_all_ui(void)
+{
+    for (int i = 0; i < s_ui_count; i++)
+    {
+        setting_ui_t *ui = s_ui_controls[i];
+        if (!ui || !ui->setting)
+            continue;
+        switch (ui->setting->type)
+        {
+        case ST_BOOL:
+            if (*(bool *)ui->setting->data)
+                lv_obj_add_state(ui->ctrl, LV_STATE_CHECKED);
+            else
+                lv_obj_clear_state(ui->ctrl, LV_STATE_CHECKED);
+            lv_label_set_text_fmt(ui->label, "%s: %s",
+                                  ui->setting->name, *(bool *)ui->setting->data ? "ON" : "OFF");
+            break;
+        case ST_INT:
+            lv_slider_set_value(ui->ctrl, *(int *)ui->setting->data, LV_ANIM_OFF);
+            lv_label_set_text_fmt(ui->label, "%s: %d",
+                                  ui->setting->name, *(int *)ui->setting->data);
+            break;
+        }
+    }
+}
+
+static void danger_reset_settings_cb(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    settings_reset();
+    settings_load();
+    refresh_all_ui();
+    CONSOLE_INFO("Settings reset and UI refreshed.");
+}
+
+static void danger_clear_userdata_cb(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    user_data_reset();
+    user_data_load();
+    CONSOLE_INFO("User data cleared.");
 }

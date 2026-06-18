@@ -17,6 +17,7 @@
 #include "apr.h"
 #include "audio.h"
 #include "config.h"
+#include "user_data.h"
 
 /*********************
  * MACROS
@@ -46,6 +47,7 @@ typedef struct
  * STATIC VARIABLES
  **********************/
 static bool g_character_unlocked[CHARACTER_ID_MAX] = {true, false, false, false};
+static int g_unlocked_mask = 1; /* bit0=Player 始终解锁 */
 static character_id_t g_selected_character_id = PLAYER;
 
 static lv_obj_t *dp_base = NULL;
@@ -115,6 +117,8 @@ void ui_base_character_unlock(character_id_t id)
 {
     if (id >= CHARACTER_ID_MAX) return;
     g_character_unlocked[id] = true;
+    g_unlocked_mask |= (1 << id);
+    user_data_save();
     CONSOLE_INFO("Character %d unlocked.", id);
 }
 
@@ -123,6 +127,14 @@ void ui_base_character_unlock(character_id_t id)
  */
 void ui_base_init_stage1(void)
 {
+    user_data_register("Base", "UnlockedMask", &g_unlocked_mask, USER_DATA_INT);
+    user_data_load();
+    CONSOLE_INFO("ui_base: loaded unlocked_mask=%d (0x%X)", g_unlocked_mask, g_unlocked_mask);
+    /* 从 mask 恢复解锁状态 */
+    for (int i = 0; i < CHARACTER_ID_MAX; i++)
+        g_character_unlocked[i] = (g_unlocked_mask >> i) & 1;
+    g_character_unlocked[PLAYER] = true;
+
     dp_base = lv_obj_create(NULL);
     lv_obj_clear_flag(dp_base, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(dp_base, lv_color_hex(0x546373), 0);
@@ -319,13 +331,15 @@ void ui_base_init_stage2(void)
 void ui_base_run(void)
 {
     lv_scr_load(dp_base);
-
-    /* 清空上一次屏幕可能残留的 LVGL 输入组，防止按键被拦截 */
     set_group(NULL);
-
     popup_hide(base_exit_popup);
 
-    // 动态同步最新的解锁状态幕层 (保留遮罩展示，但点击已能穿透)
+    /* 从 mask 同步解锁数组 (处理 user_data_reset 后的刷新) */
+    for (int i = 0; i < CHARACTER_ID_MAX; i++)
+        g_character_unlocked[i] = (g_unlocked_mask >> i) & 1;
+    g_character_unlocked[PLAYER] = true;
+
+    // 动态同步最新的解锁状态幕层
     for (int i = 0; i < CHARACTER_ID_MAX; i++)
     {
         if (g_character_unlocked[i])

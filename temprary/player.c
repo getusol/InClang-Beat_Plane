@@ -68,7 +68,7 @@ static void player_skill_bullet_slow(void);
 static void player_skill_hp_reclaim(void);
 
 // 技能辅助回调
-static void player_shield_end_cb(game_obj_t *owner, void *usr_data);
+static void skill_shield_end_cb(game_obj_t *owner, void *usr_data);
 static void player_slow_end_cb(game_obj_t *owner, void *usr_data);
 
 #ifdef SIMULATOR
@@ -385,12 +385,12 @@ static void player_skill_shield(void)
   SKP->shield_active = true;
   lv_obj_clear_flag(SKP->shield_overlay, LV_OBJ_FLAG_HIDDEN);
   lv_obj_set_pos(SKP->shield_overlay, SKP->base.x, SKP->base.y);
-  timer_create((game_obj_t *)SKP, 1000, TIMER_MODE_ONCE, player_shield_end_cb, NULL);
+  timer_create((game_obj_t *)SKP, 1000, TIMER_MODE_ONCE, skill_shield_end_cb, NULL);
   // 音效
   audio_load(AUDIO_SKILLSHIELD, AUDIO_CHAN_AUTO, false);
 }
 
-static void player_shield_end_cb(game_obj_t *owner, void *usr_data)
+static void skill_shield_end_cb(game_obj_t *owner, void *usr_data)
 {
   (void)usr_data;
   if (owner == NULL)

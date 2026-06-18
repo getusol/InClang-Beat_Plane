@@ -77,6 +77,12 @@ static int16_t stored_joystick_x = 0;
 static int16_t stored_joystick_y = 0;
 static bool new_key_data = false;
 static bool new_joystick_data = false;
+#ifndef SIMULATOR /* MCU: 接收 PC 手柄数据 */
+static uint8_t stored_controller_key_mask = 0;
+static int16_t stored_controller_joystick_x = 0;
+static int16_t stored_controller_joystick_y = 0;
+#endif
+static uint8_t stored_lobby_state = 0; /* 对端大厅状态 */
 #ifdef SIMULATOR // PC
 static char stored_log[256] = {0};
 static uint16_t stored_log_len = 0;
@@ -283,6 +289,14 @@ int16_t comm_get_joystick_y(void)
     return stored_joystick_y;
 }
 
+#ifndef SIMULATOR /* MCU only */
+uint8_t comm_get_controller_key_mask(void)  { return stored_controller_key_mask; }
+int16_t comm_get_controller_joystick_x(void) { return stored_controller_joystick_x; }
+int16_t comm_get_controller_joystick_y(void) { return stored_controller_joystick_y; }
+#endif
+
+uint8_t comm_get_lobby_state(void) { return stored_lobby_state; }
+
 #ifdef SIMULATOR
 bool comm_has_new_log(void) { return new_log_data; }
 
@@ -409,6 +423,31 @@ static bool data_process()
                 stored_joystick_y = (frame_data[3] << 8) | frame_data[2];
                 new_joystick_data = true;
             }
+            break;
+
+        case COMM_FRAME_CONTROLLER_KEY:
+#ifndef SIMULATOR
+            if (frame_length >= 1)
+                stored_controller_key_mask = frame_data[0];
+#else
+            CONSOLE_WARNING("Controller key frame received on PC (unexpected)");
+#endif
+            break;
+
+        case COMM_FRAME_CONTROLLER_JOYSTICK:
+#ifndef SIMULATOR
+            if (frame_length >= 4) {
+                stored_controller_joystick_x = (frame_data[1] << 8) | frame_data[0];
+                stored_controller_joystick_y = (frame_data[3] << 8) | frame_data[2];
+            }
+#else
+            CONSOLE_WARNING("Controller joystick frame received on PC (unexpected)");
+#endif
+            break;
+
+        case COMM_FRAME_LOBBY_STATE:
+            if (frame_length >= 1)
+                stored_lobby_state = frame_data[0];
             break;
 
         case COMM_FRAME_LOG:

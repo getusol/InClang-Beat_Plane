@@ -282,6 +282,64 @@ void comm_mcu_send_heart_beat_ack()
 #endif
 }
 
+/**
+ * @brief PC→MCU 发送手柄按键状态 (仅 PC 端编译, MCU 空函数)
+ */
+void comm_pc_send_controller_key_state(uint8_t key_mask)
+{
+#ifdef SIMULATOR
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return;
+    uart_send_byte(COMM_SOF);
+    send_escaped_byte(COMM_FRAME_CONTROLLER_KEY);
+    send_escaped_byte(0x00);
+    send_escaped_byte(0x01);
+    send_escaped_byte(key_mask);
+    uint8_t checksum = calculate_checksum(&key_mask, 1);
+    send_escaped_byte(checksum);
+    uart_send_byte(COMM_EOF);
+#endif
+}
+
+/**
+ * @brief PC→MCU 发送手柄摇杆状态 (仅 PC 端编译, MCU 空函数)
+ */
+void comm_pc_send_controller_joystick(int16_t x, int16_t y)
+{
+#ifdef SIMULATOR
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return;
+    uint8_t data[4];
+    data[0] = x & 0xFF;
+    data[1] = (x >> 8) & 0xFF;
+    data[2] = y & 0xFF;
+    data[3] = (y >> 8) & 0xFF;
+    uart_send_byte(COMM_SOF);
+    send_escaped_byte(COMM_FRAME_CONTROLLER_JOYSTICK);
+    send_escaped_byte(0x00);
+    send_escaped_byte(0x04);
+    for (int i = 0; i < 4; i++) send_escaped_byte(data[i]);
+    uint8_t checksum = calculate_checksum(data, 4);
+    send_escaped_byte(checksum);
+    uart_send_byte(COMM_EOF);
+#endif
+}
+
+/**
+ * @brief 发送大厅状态 (双向: 通知对端本端是否在开房)
+ * @param state 0=idle, 1=hosting_multi
+ */
+void comm_send_lobby_state(uint8_t state)
+{
+    if (comm_get_status() != COMM_STATUS_CONNECTED) return;
+    uart_send_byte(COMM_SOF);
+    send_escaped_byte(COMM_FRAME_LOBBY_STATE);
+    send_escaped_byte(0x00);
+    send_escaped_byte(0x01);
+    send_escaped_byte(state);
+    uint8_t checksum = calculate_checksum(&state, 1);
+    send_escaped_byte(checksum);
+    uart_send_byte(COMM_EOF);
+}
+
  /**********************
  *   STATIC FUNCTIONS
  **********************/

@@ -212,8 +212,6 @@ static void coin_event_hit_player_cb(game_obj_t *src, game_obj_t *trg)
         return;
     if (trg->active == false)
         return;
-
-    coin_t *c = (coin_t *)trg;
     // 音效
     audio_load(AUDIO_COINPICKED, AUDIO_CHAN_AUTO, false);
     trg->hide(trg);

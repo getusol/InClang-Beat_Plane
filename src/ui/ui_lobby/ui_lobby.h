@@ -9,6 +9,8 @@
  *      INCLUDES
  *********************/
 
+#include "input_device.h"
+
 /**********************
  *      MACROS
  **********************/
@@ -28,7 +30,7 @@
 void ui_lobby_init_stage1(void);
 void ui_lobby_init_stage2(void);
 void ui_lobby_run(void);
-void ui_lobby_esc_behave(void);
+void ui_lobby_esc_behave(input_device_type_t device_type);
 void ui_lobby_navigate(void);
 void ui_lobby_flush(void);
 

@@ -24,6 +24,9 @@
 #include "character.h"
 #include "multiplayer.h"
 #include "settings.h"
+#include "ui_shop.h"
+#include "input_device.h"
+#include "comm_tx.h"
 #include "debug.h"
 
 /**********************
@@ -31,7 +34,7 @@
  **********************/
 
 #define CD_BASE_Y 99 // black_x 基准 Y
-#define CD_GAP 108   // X-Y 圆形间距
+#define CD_GAP 80    // X-Y 圆形间距 (3 玩家时最末 y≈499, Ready≈555 < 600)
 
 /**********************
  * TYPEDEFS
@@ -104,6 +107,12 @@ static const char *hud_img_names[MAX_PLAYER_COUNT] = {
     "hud_blue.bin",  // P1
     "hud_red.bin",   // P2
     "hud_green.bin", // P3
+};
+// CD 弧颜色: P1 蓝, P2 红, P3 绿
+static const lv_color_t cd_colors[MAX_PLAYER_COUNT] = {
+    LV_COLOR_MAKE(0x44, 0x88, 0xCC), // P1 蓝
+    LV_COLOR_MAKE(0xCC, 0x44, 0x88), // P2 红
+    LV_COLOR_MAKE(0x44, 0xCC, 0x44), // P3 绿
 };
 // 金币条背景图
 static const char *coin_bar_names[MAX_PLAYER_COUNT] = {
@@ -413,7 +422,7 @@ void ui_play_init_stage2()
         lv_arc_set_range(cd_arc_x[i], 0, 100);
         lv_arc_set_value(cd_arc_x[i], 100);
         lv_obj_set_style_arc_color(cd_arc_x[i], lv_color_hex(0x333344), LV_PART_MAIN);
-        lv_obj_set_style_arc_color(cd_arc_x[i], lv_color_hex(0x4488CC), LV_PART_INDICATOR);
+        lv_obj_set_style_arc_color(cd_arc_x[i], cd_colors[i], LV_PART_INDICATOR); /* 蓝/红/绿 */
         lv_obj_set_style_arc_width(cd_arc_x[i], 5, LV_PART_MAIN);
         lv_obj_set_style_arc_width(cd_arc_x[i], 5, LV_PART_INDICATOR);
         lv_obj_set_style_bg_opa(cd_arc_x[i], LV_OPA_TRANSP, LV_PART_KNOB);
@@ -456,7 +465,7 @@ void ui_play_init_stage2()
         lv_arc_set_range(cd_arc_y[i], 0, 100);
         lv_arc_set_value(cd_arc_y[i], 100);
         lv_obj_set_style_arc_color(cd_arc_y[i], lv_color_hex(0x333344), LV_PART_MAIN);
-        lv_obj_set_style_arc_color(cd_arc_y[i], lv_color_hex(0x4488CC), LV_PART_INDICATOR);
+        lv_obj_set_style_arc_color(cd_arc_y[i], cd_colors[i], LV_PART_INDICATOR); /* 蓝/红/绿 */
         lv_obj_set_style_arc_width(cd_arc_y[i], 5, LV_PART_MAIN);
         lv_obj_set_style_arc_width(cd_arc_y[i], 5, LV_PART_INDICATOR);
         lv_obj_set_style_bg_opa(cd_arc_y[i], LV_OPA_TRANSP, LV_PART_KNOB);
@@ -748,7 +757,7 @@ static void pause_setting_btn_event_cb(lv_event_t *e)
 static void over_exit_btn_event_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
-    event_dispatch(EVENT_GAME_OVER, NULL, NULL);
+    /* EVENT_GAME_OVER 已由 player_on_death 派发, 这里只需切状态 */
     fsm_switch_state(GS_MENU);
 }
 
@@ -893,23 +902,7 @@ static void cd_update_timer_cb(lv_timer_t *timer)
     {
         game_obj_t *p = player_get(i);
         if (p == NULL || !p->active)
-        {
-            if (cd_arc_x[i])
-                lv_obj_add_flag(cd_arc_x[i], LV_OBJ_FLAG_HIDDEN);
-            if (cd_arc_y[i])
-                lv_obj_add_flag(cd_arc_y[i], LV_OBJ_FLAG_HIDDEN);
-            if (cd_bg_x[i])
-                lv_obj_add_flag(cd_bg_x[i], LV_OBJ_FLAG_HIDDEN);
-            if (cd_bg_y[i])
-                lv_obj_add_flag(cd_bg_y[i], LV_OBJ_FLAG_HIDDEN);
-            if (cd_ready_x[i])
-                lv_obj_add_flag(cd_ready_x[i], LV_OBJ_FLAG_HIDDEN);
-            if (cd_ready_y[i])
-                lv_obj_add_flag(cd_ready_y[i], LV_OBJ_FLAG_HIDDEN);
-            if (coin_bars[i])
-                lv_obj_add_flag(coin_bars[i], LV_OBJ_FLAG_HIDDEN);
-            continue;
-        }
+            continue; /* 死亡后保留 HUD, 不更新也不隐藏 */
 
         const character_config_t *cfg = player_character_get(p);
         uint32_t now = play_tick_get();
@@ -992,9 +985,30 @@ static void ui_play_event_player_hurt_cb(game_obj_t *a, game_obj_t *b)
     }
 }
 
+/**
+ * @brief 游戏结束事件回调 — 结算金币 + 隐藏 HUD
+ * @note LOCAL/CONTROLLER 玩家的金币加入本地钱包, REMOTE 玩家通过 comm 同步
+ */
 static void ui_play_event_game_over_cb(game_obj_t *a, game_obj_t *b)
 {
     (void)a, (void)b;
+
+    /* ---- 金币结算 ---- */
+    for (int i = 0; i < MAX_PLAYER_COUNT; i++) {
+        game_obj_t *p = player_get(i);
+        if (!p || !player_was_active_get(p)) continue;
+
+        int coins = player_coin_count_get(p);
+        input_device_t *dev = (input_device_t *)p->behave.usr_data;
+        if (dev && dev->type == INPUT_DEVICE_REMOTE) {
+            comm_send_coin_sync(coins);
+        } else {
+            ui_shop_coin_add(coins);
+        }
+    }
+    /* #2: 通知从机游戏结束 */
+    comm_send_lobby_state(0);
+
     for (int i = 0; i < MAX_PLAYER_COUNT; i++)
     {
         if (hud_imgs[i])

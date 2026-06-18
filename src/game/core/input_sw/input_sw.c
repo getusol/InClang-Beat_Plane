@@ -210,5 +210,6 @@ static void input_sw_dispatch()
         }
     }
 
-    ui_lobby_navigate();
+    if (state == GS_LOBBY)
+        ui_lobby_navigate();
 }

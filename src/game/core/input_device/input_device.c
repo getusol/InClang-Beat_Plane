@@ -11,6 +11,7 @@
 #include "rkey.h"
 #include "controller.h"
 #include "joystick.h"
+#include <stddef.h>
 
 /**********************
  *      MACROS

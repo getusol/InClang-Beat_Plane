@@ -87,7 +87,7 @@ void ui_init_stage2()
   ui_comm_init_stage2();
   ui_sys_halt_init_stage2();
   // 按键注册
-  input_sw_register_press_callback(INPUT_DEVICE_LOCAL, KEY_EVENT_B, ui_esc_pressed_handler, NULL);
+  input_sw_register_press_callback(INPUT_DEVICE_ANY, KEY_EVENT_B, ui_esc_pressed_handler, NULL);
   CONSOLE_INFO("Ui initialization finished");
 }
 
@@ -197,7 +197,7 @@ static void ui_esc_pressed_handler(input_event_t *e)
     ui_shop_esc_behave();
     break;
   case GS_LOBBY:
-    ui_lobby_esc_behave();
+    ui_lobby_esc_behave(e->dev_type);
     break;
   case GS_PLAY:
     fsm_switch_state(GS_PAUSE);

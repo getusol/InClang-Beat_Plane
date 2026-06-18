@@ -60,6 +60,12 @@ bool comm_has_invite_cancel(void);
 bool comm_has_disconnect(void);
 bool comm_has_coin_sync(void);
 int32_t comm_get_coin_sync(void);
+uint8_t comm_get_lobby_state(void);
+#ifndef SIMULATOR /* MCU only: 接收 PC 发来的手柄数据 */
+uint8_t comm_get_controller_key_mask(void);
+int16_t comm_get_controller_joystick_x(void);
+int16_t comm_get_controller_joystick_y(void);
+#endif
 
 /**********************
  *   STATIC FUNCTIONS

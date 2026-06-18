@@ -11,6 +11,7 @@
 #include "protocol.h"
 #include "comm_tx.h"
 #include "comm_status.h"
+#include "fsm.h"
 #ifdef SIMULATOR
 #include "SDL.h"
 #endif
@@ -94,6 +95,10 @@ void input_hw_scan(void)
 static void input_remote_send(void)
 {
     if (comm_get_status() != COMM_STATUS_CONNECTED) return;
+    if (fsm_get_state() != GS_COMM) return;
+
+    static bool s_first_send = false;
+    if (!s_first_send) { CONSOLE_INFO("input_remote_send active (GS_COMM)"); s_first_send = true; }
 
     uint8_t key_mask = 0x00;
     for (int i = 1; i < KEY_MAX; i++) {
@@ -105,6 +110,13 @@ static void input_remote_send(void)
                 case KEY_Y: key_mask |= COMM_KEY_Y_MASK; break;
                 default: break;
             }
+        }
+    }
+    if (key_mask != 0) {
+        static uint8_t s_last_mask = 0;
+        if (key_mask != s_last_mask) {
+            CONSOLE_INFO("remote_send key_mask=0x%02X", key_mask);
+            s_last_mask = key_mask;
         }
     }
     comm_send_key_state(key_mask);

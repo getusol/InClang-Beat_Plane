@@ -152,11 +152,21 @@ game_obj_t *player_spawn(lv_coord_t x, lv_coord_t y,
 {
     if (fsm_get_state() != GS_PLAY)
         return NULL;
-    uint16_t id = pool_alloc(&player_pool);
+
+    /* 扫描第一个未激活的槽位 (保证单人始终占据 slot 0) */
+    uint16_t id = POOL_INVALID_ID;
+    for (uint16_t i = 0; i < MAX_PLAYER_COUNT; i++)
+    {
+        if (!players[i].base.active)
+        {
+            id = i;
+            break;
+        }
+    }
     if (id == POOL_INVALID_ID)
     {
-        CONSOLE_WARNING("No available player slots,max player count is %d", MAX_PLAYER_COUNT);
-        LOG_WARNING("No available player slots,max player count is %d", MAX_PLAYER_COUNT);
+        CONSOLE_WARNING("No available player slots, max player count is %d", MAX_PLAYER_COUNT);
+        LOG_WARNING("No available player slots, max player count is %d", MAX_PLAYER_COUNT);
         return NULL;
     }
     player_t *p = &players[id];
@@ -203,8 +213,8 @@ void player_character_set(game_obj_t *player, character_id_t id)
         return;
     AS_PLAYER(player)->character = character_get_config(id);
     apr_apply(player, AS_PLAYER(player)->character->apr_id);
-    player_hp_set(player, AS_PLAYER(player)->character->hp_max);
     lv_bar_set_range(AS_PLAYER(player)->hp_bar, 0, AS_PLAYER(player)->character->hp_max);
+    player_hp_set(player, AS_PLAYER(player)->character->hp_max);
 }
 
 /**
@@ -291,6 +301,13 @@ void player_shield_set_active(game_obj_t *player, bool active)
     AS_PLAYER(player)->shield_active = active;
 }
 
+lv_obj_t *player_shield_get_obj(game_obj_t *player)
+{
+    if (player == NULL)
+        return NULL;
+    return AS_PLAYER(player)->shield_overlay;
+}
+
 /**
  * @brief 获取普攻上次发射时刻
  */
@@ -353,13 +370,15 @@ void player_skill_y_last_use_set(game_obj_t *player, uint32_t tick)
 
 bool player_was_active_get(game_obj_t *player)
 {
-    if (player == NULL) return false;
+    if (player == NULL)
+        return false;
     return AS_PLAYER(player)->was_active;
 }
 
 void player_was_active_set(game_obj_t *player, bool val)
 {
-    if (player == NULL) return;
+    if (player == NULL)
+        return;
     AS_PLAYER(player)->was_active = val;
 }
 

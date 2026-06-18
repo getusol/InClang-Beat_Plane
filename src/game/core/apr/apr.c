@@ -72,8 +72,8 @@ void apr_init()
         .hitbox_y = 22,
         .hitbox_w = 60,
         .hitbox_h = 20,
-        .img_name = "player_ember.bin",
-        .is_alpha = false,
+        .img_name = "ember.bin",
+        .is_alpha = true,
     };
 
     // APR_PLAYER_STREAM - 水流飞机
@@ -84,8 +84,8 @@ void apr_init()
         .hitbox_y = 22,
         .hitbox_w = 60,
         .hitbox_h = 20,
-        .img_name = "player_stream.bin",
-        .is_alpha = false,
+        .img_name = "stream.bin",
+        .is_alpha = true,
     };
 
     // APR_PLAYER_VERDANT - 自然飞机
@@ -96,8 +96,8 @@ void apr_init()
         .hitbox_y = 22,
         .hitbox_w = 60,
         .hitbox_h = 20,
-        .img_name = "player_verdant.bin",
-        .is_alpha = false,
+        .img_name = "verdant.bin",
+        .is_alpha = true,
     };
 
     // ==================== 子弹 ====================
