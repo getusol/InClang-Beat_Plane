@@ -1,14 +1,17 @@
 /**
- * @file ui.h
- * @brief ui的统一接口
+ * @file hitbox.h
+ * @brief 提供调试用lvgl碰撞箱代码
  */
 
-#ifndef __UI_H__
-#define __UI_H__
+#ifndef __HITBOX_H__
+#define __HITBOX_H__
 
 /*********************
  *      INCLUDES
  *********************/
+
+#include "lvgl.h"
+#include "game_object.h"
 
 /**********************
  *      MACROS
@@ -26,16 +29,9 @@
  *   GLOBAL PROTOTYPES
  ***********************/
 
-/**********************
- *  STATIC VARIABLES
- **********************/
+void hitbox_create(game_obj_t *obj, void *v);
+void hitbox_update(game_obj_t *obj);
+void hitbox_init(void);
+void hitbox_resize(game_obj_t *obj);
 
-/**********************
- *   GLOBAL FUNCTIONS
- **********************/
-
-void ui_init_stage2();
-void ui_init_stage1();
-void ui_run();
-
-#endif // #ifndef __UI_H__
+#endif // #ifndef __HITBOX_H__

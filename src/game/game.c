@@ -27,6 +27,8 @@
 #include "flame_wall.h"
 #include "ui_shop.h"
 #include "apr.h"
+#include "hitbox.h"
+
 /**********************
  *      MACROS
  **********************/
@@ -37,18 +39,16 @@
 #define MAX_GAME_OBJ_COUNT (MAX_BULLET_COUNT + 1 + MAX_ENEMY_COUNT + MAX_COIN_COUNT + MAX_FLAME_WALL_COUNT)
 #endif
 
-
 /**********************
  *      TYPEDEFS
  **********************/
 
 /**********************
-*  STATIC PROTOTYPES
-**********************/
+ *  STATIC PROTOTYPES
+ **********************/
 
-static bool rec_overlap(game_obj_t * obj1, game_obj_t * obj2);
+static bool rec_overlap(game_obj_t *obj1, game_obj_t *obj2);
 static void check_collisions(void);
-static void init_hitbox(game_obj_t * obj,void * usr_data);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -58,26 +58,25 @@ static void init_hitbox(game_obj_t * obj,void * usr_data);
  *  STATIC VARIABLES
  **********************/
 
-
-static game_obj_t * game_objs[MAX_GAME_OBJ_COUNT];
+static game_obj_t *game_objs[MAX_GAME_OBJ_COUNT];
 static uint8_t free_idx = 0;
 
- /**********************
+/**********************
  *   GLOBAL FUNCTIONS
  **********************/
 
- /**
-  * @brief 游戏初始化函数，负责初始化程序游戏相关内容
-  */
+/**
+ * @brief 游戏初始化函数，负责初始化程序游戏相关内容
+ */
 void game_init()
 {
-    lv_obj_t * play_display = ui_play_get_display();
+    lv_obj_t *play_display = ui_play_get_display();
 
     timer_pool_init();
 
     level_init();
 
-    //apr_init(); 在ui_init调用 因为base需要描述符
+    apr_init();
 
     // 程序启动时 初始化游戏对象
     player_init(play_display);
@@ -85,33 +84,32 @@ void game_init()
     enemy_init(play_display);
     coin_init(play_display);
     flame_wall_init(play_display);
+    hitbox_init();
 
-    // 在数据源初始化之后注册 UI 事件（coin 更新、受击反馈等）
-    ui_play_register_events();
-
-
-    game_for_each_obj(init_hitbox, NULL);
+    game_for_each_obj(hitbox_create, NULL);
 
     CONSOLE_INFO("Game objects initialization complete.");
-    return ;
+    return;
 }
 
 /**
  * @brief 游戏对象注册函数，负责将游戏对象添加到游戏对象管理器中
  * @return 注册编号 失败返回 -1
  */
-int game_register_obj(game_obj_t * obj)
+int game_register_obj(game_obj_t *obj)
 {
-  if (obj == NULL) {
-    return -1;
-  }
-  if (free_idx >= MAX_GAME_OBJ_COUNT) {
-    CONSOLE_WARNING("Game obj register failed,type: %d",obj->type);
-    LOG_WARNING("Game obj register failed,type: %d",obj->type);
-    return -1;
-  }
-  game_objs[free_idx++] = obj;
-  return free_idx - 1;
+    if (obj == NULL)
+    {
+        return -1;
+    }
+    if (free_idx >= MAX_GAME_OBJ_COUNT)
+    {
+        CONSOLE_WARNING("Game obj register failed,type: %d", obj->type);
+        LOG_WARNING("Game obj register failed,type: %d", obj->type);
+        return -1;
+    }
+    game_objs[free_idx++] = obj;
+    return free_idx - 1;
 }
 
 /**
@@ -119,24 +117,28 @@ int game_register_obj(game_obj_t * obj)
  */
 void game_update()
 {
-  uint32_t t_start = lv_tick_get();
+    uint32_t t_start = lv_tick_get();
 
-  timer_update();
+    timer_update();
 
-  for (int i = 0;i < free_idx;i++) {
-    if (!game_obj_is_active(game_objs[i])) continue;
-    if (game_objs[i]->update) game_objs[i]->update(game_objs[i]);
-    if (game_objs[i]->behave.f) game_objs[i]->behave.f(game_objs[i],game_objs[i]->behave.usr_data);
-    game_obj_hitbox_update(game_objs[i]);
-  }
+    for (int i = 0; i < free_idx; i++)
+    {
+        if (!game_obj_is_active(game_objs[i]))
+            continue;
+        if (game_objs[i]->update)
+            game_objs[i]->update(game_objs[i]);
+        if (game_objs[i]->behave.f)
+            game_objs[i]->behave.f(game_objs[i], game_objs[i]->behave.usr_data);
+        hitbox_update(game_objs[i]);
+    }
 
-  check_collisions();
+    check_collisions();
 
-  level_update();
+    level_update();
 
-  uint32_t t_end = lv_tick_get();
+    uint32_t t_end = lv_tick_get();
 
-  perf_monitor_set_mspt(t_end - t_start);
+    perf_monitor_set_mspt(t_end - t_start);
 }
 
 /**
@@ -145,21 +147,22 @@ void game_update()
  * @param usr_data 用户数据
  * @note 关于对象是否有效，是否活跃，需要操作函数负责
  */
-void game_for_each_obj(void (*fuc)(game_obj_t * ,void *),void * usr_data)
+void game_for_each_obj(void (*fuc)(game_obj_t *, void *), void *usr_data)
 {
-  for (int i = 0;i < free_idx;i++) {
-    fuc(game_objs[i],usr_data);
-  }
+    for (int i = 0; i < free_idx; i++)
+    {
+        fuc(game_objs[i], usr_data);
+    }
 }
 
- /**********************
+/**********************
  *   STATIC FUNCTIONS
  **********************/
 
 /**
  * @brief 检测两个游戏对象是否重叠
  */
-static bool rec_overlap(game_obj_t * obj1, game_obj_t * obj2)
+static bool rec_overlap(game_obj_t *obj1, game_obj_t *obj2)
 {
     // 获取 obj1 碰撞箱边界
     int16_t ax1 = obj1->x + obj1->apr->hitbox_x;
@@ -182,15 +185,20 @@ static bool rec_overlap(game_obj_t * obj1, game_obj_t * obj2)
 
 static void check_collisions(void)
 {
-    if (fsm_get_state() != GS_PLAY) return;
+    if (fsm_get_state() != GS_PLAY)
+        return;
 
-    for (int i = 0; i < free_idx; i++) {
+    for (int i = 0; i < free_idx; i++)
+    {
         game_obj_t *a = game_objs[i];
-        if (!a->active) continue;
+        if (!a->active)
+            continue;
 
-        for (int j = i + 1; j < free_idx; j++) {
+        for (int j = i + 1; j < free_idx; j++)
+        {
             game_obj_t *b = game_objs[j];
-            if (!b->active) continue;
+            if (!b->active)
+                continue;
 
             // 只检测以下类型组合
             bool need_check =
@@ -198,8 +206,8 @@ static void check_collisions(void)
                 (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) ||
                 (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) ||
                 (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) ||
-                (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN)  ||
-                (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER)  ||
+                (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN) ||
+                (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER) ||
                 (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET) ||
                 (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER) ||
                 (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_ENEMY) ||
@@ -207,120 +215,144 @@ static void check_collisions(void)
                 (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_BULLET) ||
                 (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_FLAME_WALL);
 
-            if (!need_check) continue;
+            if (!need_check)
+                continue;
 
             //  确保所有的事件派发都在 rec_overlap 成立的大括号内部！
-            if (rec_overlap(a, b)) {
+            if (rec_overlap(a, b))
+            {
 
                 // 1. 子弹 vs 敌人
-                if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY) {
+                if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_ENEMY)
+                {
                     game_obj_t *src = bullet_get_source(a);
                     if (src == player_get_base()
 #ifdef SIMULATOR
                         || src == player_get_p2_base()
 #endif
-                    ) {
+                    )
+                    {
                         event_dispatch(EVENT_BULLET_HIT_ENEMY, a, b);
                     }
                 }
-                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET) {
+                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_BULLET)
+                {
                     game_obj_t *src = bullet_get_source(b);
                     if (src == player_get_base()
 #ifdef SIMULATOR
                         || src == player_get_p2_base()
 #endif
-                    ) {
+                    )
+                    {
                         event_dispatch(EVENT_BULLET_HIT_ENEMY, b, a);
                     }
                 }
                 // 2. 玩家 vs 敌人 (护盾时免疫)
-                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY) {
-                    if (!player_is_shield_active()) {
+                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_ENEMY)
+                {
+                    if (!player_is_shield_active())
+                    {
                         event_dispatch(EVENT_PLAYER_HIT_ENEMY, a, b);
                     }
                 }
-                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER) {
-                    if (!player_is_shield_active()) {
+                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_PLAYER)
+                {
+                    if (!player_is_shield_active())
+                    {
                         event_dispatch(EVENT_PLAYER_HIT_ENEMY, b, a);
                     }
                 }
                 // 3. 玩家 vs 金币（现在正确嵌套在 if (rec_overlap) 内部了）
-                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN) {
+                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_COIN)
+                {
                     event_dispatch(EVENT_PLAYER_HIT_COIN, a, b);
                 }
-                else if (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER) {
+                else if (a->type == GAME_OBJ_TYPE_COIN && b->type == GAME_OBJ_TYPE_PLAYER)
+                {
                     event_dispatch(EVENT_PLAYER_HIT_COIN, b, a);
                 }
                 // 4.子弹 vs 玩家 (护盾反射)
-                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET) {
-                    if (bullet_get_source(b) != a) {
-                        if (player_is_shield_active_for(a)) {
+                else if (a->type == GAME_OBJ_TYPE_PLAYER && b->type == GAME_OBJ_TYPE_BULLET)
+                {
+                    if (bullet_get_source(b)->type != GAME_OBJ_TYPE_PLAYER)
+                    {
+                        if (player_is_shield_active_for(a))
+                        {
                             const apr_t *bullet_apr = b->apr;
                             if (bullet_apr == apr_get(APR_BULLET_CIRCLE) ||
-                                bullet_apr == apr_get(APR_BULLET_TRIANGLE)) {
+                                bullet_apr == apr_get(APR_BULLET_TRIANGLE))
+                            {
                                 b->vy = -b->vy;
                                 bullet_set_source(b, a);
                                 bullet_set_flags(b, bullet_get_flags(b) | BULLET_FLAG_REFLECTED);
                             }
-                        } else {
+                        }
+                        else
+                        {
                             event_dispatch(EVENT_BULLET_HIT_PLAYER, b, a);
                         }
                     }
-                } else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER) {
-                    if (bullet_get_source(a) != b) {
-                        if (player_is_shield_active_for(b)) {
+                }
+                else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_PLAYER)
+                {
+                    if (bullet_get_source(a)->type != GAME_OBJ_TYPE_PLAYER)
+                    {
+                        if (player_is_shield_active_for(b))
+                        {
                             const apr_t *bullet_apr = a->apr;
                             if (bullet_apr == apr_get(APR_BULLET_CIRCLE) ||
-                                bullet_apr == apr_get(APR_BULLET_TRIANGLE)) {
+                                bullet_apr == apr_get(APR_BULLET_TRIANGLE))
+                            {
                                 a->vy = -a->vy;
                                 bullet_set_source(a, b);
                                 bullet_set_flags(a, bullet_get_flags(a) | BULLET_FLAG_REFLECTED);
                             }
-                        } else {
+                        }
+                        else
+                        {
                             event_dispatch(EVENT_BULLET_HIT_PLAYER, a, b);
                         }
                     }
                 }
                 // 5. 火墙 vs 敌人
-                else if (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_ENEMY) {
+                else if (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_ENEMY)
+                {
                     enemy_apply_damage(b, 20);
                     a->hide(a);
                 }
-                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_FLAME_WALL) {
+                else if (a->type == GAME_OBJ_TYPE_ENEMY && b->type == GAME_OBJ_TYPE_FLAME_WALL)
+                {
                     enemy_apply_damage(a, 20);
                     b->hide(b);
                 }
                 // 6. 火墙 vs 子弹 (清除敌方子弹，保留 P1/P2 的子弹)
-                else if (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_BULLET) {
+                else if (a->type == GAME_OBJ_TYPE_FLAME_WALL && b->type == GAME_OBJ_TYPE_BULLET)
+                {
                     game_obj_t *bs = bullet_get_source(b);
                     if (bs != player_get_base()
 #ifdef SIMULATOR
                         && bs != player_get_p2_base()
 #endif
-                    ) { b->hide(b); }
+                    )
+                    {
+                        b->hide(b);
+                    }
                 }
-                else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_FLAME_WALL) {
+                else if (a->type == GAME_OBJ_TYPE_BULLET && b->type == GAME_OBJ_TYPE_FLAME_WALL)
+                {
                     game_obj_t *bs = bullet_get_source(a);
                     if (bs != player_get_base()
 #ifdef SIMULATOR
                         && bs != player_get_p2_base()
 #endif
-                    ) { a->hide(a); }
+                    )
+                    {
+                        a->hide(a);
+                    }
                 }
 
-
-                //CONSOLE_INFO("Collision detected between %d and %d", a->type, b->type);
+                // CONSOLE_INFO("Collision detected between %d and %d", a->type, b->type);
             } // 用这个右括号正确闭合 if (rec_overlap(a, b))
         } // 闭合 for j
     } // 闭合 for i
 } // 闭合 check_collisions 函数
-
-
-/**
- * @brief 操作函数 初始化每个对象的碰撞箱
- */
-static void init_hitbox(game_obj_t * obj, void * usr_data)
-{
-  LV_UNUSED(usr_data);
-  game_obj_hitbox_init(obj);
-}

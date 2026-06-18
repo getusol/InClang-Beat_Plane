@@ -478,9 +478,14 @@ static void player_update(game_obj_t * g)
   if (player_p->current_plane_id == 3) {
     player_p->speed_boost_active = input_sw_is_key_down(KEY_EVENT_X);
   }
+#ifdef SIMULATOR
+  if (player_p2 != NULL && player_p2->base.active && player_p2->current_plane_id == 3) {
+    player_p2->speed_boost_active = input_sw_is_key_down(KEY_EVENT_RKEY_X);
+  }
+  #endif
 
-  g->vx = joystick_get_x() / 127.0f * 7;
-  g->vy = joystick_get_y() / 127.0f * 7;
+    g->vx = joystick_get_x() / 127.0f * 7;
+    g->vy = joystick_get_y() / 127.0f * 7;
 
   if (player_p->speed_boost_active) {
     g->vx *= 2;

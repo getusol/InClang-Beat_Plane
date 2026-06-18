@@ -9,7 +9,7 @@
 #include "tools.h"
 #include "lvgl.h" // for lvgl tick get
 #ifdef SIMULATOR
-#include "SDL2/SDL.h"
+#include "SDL.h"
 #else
 #include "protocol.h"
 #include "comm_tx.h"

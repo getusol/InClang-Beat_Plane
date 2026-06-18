@@ -9,7 +9,7 @@
 #include "key.h"
 #include "config.h"
 #ifdef SIMULATOR
-#include "SDL2/SDL.h"
+#include "SDL.h"
 #include "comm_rx.h"
 #include "protocol.h"
 #else

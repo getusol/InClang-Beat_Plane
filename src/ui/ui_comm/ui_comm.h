@@ -21,7 +21,8 @@
  *   GLOBAL PROTOTYPES
  ***********************/
 
-void ui_comm_init();
+void ui_comm_init_stage1();
+void ui_comm_init_stage2();
 void ui_comm_run();
 
 #endif

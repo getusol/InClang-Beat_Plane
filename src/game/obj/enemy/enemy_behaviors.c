@@ -221,16 +221,16 @@ static void boss_master_timer_cb(game_obj_t * g, void * v)
 
     switch (phase) {
         case 0:
-            // 270° 对称弹幕 —— 每 1 tick (300ms)
-            if (phase_tick % 1 == 0) {
+            // 270° 对称弹幕 —— 每 2 tick (600ms)
+            if (phase_tick % 2 == 0) {
                 boss_fire_barrage(g);
                 audio_load(AUDIO_BOSSATTACK, AUDIO_CHAN_AUTO, false);
             }
             break;
 
         case 1:
-            // 追踪弹 —— 每 4 tick (1200ms)
-            if (phase_tick % 4 == 0) {
+            // 追踪弹 —— 每 3 tick (900ms)
+            if (phase_tick % 3 == 0) {
                 boss_fire_tracking(g);
             }
             break;

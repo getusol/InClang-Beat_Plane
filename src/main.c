@@ -10,7 +10,6 @@
 #include "bullet.h"
 #include "config.h"
 #include "game.h"
-#include "save.h"
 #include "event.h"
 #include "perf_monitor.h"
 #include "audio.h"
@@ -18,22 +17,24 @@
 #include "multiplayer.h"
 #include "coin.h"
 #include "comm_rx.h"
+#include "settings.h"
 
 int main(int argc, char **argv)
 {
-    //Inits
+    // Inits
     tools_init();
     lv_port_init();
     uart_enable();
     comm_init();
-    mp_init();  //  Must be ahead of any where mp_event register happens
+    mp_init(); //  Must be ahead of any where mp_event register happens
     input_init();
     audio_init();
     fsm_init();
-    event_init(); //  Must be ahead of any where game_event register happens
-    ui_init();
+    event_init();     //  Must be ahead of any where game_event register happens
+    ui_init_stage1(); // 初始化根容器等可能与其它模块共享的资源  先调用
     game_init();
-    save_load();
+    settings_load();  // 必须在ui创建之前 所有settings项注册之后 将文件加载到内存中
+    ui_init_stage2(); // 绘制全部ui元素
 
     non_blocking_timer_t logic_timer = {
         .func = game_update,
@@ -69,7 +70,8 @@ int main(int argc, char **argv)
     CONSOLE_INFO("Initialization done!");
     LOG_INFO("Initialization done!");
 
-    while(1) {
+    while (1)
+    {
         non_blocking_delay(&input_timer);
         non_blocking_delay(&logic_timer);
         non_blocking_delay(&ui_timer);
@@ -77,12 +79,13 @@ int main(int argc, char **argv)
         non_blocking_delay(&mp_timer);
 
         /* 金币同步处理（双方） */
-        if (comm_has_coin_sync()) {
+        if (comm_has_coin_sync())
+        {
             int32_t val = comm_get_coin_sync();
 #ifdef SIMULATOR
-            coin_set_p2_num(val);  // PC: 收到 MCU 金币 → 设为 P2 余额
+            coin_set_p2_num(val); // PC: 收到 MCU 金币 → 设为 P2 余额
 #else
-            coin_set_num(val);     // MCU: 收到 PC 的 P2 金币 → 保存
+            coin_set_num(val); // MCU: 收到 PC 的 P2 金币 → 保存
             save_write();
 #endif
         }
@@ -92,9 +95,8 @@ int main(int argc, char **argv)
         uint32_t t_end = lv_tick_get();
         perf_monitor_set_mspf(t_end - t_start);
 
-        perf_monitor_update();  //更新信息显示
+        perf_monitor_update(); // 更新信息显示
         delay_ms(1);
-
     }
     return 0;
 }
